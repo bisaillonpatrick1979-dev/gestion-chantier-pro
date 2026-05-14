@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-background: #0a0500;
+  --color-surface: #1a0a00;
+  --color-card: #1f0e00;
+  --color-primary: #ea580c;
+  --color-primary-light: #fb923c;
+  --color-secondary: #f59e0b;
+  --color-secondary-light: #fcd34d;
+  --color-text: #f5f0e8;
+  --color-text-muted: #8a7060;
+  --color-border: #3a1f0a;
+  --color-glow1: rgba(234,88,12,0.25);
+  --color-glow2: rgba(245,158,11,0.15);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+.metal-text {
+  background: linear-gradient(
+    135deg,
+    #4a4540 0%, #e2e0dc 30%,
+    #f5f0e8 50%, #a8a49e 70%, #4a4540 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: metalShine 3s linear infinite;
+}
+
+.fire-glow {
+  box-shadow:
+    0 0 20px var(--color-glow1),
+    0 0 40px var(--color-glow2);
+}
+
+.stars {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 35%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 10%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 45%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 20%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 55%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 65%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 80%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 70%, white 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 85%, white 0%, transparent 100%),
+    radial-gradient(2px 2px at 45% 60%, var(--color-secondary-light) 0%, transparent 100%),
+    radial-gradient(2px 2px at 80% 40%, var(--color-secondary-light) 0%, transparent 100%);
+}
+
+.fire-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 70% 0%, var(--color-glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 30% 100%, var(--color-glow2) 0%, transparent 60%);
+  transition: background 0.3s ease;
+}
+
+.metal-card {
+  background: linear-gradient(
+    135deg,
+    var(--color-card) 0%,
+    var(--color-surface) 50%,
+    var(--color-card) 100%
+  );
+  border: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-glow1);
+}
+
+@keyframes metalShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 40px var(--color-glow1), 0 0 80px var(--color-glow2); }
+  50% { box-shadow: 0 0 60px var(--color-primary), 0 0 120px var(--color-glow1); }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
