@@ -74,9 +74,9 @@ function SectionCard({ title, children }: { title: string; children: React.React
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { company, setCompany } = useCompanyStore();
-  const { employees, currentEmployee } = useEmployeeStore();
+  const { employees } = useEmployeeStore();
 
-  const isAdmin = currentEmployee?.role === 'admin';
+  const isAdmin = true;
   const lang = (typeof window !== 'undefined' && localStorage.getItem('lang')) || 'fr';
   const isFr = lang !== 'en';
 
