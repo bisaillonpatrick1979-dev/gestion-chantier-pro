@@ -190,7 +190,7 @@ export default function HomePage() {
         <button onClick={() => setScreen('select')} style={{
           alignSelf: 'flex-start', color: theme.colors.textMuted,
           background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px'
-        }}>← Retour</button>
+        }}>← {t('Retour', 'Back')}</button>
 
         <div style={{
           width: '72px', height: '72px', borderRadius: '50%',
@@ -428,7 +428,7 @@ export default function HomePage() {
               border: `1px dashed ${theme.colors.primary}`,
               background: 'transparent', color: theme.colors.primary,
               fontSize: '13px', fontWeight: '700',
-            }}>+ Ajouter un matériau</button>
+            }}>+ {t('Ajouter un matériau', 'Add material')}</button>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <button onClick={() => setShowPunchOut(false)} style={{
                 padding: '14px', borderRadius: '12px', cursor: 'pointer',
@@ -482,7 +482,10 @@ export default function HomePage() {
           display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
           gap: '4px', marginBottom: '8px'
         }}>
-          {['Di','Lu','Ma','Me','Je','Ve','Sa'].map(d => (
+          {(lang === 'fr'
+            ? ['Di','Lu','Ma','Me','Je','Ve','Sa']
+            : ['Su','Mo','Tu','We','Th','Fr','Sa']
+          ).map(d => (
             <div key={d} style={{
               textAlign: 'center' as const, fontSize: '10px',
               color: theme.colors.textMuted, fontWeight: '700', padding: '4px 0'
@@ -525,6 +528,39 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* LEGEND */}
+      <div style={card}>
+        <p style={{
+          color: theme.colors.primary, fontSize: '11px',
+          letterSpacing: '3px', fontWeight: '700', marginBottom: '12px'
+        }}>
+          {t('LÉGENDE', 'LEGEND')}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[
+            { emoji: '⛱️', fr: 'Congé / Vacances',    en: 'Day off / Vacation', color: '#06b6d4', tint: 'rgba(6,182,212,0.15)'   },
+            { emoji: '🌙', fr: 'Petite journée',       en: 'Short day (< 4h)',   color: '#64748b', tint: 'rgba(100,116,139,0.15)' },
+            { emoji: '📋', fr: 'Journée moyenne',      en: 'Average day (4-6h)', color: '#3b82f6', tint: 'rgba(59,130,246,0.15)'  },
+            { emoji: '✅', fr: 'Journée normale',      en: 'Normal day (6-8h)',  color: '#22c55e', tint: 'rgba(34,197,94,0.15)'   },
+            { emoji: '⭐', fr: 'Bonne journée',        en: 'Good day (8-10h)',   color: '#eab308', tint: 'rgba(234,179,8,0.15)'   },
+            { emoji: '🔥', fr: 'Grosse journée',       en: 'Big day (10-12h)',   color: '#f97316', tint: 'rgba(249,115,22,0.15)'  },
+            { emoji: '💎', fr: 'Très grosse journée',  en: 'Huge day (12h+)',    color: '#a855f7', tint: 'rgba(168,85,247,0.15)'  },
+          ].map(item => (
+            <div key={item.emoji} style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              background: item.tint,
+              borderLeft: `3px solid ${item.color}`,
+              borderRadius: '8px', padding: '10px 12px',
+            }}>
+              <span style={{ fontSize: '20px' }}>{item.emoji}</span>
+              <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '700' }}>
+                {t(item.fr, item.en)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* DAY DETAIL MODAL */}
       {selectedDay && (() => {
         const detail = currentEmployeeId
@@ -560,10 +596,10 @@ export default function HomePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {[
-                      { label: t('Heures', 'Hours'), value: `${detail.totalHours.toFixed(2)}h`, color: theme.colors.primary },
-                      { label: t('Revenus', 'Revenue'), value: formatCurrency(detail.totalRevenue), color: theme.colors.secondary },
-                      { label: t('Pauses', 'Breaks'), value: formatTimer(detail.totalBreak), color: '#f97316' },
-                      { label: 'Sessions', value: `${detail.sessions.length}`, color: theme.colors.primaryLight },
+                      { label: t('Heures', 'Hours'),    value: `${detail.totalHours.toFixed(2)}h`,  color: theme.colors.primary     },
+                      { label: t('Revenus', 'Revenue'), value: formatCurrency(detail.totalRevenue), color: theme.colors.secondary   },
+                      { label: t('Pauses', 'Breaks'),   value: formatTimer(detail.totalBreak),       color: '#f97316'               },
+                      { label: 'Sessions',              value: `${detail.sessions.length}`,          color: theme.colors.primaryLight},
                     ].map(item => (
                       <div key={item.label} style={{
                         background: theme.colors.card, borderRadius: '10px', padding: '12px',
@@ -580,7 +616,7 @@ export default function HomePage() {
                       <p style={{
                         color: theme.colors.primary, fontSize: '11px',
                         marginBottom: '8px', letterSpacing: '2px'
-                      }}>MATÉRIAUX</p>
+                      }}>{t('MATÉRIAUX', 'MATERIALS')}</p>
                       {detail.materials.map((m, idx) => (
                         <div key={idx} style={{
                           display: 'flex', justifyContent: 'space-between',
