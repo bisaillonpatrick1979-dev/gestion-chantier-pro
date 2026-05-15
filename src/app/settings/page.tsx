@@ -45,7 +45,11 @@ interface CompanyInfo {
   interacEmail: string
   legalNotes: string
   warrantyText: string
-  [key: string]: string
+}
+
+interface CompanyStore {
+  company: CompanyInfo
+  updateCompany: (updates: Partial<CompanyInfo>) => void
 }
 
 const defaultCompany: CompanyInfo = {
@@ -81,23 +85,25 @@ const defaultCompany: CompanyInfo = {
   bankTransitNumber: '',
   interacEmail: '',
   legalNotes: '',
-  warrantyText: 'Tous les travaux sont garantis pour une période de 1 an contre les défauts de main-d\'oeuvre.',
+  warrantyText: "Tous les travaux sont garantis pour une période de 1 an contre les défauts de main-d'oeuvre.",
 }
 
-export const useCompanyStore = create<{
-  company: CompanyInfo
-  updateCompany: (updates: Partial<CompanyInfo>) => void
-}>()(
+export const useCompanyStore = create<CompanyStore>()(
   persist(
     (set) => ({
       company: defaultCompany,
-      updateCompany: (updates) => set(state => ({
-        company: { ...state.company, ...updates }
+      updateCompany: (updates: Partial<CompanyInfo>) => set((state: CompanyStore) => ({
+        company: { ...state.company, ...updates } as CompanyInfo
       })),
     }),
     { name: 'company-store-v1' }
   )
 )
+
+// Helper to get company field safely
+const getField = (company: CompanyInfo, field: string): string => {
+  return (company as unknown as Record<string, string>)[field] ?? ''
+}
 
 export default function SettingsPage() {
   const { hourlyRate, forfaitAmount, surfaceRate, surfaceArea,
@@ -180,11 +186,11 @@ export default function SettingsPage() {
     { id: 'app',        emoji: 'ℹ️', fr: 'Application',  en: 'Application'},
   ]
 
-  const renderField = (label: string, field: string, placeholder?: string, type = 'text') => (
+  const renderField = (label: string, field: keyof CompanyInfo, placeholder?: string, type = 'text') => (
     <div key={field}>
       <label style={labelStyle}>{label}</label>
       <input
-        value={company[field] ?? ''}
+        value={company[field]}
         onChange={e => updateCompany({ [field]: e.target.value })}
         placeholder={placeholder}
         type={type}
@@ -273,7 +279,7 @@ export default function SettingsPage() {
             {renderField(t('Assureur', 'Insurer'), 'liabilityInsurer')}
             {renderField(t('Numéro de police', 'Policy number'), 'liabilityPolicyNumber')}
             {renderField(t('Montant de couverture', 'Coverage amount'), 'liabilityAmount', 'Ex: 2 000 000 $')}
-            {renderField(t('Date d\'expiration', 'Expiry date'), 'liabilityExpiry', '', 'date')}
+            {renderField(t("Date d'expiration", 'Expiry date'), 'liabilityExpiry', '', 'date')}
           </div>
 
           <div style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px', borderLeft: '3px solid #3b82f6' }}>
@@ -282,7 +288,7 @@ export default function SettingsPage() {
             </p>
             {renderField(t('Assureur / organisme', 'Insurer / organization'), 'workerCompInsurer')}
             {renderField(t('Numéro de dossier', 'File number'), 'workerCompNumber')}
-            {renderField(t('Date d\'expiration', 'Expiry date'), 'workerCompExpiry', '', 'date')}
+            {renderField(t("Date d'expiration", 'Expiry date'), 'workerCompExpiry', '', 'date')}
           </div>
 
           <div style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px', borderLeft: '3px solid #f59e0b' }}>
@@ -291,7 +297,7 @@ export default function SettingsPage() {
             </p>
             {renderField(t('Assureur', 'Insurer'), 'errorOmissionInsurer')}
             {renderField(t('Numéro de police', 'Policy number'), 'errorOmissionNumber')}
-            {renderField(t('Date d\'expiration', 'Expiry date'), 'errorOmissionExpiry', '', 'date')}
+            {renderField(t("Date d'expiration", 'Expiry date'), 'errorOmissionExpiry', '', 'date')}
           </div>
         </div>
       )}
@@ -324,7 +330,7 @@ export default function SettingsPage() {
           <div>
             <label style={labelStyle}>{t('Garantie sur les travaux', 'Work warranty')}</label>
             <textarea
-              value={company.warrantyText ?? ''}
+              value={company.warrantyText}
               onChange={e => updateCompany({ warrantyText: e.target.value })}
               rows={4}
               style={{ ...inputStyle, resize: 'vertical' as const }}
@@ -333,7 +339,7 @@ export default function SettingsPage() {
           <div>
             <label style={labelStyle}>{t('Notes légales additionnelles', 'Additional legal notes')}</label>
             <textarea
-              value={company.legalNotes ?? ''}
+              value={company.legalNotes}
               onChange={e => updateCompany({ legalNotes: e.target.value })}
               placeholder={t(
                 'Ex: En cas de non-paiement, des frais de 2% par mois seront appliqués...',
@@ -366,7 +372,7 @@ export default function SettingsPage() {
               <input
                 value={newEmployee.name}
                 onChange={e => setNewEmployee(p => ({ ...p, name: e.target.value }))}
-                placeholder={t('Nom de l\'employé', 'Employee name')}
+                placeholder={t("Nom de l'employé", 'Employee name')}
                 style={inputStyle}
               />
               <input
@@ -410,7 +416,7 @@ export default function SettingsPage() {
                 background: theme.colors.primary, border: 'none',
                 color: 'white', fontSize: '14px', fontWeight: '700',
               }}>
-                ✅ {t('Créer l\'employé', 'Create employee')}
+                ✅ {t("Créer l'employé", 'Create employee')}
               </button>
             </div>
           )}
@@ -542,12 +548,12 @@ export default function SettingsPage() {
             <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
               ℹ️ {t('APPLICATION', 'APPLICATION')}
             </p>
-            {[
+            {([
               ['App', 'Gestion Chantier Pro'],
               ['Version', '1.0.0'],
               [t('Entreprise', 'Company'), 'Hailite Xteriors'],
               ['Stack', 'Next.js 16 + Zustand'],
-            ].map(([label, value]) => (
+            ] as [string, string][]).map(([label, value]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: theme.colors.textMuted, fontSize: '13px' }}>{label}</span>
                 <span style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '600' }}>{value}</span>
