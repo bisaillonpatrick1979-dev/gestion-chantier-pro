@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Theme, getTheme } from '@/lib/themes'
+import { Theme, getTheme, DEFAULT_THEME_ID } from '@/lib/themes'
 
 interface ThemeStore {
   themeId: string
@@ -11,8 +11,8 @@ interface ThemeStore {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     set => ({
-      themeId: 'sunset',
-      theme: getTheme('sunset'),
+      themeId: DEFAULT_THEME_ID,
+      theme: getTheme(DEFAULT_THEME_ID),
       setTheme: id =>
         set({
           themeId: id,
