@@ -3,8 +3,106 @@ import { useState } from 'react'
 import { useWorkStore } from '@/store/useWorkStore'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
-import { themes } from '@/lib/themes'
 import { useLangStore } from '@/store/useLangStore'
+import { themes } from '@/lib/themes'
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+// ==================
+// COMPANY STORE
+// ==================
+interface CompanyInfo {
+  // Infos de base
+  name: string
+  ownerName: string
+  phone: string
+  email: string
+  website: string
+  // Adresse
+  address: string
+  city: string
+  province: string
+  postalCode: string
+  country: string
+  // Numéros légaux
+  rbq: string
+  neq: string
+  tps: string
+  tvq: string
+  gst: string
+  pst: string
+  hst: string
+  // Assurances
+  liabilityInsurer: string
+  liabilityPolicyNumber: string
+  liabilityAmount: string
+  liabilityExpiry: string
+  workerCompInsurer: string
+  workerCompNumber: string
+  workerCompExpiry: string
+  errorOmissionInsurer: string
+  errorOmissionNumber: string
+  errorOmissionExpiry: string
+  // Paiement
+  paymentMethods: string
+  bankName: string
+  bankTransitNumber: string
+  interacEmail: string
+  // Notes légales
+  legalNotes: string
+  warrantyText: string
+}
+
+const defaultCompany: CompanyInfo = {
+  name: 'Hailite Xteriors',
+  ownerName: '',
+  phone: '514-555-0000',
+  email: 'info@hailite.com',
+  website: '',
+  address: '123 Rue Principale',
+  city: 'Montréal',
+  province: 'QC',
+  postalCode: 'H1A 1A1',
+  country: 'Canada',
+  rbq: 'RBQ-123456',
+  neq: '',
+  tps: '',
+  tvq: '',
+  gst: '',
+  pst: '',
+  hst: '',
+  liabilityInsurer: '',
+  liabilityPolicyNumber: '',
+  liabilityAmount: '',
+  liabilityExpiry: '',
+  workerCompInsurer: '',
+  workerCompNumber: '',
+  workerCompExpiry: '',
+  errorOmissionInsurer: '',
+  errorOmissionNumber: '',
+  errorOmissionExpiry: '',
+  paymentMethods: 'Chèque, Virement Interac, Comptant',
+  bankName: '',
+  bankTransitNumber: '',
+  interacEmail: '',
+  legalNotes: '',
+  warrantyText: 'Tous les travaux sont garantis pour une période de 1 an contre les défauts de main-d\'oeuvre.',
+}
+
+export const useCompanyStore = create<{
+  company: CompanyInfo
+  updateCompany: (updates: Partial<CompanyInfo>) => void
+}>()(
+  persist(
+    (set) => ({
+      company: defaultCompany,
+      updateCompany: (updates) => set(state => ({
+        company: { ...state.company, ...updates }
+      })),
+    }),
+    { name: 'company-store-v1' }
+  )
+)
 
 export default function SettingsPage() {
   const { hourlyRate, forfaitAmount, surfaceRate, surfaceArea,
@@ -12,18 +110,14 @@ export default function SettingsPage() {
     resetAllData } = useWorkStore()
   const { theme, themeId, setTheme } = useThemeStore()
   const { employees, addEmployee, deleteEmployee } = useEmployeeStore()
-  const { lang } = useLangStore()
-  const t = (fr: string, en: string) => (lang === 'fr' ? fr : en)
+  const { lang, setLang } = useLangStore()
+  const { company, updateCompany } = useCompanyStore()
+
+  const t = (fr: string, en: string) => lang === 'fr' ? fr : en
 
   const [showAddEmployee, setShowAddEmployee] = useState(false)
-  const [newEmployee, setNewEmployee] = useState<{
-    name: string
-    pin: string
-    workMode: 'heure' | 'forfait' | 'surface'
-    hourlyRate: number
-    role: 'admin' | 'employee'
-    active: boolean
-  }>({
+  const [activeSection, setActiveSection] = useState<string>('company')
+  const [newEmployee, setNewEmployee] = useState({
     name: '', pin: '', workMode: 'heure' as const,
     hourlyRate: 45, role: 'employee' as const, active: true,
   })
@@ -51,10 +145,45 @@ export default function SettingsPage() {
     borderRadius: '8px',
     padding: '10px 12px',
     color: theme.colors.text,
-    fontSize: '16px',
+    fontSize: '15px',
     outline: 'none',
-    marginTop: '6px',
+    marginTop: '4px',
   }
+
+  const labelStyle = {
+    color: theme.colors.textMuted,
+    fontSize: '11px',
+    fontWeight: '600' as const,
+    letterSpacing: '0.5px',
+  }
+
+  const sectionBtnStyle = (active: boolean) => ({
+    padding: '10px 14px',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    border: active ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`,
+    background: active ? theme.colors.glow1 : 'transparent',
+    color: active ? theme.colors.primary : theme.colors.textMuted,
+    fontSize: '12px',
+    fontWeight: '700' as const,
+    whiteSpace: 'nowrap' as const,
+    textAlign: 'left' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  })
+
+  const sections = [
+    { id: 'company',    emoji: '🏢', fr: 'Compagnie',   en: 'Company'    },
+    { id: 'taxes',      emoji: '🧾', fr: 'Taxes',        en: 'Taxes'      },
+    { id: 'insurance',  emoji: '🛡️', fr: 'Assurances',  en: 'Insurance'  },
+    { id: 'payment',    emoji: '💳', fr: 'Paiement',     en: 'Payment'    },
+    { id: 'legal',      emoji: '📋', fr: 'Légal',        en: 'Legal'      },
+    { id: 'employees',  emoji: '👥', fr: 'Employés',     en: 'Employees'  },
+    { id: 'rates',      emoji: '💰', fr: 'Tarifs',       en: 'Rates'      },
+    { id: 'appearance', emoji: '🎨', fr: 'Apparence',    en: 'Appearance' },
+    { id: 'app',        emoji: 'ℹ️', fr: 'Application',  en: 'Application'},
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -62,232 +191,505 @@ export default function SettingsPage() {
       <h1 style={{
         color: theme.colors.primary, fontSize: '14px',
         letterSpacing: '3px', fontWeight: '700'
-      }}>{t('⚙️ RÉGLAGES', '⚙️ SETTINGS')}</h1>
+      }}>
+        ⚙️ {t('RÉGLAGES', 'SETTINGS')}
+      </h1>
 
-      {/* THEME SKINS */}
-      <div style={card}>
-        <p style={{
-          color: theme.colors.primary, fontSize: '11px',
-          letterSpacing: '2px', fontWeight: '700'
-        }}>{t('🎨 APPARENCE', '🎨 APPEARANCE')}</p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {themes.map(t => (
-            <button key={t.id} onClick={() => setTheme(t.id)} style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
-              border: themeId === t.id
-                ? `2px solid ${t.colors.primary}`
-                : `1px solid ${theme.colors.border}`,
-              background: themeId === t.id
-                ? `${t.colors.glow1}`
-                : theme.colors.surface,
-              textAlign: 'left' as const,
-              transition: 'all 0.2s',
-            }}>
-              {/* COLOR PREVIEW */}
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                background: `linear-gradient(135deg, ${t.colors.primary}, ${t.colors.secondary})`,
-                boxShadow: themeId === t.id ? `0 0 15px ${t.colors.primary}66` : 'none',
-              }} />
-              <div style={{ flex: 1 }}>
-                <p style={{
-                  color: themeId === t.id ? t.colors.primary : theme.colors.text,
-                  fontSize: '15px', fontWeight: '700',
-                }}>
-                  {t.emoji} {t.name}
-                </p>
-                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                  {[t.colors.primary, t.colors.secondary, t.colors.primaryLight].map((c, i) => (
-                    <div key={i} style={{
-                      width: '14px', height: '14px', borderRadius: '50%',
-                      background: c,
-                    }} />
-                  ))}
-                </div>
-              </div>
-              {themeId === t.id && (
-                <span style={{
-                  color: t.colors.primary, fontSize: '20px', fontWeight: '800'
-                }}>✓</span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* SECTION TABS */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {sections.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            style={sectionBtnStyle(activeSection === s.id)}>
+            {s.emoji} {t(s.fr, s.en)}
+          </button>
+        ))}
       </div>
 
-      {/* EMPLOYEES */}
-      <div style={card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{
-            color: theme.colors.primary, fontSize: '11px',
-            letterSpacing: '2px', fontWeight: '700'
-          }}>{t('👥 EMPLOYÉS', '👥 EMPLOYEES')}</p>
-          <button onClick={() => setShowAddEmployee(!showAddEmployee)} style={{
-            padding: '6px 14px', borderRadius: '8px', cursor: 'pointer',
-            border: `1px solid ${theme.colors.primary}`,
-            background: 'transparent', color: theme.colors.primary,
-            fontSize: '12px', fontWeight: '700',
-          }}>{t('+ Ajouter', '+ Add')}</button>
-        </div>
+      {/* =================== */}
+      {/* COMPANY INFO */}
+      {/* =================== */}
+      {activeSection === 'company' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            🏢 {t('INFORMATIONS DE LA COMPAGNIE', 'COMPANY INFORMATION')}
+          </p>
 
-        {showAddEmployee && (
+          {[
+            { label: t('Nom de la compagnie', 'Company name'), field: 'name' },
+            { label: t('Nom du propriétaire', 'Owner name'), field: 'ownerName' },
+            { label: t('Téléphone', 'Phone'), field: 'phone' },
+            { label: 'Email', field: 'email' },
+            { label: t('Site web', 'Website'), field: 'website' },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                value={(company as Record<string, string>)[field] || ''}
+                onChange={e => updateCompany({ [field]: e.target.value })}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700', marginTop: '8px' }}>
+            📍 {t('ADRESSE', 'ADDRESS')}
+          </p>
+
+          {[
+            { label: t('Adresse', 'Address'), field: 'address' },
+            { label: t('Ville', 'City'), field: 'city' },
+            { label: t('Province', 'Province'), field: 'province' },
+            { label: t('Code postal', 'Postal code'), field: 'postalCode' },
+            { label: t('Pays', 'Country'), field: 'country' },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                value={(company as Record<string, string>)[field] || ''}
+                onChange={e => updateCompany({ [field]: e.target.value })}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700', marginTop: '8px' }}>
+            🪪 {t('NUMÉROS LÉGAUX', 'LEGAL NUMBERS')}
+          </p>
+
+          {[
+            { label: 'RBQ', field: 'rbq' },
+            { label: 'NEQ', field: 'neq' },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                value={(company as Record<string, string>)[field] || ''}
+                onChange={e => updateCompany({ [field]: e.target.value })}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* TAXES */}
+      {/* =================== */}
+      {activeSection === 'taxes' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            🧾 {t('NUMÉROS DE TAXES', 'TAX NUMBERS')}
+          </p>
+          <p style={{ color: theme.colors.textMuted, fontSize: '12px' }}>
+            {t('Ces numéros apparaîtront sur toutes vos factures.', 'These numbers will appear on all your invoices.')}
+          </p>
+
+          {[
+            { label: t('TPS (Taxe fédérale)', 'GST (Federal tax)'), field: 'tps' },
+            { label: t('TVQ (Taxe provinciale QC)', 'QST (Provincial tax QC)'), field: 'tvq' },
+            { label: t('GST (Federal Canada)', 'GST'), field: 'gst' },
+            { label: t('PST (Provincial)', 'PST'), field: 'pst' },
+            { label: t('HST (Harmonisée)', 'HST (Harmonized)'), field: 'hst' },
+          ].map(({ label, field }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                value={(company as Record<string, string>)[field] || ''}
+                onChange={e => updateCompany({ [field]: e.target.value })}
+                placeholder={`Ex: 123456789 RT0001`}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* INSURANCE */}
+      {/* =================== */}
+      {activeSection === 'insurance' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            🛡️ {t('ASSURANCES', 'INSURANCE')}
+          </p>
+
+          {/* Responsabilité civile */}
           <div style={{
-            background: theme.colors.surface, borderRadius: '12px', padding: '16px',
-            display: 'flex', flexDirection: 'column', gap: '10px',
+            background: theme.colors.surface, borderRadius: '10px', padding: '12px',
+            borderLeft: `3px solid #22c55e`,
           }}>
-            <input
-              value={newEmployee.name}
-              onChange={e => setNewEmployee(p => ({ ...p, name: e.target.value }))}
-              placeholder={t("Nom de l'employé", 'Employee name')}
-              style={inputStyle}
-            />
-            <input
-              value={newEmployee.pin}
-              onChange={e => setNewEmployee(p => ({ ...p, pin: e.target.value.slice(0, 4) }))}
-              placeholder={t('PIN 4 chiffres', '4-digit PIN')}
-              type="password"
-              maxLength={4}
-              style={inputStyle}
-            />
-            <select
-              value={newEmployee.workMode}
-              onChange={e => setNewEmployee(p => ({
-                ...p, workMode: e.target.value as 'heure' | 'forfait' | 'surface'
-              }))}
-              style={{ ...inputStyle }}>
-              <option value="heure">⏱ Heure</option>
-              <option value="forfait">📦 Forfait</option>
-              <option value="surface">📐 Surface</option>
-            </select>
-            <input
-              type="number"
-              value={newEmployee.hourlyRate}
-              onChange={e => setNewEmployee(p => ({ ...p, hourlyRate: Number(e.target.value) }))}
-              placeholder="Taux horaire"
-              style={inputStyle}
-            />
-            <select
-              value={newEmployee.role}
-              onChange={e => setNewEmployee(p => ({
-                ...p, role: e.target.value as 'admin' | 'employee'
-              }))}
-              style={{ ...inputStyle }}>
-              <option value="employee">👤 Employé</option>
-              <option value="admin">👑 Admin</option>
-            </select>
-            <button onClick={() => {
-              if (newEmployee.name && newEmployee.pin.length === 4) {
-                addEmployee({ ...newEmployee, color: "" })
-                setNewEmployee({
-                  name: '', pin: '', workMode: 'heure',
-                  hourlyRate: 45, role: 'employee', active: true
-                })
-                setShowAddEmployee(false)
-              }
-            }} style={{
-              padding: '12px', borderRadius: '10px', cursor: 'pointer',
-              background: theme.colors.primary, border: 'none',
-              color: 'white', fontSize: '14px', fontWeight: '700',
-            }}>
-              {t("✅ Créer l'employé", '✅ Create employee')}
-            </button>
+            <p style={{ color: '#22c55e', fontSize: '12px', fontWeight: '700', marginBottom: '10px' }}>
+              ✅ {t('Responsabilité civile', 'General liability')}
+            </p>
+            {[
+              { label: t('Assureur', 'Insurer'), field: 'liabilityInsurer' },
+              { label: t('Numéro de police', 'Policy number'), field: 'liabilityPolicyNumber' },
+              { label: t('Montant de couverture', 'Coverage amount'), field: 'liabilityAmount' },
+              { label: t('Date d\'expiration', 'Expiry date'), field: 'liabilityExpiry' },
+            ].map(({ label, field }) => (
+              <div key={field} style={{ marginBottom: '8px' }}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                  value={(company as Record<string, string>)[field] || ''}
+                  onChange={e => updateCompany({ [field]: e.target.value })}
+                  type={field.includes('Expiry') ? 'date' : 'text'}
+                  style={inputStyle}
+                />
+              </div>
+            ))}
           </div>
-        )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {employees.map(emp => (
-            <div key={emp.id} style={{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              background: theme.colors.surface, borderRadius: '10px', padding: '12px',
-            }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '50%',
-                background: emp.color, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontWeight: '800', fontSize: '14px',
-              }}>
-                {emp.name[0]}
+          {/* CSST / CNESST */}
+          <div style={{
+            background: theme.colors.surface, borderRadius: '10px', padding: '12px',
+            borderLeft: `3px solid #3b82f6`,
+          }}>
+            <p style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '700', marginBottom: '10px' }}>
+              🏥 {t('CNESST / Accident de travail', 'Workers compensation')}
+            </p>
+            {[
+              { label: t('Assureur / organisme', 'Insurer / organization'), field: 'workerCompInsurer' },
+              { label: t('Numéro de dossier', 'File number'), field: 'workerCompNumber' },
+              { label: t('Date d\'expiration', 'Expiry date'), field: 'workerCompExpiry' },
+            ].map(({ label, field }) => (
+              <div key={field} style={{ marginBottom: '8px' }}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                  value={(company as Record<string, string>)[field] || ''}
+                  onChange={e => updateCompany({ [field]: e.target.value })}
+                  type={field.includes('Expiry') ? 'date' : 'text'}
+                  style={inputStyle}
+                />
               </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '700' }}>
-                  {emp.name} {emp.role === 'admin' ? '👑' : ''}
-                </p>
-                <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
-                  {emp.workMode} · PIN: ****
-                </p>
+            ))}
+          </div>
+
+          {/* Erreurs et omissions */}
+          <div style={{
+            background: theme.colors.surface, borderRadius: '10px', padding: '12px',
+            borderLeft: `3px solid #f59e0b`,
+          }}>
+            <p style={{ color: '#f59e0b', fontSize: '12px', fontWeight: '700', marginBottom: '10px' }}>
+              📋 {t('Erreurs et omissions', 'Errors & omissions')}
+            </p>
+            {[
+              { label: t('Assureur', 'Insurer'), field: 'errorOmissionInsurer' },
+              { label: t('Numéro de police', 'Policy number'), field: 'errorOmissionNumber' },
+              { label: t('Date d\'expiration', 'Expiry date'), field: 'errorOmissionExpiry' },
+            ].map(({ label, field }) => (
+              <div key={field} style={{ marginBottom: '8px' }}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                  value={(company as Record<string, string>)[field] || ''}
+                  onChange={e => updateCompany({ [field]: e.target.value })}
+                  type={field.includes('Expiry') ? 'date' : 'text'}
+                  style={inputStyle}
+                />
               </div>
-              {emp.id !== 'admin' && (
-                <button onClick={() => {
-                  if (window.confirm(`Supprimer ${emp.name} ?`)) deleteEmployee(emp.id)
-                }} style={{
-                  color: '#ef4444', background: 'none',
-                  border: 'none', cursor: 'pointer', fontSize: '20px',
-                }}>×</button>
-              )}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* PAYMENT */}
+      {/* =================== */}
+      {activeSection === 'payment' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            💳 {t('MÉTHODES DE PAIEMENT', 'PAYMENT METHODS')}
+          </p>
+          <p style={{ color: theme.colors.textMuted, fontSize: '12px' }}>
+            {t('Ces informations apparaîtront sur vos factures.', 'This information will appear on your invoices.')}
+          </p>
+
+          {[
+            { label: t('Méthodes acceptées', 'Accepted methods'), field: 'paymentMethods', placeholder: t('Ex: Chèque, Virement, Comptant', 'Ex: Check, Transfer, Cash') },
+            { label: t('Nom de la banque', 'Bank name'), field: 'bankName', placeholder: 'Ex: Desjardins, RBC...' },
+            { label: t('Numéro de transit', 'Transit number'), field: 'bankTransitNumber', placeholder: 'Ex: 12345-678' },
+            { label: t('Email Interac', 'Interac email'), field: 'interacEmail', placeholder: 'Ex: paiement@hailite.com' },
+          ].map(({ label, field, placeholder }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                value={(company as Record<string, string>)[field] || ''}
+                onChange={e => updateCompany({ [field]: e.target.value })}
+                placeholder={placeholder}
+                style={inputStyle}
+              />
             </div>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* TARIFS */}
-      <div style={card}>
-        <p style={{
-          color: theme.colors.primary, fontSize: '11px',
-          letterSpacing: '2px', fontWeight: '700'
-        }}>{t('💰 TARIFS PAR DÉFAUT', '💰 BILLING RATES')}</p>
-        {[
-          { label: 'Taux horaire ($/h)', value: hourlyRate, fn: setHourlyRate, badge: '$/h' },
-          { label: 'Montant forfait ($)', value: forfaitAmount, fn: setForfaitAmount, badge: 'Fixe' },
-          { label: 'Tarif au pi² ($)', value: surfaceRate, fn: setSurfaceRate, badge: '$/pi²' },
-          { label: 'Surface (pi²)', value: surfaceArea, fn: setSurfaceArea, badge: 'pi²' },
-        ].map(f => (
-          <div key={f.label}>
-            <label style={{ color: theme.colors.textMuted, fontSize: '12px' }}>{f.label}</label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input type="number" value={f.value}
-                onChange={e => f.fn(Number(e.target.value))}
-                style={inputStyle} />
-              <span style={{
-                color: theme.colors.primary, fontSize: '12px',
-                fontWeight: '700', whiteSpace: 'nowrap' as const
-              }}>{f.badge}</span>
+      {/* =================== */}
+      {/* LEGAL */}
+      {/* =================== */}
+      {activeSection === 'legal' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            📋 {t('MENTIONS LÉGALES', 'LEGAL NOTICES')}
+          </p>
+          <p style={{ color: theme.colors.textMuted, fontSize: '12px' }}>
+            {t('Ces textes apparaîtront en bas de vos documents.', 'These texts will appear at the bottom of your documents.')}
+          </p>
+
+          <div>
+            <label style={labelStyle}>{t('Garantie sur les travaux', 'Work warranty')}</label>
+            <textarea
+              value={company.warrantyText || ''}
+              onChange={e => updateCompany({ warrantyText: e.target.value })}
+              rows={4}
+              style={{ ...inputStyle, resize: 'vertical' as const }}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>{t('Notes légales additionnelles', 'Additional legal notes')}</label>
+            <textarea
+              value={company.legalNotes || ''}
+              onChange={e => updateCompany({ legalNotes: e.target.value })}
+              placeholder={t(
+                'Ex: En cas de non-paiement, des frais de 2% par mois seront appliqués...',
+                'Ex: In case of non-payment, a 2% monthly fee will be applied...'
+              )}
+              rows={4}
+              style={{ ...inputStyle, resize: 'vertical' as const }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* EMPLOYEES */}
+      {/* =================== */}
+      {activeSection === 'employees' && (
+        <div style={card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+              👥 {t('EMPLOYÉS', 'EMPLOYEES')}
+            </p>
+            <button onClick={() => setShowAddEmployee(!showAddEmployee)} style={{
+              padding: '6px 14px', borderRadius: '8px', cursor: 'pointer',
+              border: `1px solid ${theme.colors.primary}`,
+              background: 'transparent', color: theme.colors.primary,
+              fontSize: '12px', fontWeight: '700',
+            }}>+ {t('Ajouter', 'Add')}</button>
+          </div>
+
+          {showAddEmployee && (
+            <div style={{
+              background: theme.colors.surface, borderRadius: '12px', padding: '16px',
+              display: 'flex', flexDirection: 'column', gap: '10px',
+            }}>
+              <input
+                value={newEmployee.name}
+                onChange={e => setNewEmployee(p => ({ ...p, name: e.target.value }))}
+                placeholder={t('Nom de l\'employé', 'Employee name')}
+                style={inputStyle}
+              />
+              <input
+                value={newEmployee.pin}
+                onChange={e => setNewEmployee(p => ({ ...p, pin: e.target.value.slice(0, 4) }))}
+                placeholder={t('PIN 4 chiffres', '4-digit PIN')}
+                type="password"
+                maxLength={4}
+                style={inputStyle}
+              />
+              <select
+                value={newEmployee.workMode}
+                onChange={e => setNewEmployee(p => ({ ...p, workMode: e.target.value as 'heure' | 'forfait' | 'surface' }))}
+                style={{ ...inputStyle }}>
+                <option value="heure">⏱ {t('Heure', 'Hour')}</option>
+                <option value="forfait">📦 {t('Forfait', 'Flat rate')}</option>
+                <option value="surface">📐 {t('Surface', 'Surface')}</option>
+              </select>
+              <input
+                type="number"
+                value={newEmployee.hourlyRate}
+                onChange={e => setNewEmployee(p => ({ ...p, hourlyRate: Number(e.target.value) }))}
+                placeholder={t('Taux horaire', 'Hourly rate')}
+                style={inputStyle}
+              />
+              <select
+                value={newEmployee.role}
+                onChange={e => setNewEmployee(p => ({ ...p, role: e.target.value as 'admin' | 'employee' }))}
+                style={{ ...inputStyle }}>
+                <option value="employee">👤 {t('Employé', 'Employee')}</option>
+                <option value="admin">👑 Admin</option>
+              </select>
+              <button onClick={() => {
+                if (newEmployee.name && newEmployee.pin.length === 4) {
+                  addEmployee(newEmployee)
+                  setNewEmployee({ name: '', pin: '', workMode: 'heure', hourlyRate: 45, role: 'employee', active: true })
+                  setShowAddEmployee(false)
+                }
+              }} style={{
+                padding: '12px', borderRadius: '10px', cursor: 'pointer',
+                background: theme.colors.primary, border: 'none',
+                color: 'white', fontSize: '14px', fontWeight: '700',
+              }}>
+                ✅ {t('Créer l\'employé', 'Create employee')}
+              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {employees.map(emp => (
+              <div key={emp.id} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                background: theme.colors.surface, borderRadius: '10px', padding: '12px',
+                borderLeft: `3px solid ${emp.color}`,
+              }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: emp.color, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'white', fontWeight: '800', fontSize: '14px',
+                }}>
+                  {emp.name[0]}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '700' }}>
+                    {emp.name} {emp.role === 'admin' ? '👑' : ''}
+                  </p>
+                  <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+                    {emp.workMode} · PIN: **** · {emp.hourlyRate}$/h
+                  </p>
+                </div>
+                {emp.id !== 'admin' && (
+                  <button onClick={() => {
+                    if (window.confirm(`${t('Supprimer', 'Delete')} ${emp.name} ?`)) deleteEmployee(emp.id)
+                  }} style={{
+                    color: '#ef4444', background: 'none',
+                    border: 'none', cursor: 'pointer', fontSize: '20px',
+                  }}>×</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* RATES */}
+      {/* =================== */}
+      {activeSection === 'rates' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            💰 {t('TARIFS PAR DÉFAUT', 'DEFAULT RATES')}
+          </p>
+          {[
+            { label: t('Taux horaire ($/h)', 'Hourly rate ($/h)'), value: hourlyRate, fn: setHourlyRate, badge: '$/h' },
+            { label: t('Montant forfait ($)', 'Flat rate ($)'), value: forfaitAmount, fn: setForfaitAmount, badge: '$' },
+            { label: t('Tarif au pi² ($)', 'Rate per sq ft ($)'), value: surfaceRate, fn: setSurfaceRate, badge: '$/pi²' },
+            { label: t('Surface (pi²)', 'Surface area (sq ft)'), value: surfaceArea, fn: setSurfaceArea, badge: 'pi²' },
+          ].map(f => (
+            <div key={f.label}>
+              <label style={labelStyle}>{f.label}</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="number" value={f.value}
+                  onChange={e => f.fn(Number(e.target.value))}
+                  style={inputStyle} />
+                <span style={{ color: theme.colors.primary, fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' as const }}>
+                  {f.badge}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* =================== */}
+      {/* APPEARANCE */}
+      {/* =================== */}
+      {activeSection === 'appearance' && (
+        <div style={card}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            🎨 {t('APPARENCE', 'APPEARANCE')}
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {themes.map(th => (
+              <button key={th.id} onClick={() => setTheme(th.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
+                border: themeId === th.id ? `2px solid ${th.colors.primary}` : `1px solid ${theme.colors.border}`,
+                background: themeId === th.id ? `${th.colors.glow1}` : theme.colors.surface,
+                textAlign: 'left' as const,
+              }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
+                  background: `linear-gradient(135deg, ${th.colors.primary}, ${th.colors.secondary})`,
+                  boxShadow: themeId === th.id ? `0 0 15px ${th.colors.primary}66` : 'none',
+                }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: themeId === th.id ? th.colors.primary : theme.colors.text, fontSize: '15px', fontWeight: '700' }}>
+                    {th.emoji} {th.name}
+                  </p>
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                    {[th.colors.primary, th.colors.secondary, th.colors.primaryLight].map((c, i) => (
+                      <div key={i} style={{ width: '14px', height: '14px', borderRadius: '50%', background: c }} />
+                    ))}
+                  </div>
+                </div>
+                {themeId === th.id && (
+                  <span style={{ color: th.colors.primary, fontSize: '20px', fontWeight: '800' }}>✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+            {(['fr', 'en'] as const).map(l => (
+              <button key={l} onClick={() => setLang(l)} style={{
+                flex: 1, padding: '12px', borderRadius: '10px', cursor: 'pointer',
+                border: lang === l ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`,
+                background: lang === l ? theme.colors.glow1 : 'transparent',
+                color: lang === l ? theme.colors.primary : theme.colors.textMuted,
+                fontSize: '14px', fontWeight: '600',
+              }}>
+                {l === 'fr' ? '🇫🇷 Français' : '🇬🇧 English'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =================== */}
       {/* APP INFO */}
-      <div style={card}>
-        <p style={{
-          color: theme.colors.primary, fontSize: '11px',
-          letterSpacing: '2px', fontWeight: '700'
-        }}>{t('ℹ️ APPLICATION', 'ℹ️ APPLICATION')}</p>
-        {[
-          ['App', 'Gestion Chantier Pro'],
-          ['Version', '1.0.0'],
-          ['Entreprise', 'Hailite Xteriors'],
-          ['Stack', 'Next.js 16 + Zustand'],
-        ].map(([label, value]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: theme.colors.textMuted, fontSize: '13px' }}>{label}</span>
-            <span style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '600' }}>{value}</span>
+      {/* =================== */}
+      {activeSection === 'app' && (
+        <>
+          <div style={card}>
+            <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+              ℹ️ {t('APPLICATION', 'APPLICATION')}
+            </p>
+            {[
+              ['App', 'Gestion Chantier Pro'],
+              ['Version', '1.0.0'],
+              [t('Entreprise', 'Company'), 'Hailite Xteriors'],
+              ['Stack', 'Next.js 16 + Zustand'],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: theme.colors.textMuted, fontSize: '13px' }}>{label}</span>
+                <span style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '600' }}>{value}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* DANGER */}
-      <div style={{ ...card, border: '1px solid rgba(239,68,68,0.4)' }}>
-        <p style={{ color: '#ef4444', fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
-          {t('⚠️ ZONE DE DANGER', '⚠️ DANGER ZONE')}
-        </p>
-        <button onClick={handleReset} style={{
-          width: '100%', padding: '14px', borderRadius: '10px', cursor: 'pointer',
-          border: '1px solid #ef4444', background: 'transparent',
-          color: '#ef4444', fontSize: '14px', fontWeight: '600',
-        }}>{t('🗑️ Effacer toutes les données', '🗑️ Clear all data')}</button>
-      </div>
+          <div style={{ ...card, border: '1px solid rgba(239,68,68,0.4)' }}>
+            <p style={{ color: '#ef4444', fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+              ⚠️ {t('ZONE DE DANGER', 'DANGER ZONE')}
+            </p>
+            <button onClick={handleReset} style={{
+              width: '100%', padding: '14px', borderRadius: '10px', cursor: 'pointer',
+              border: '1px solid #ef4444', background: 'transparent',
+              color: '#ef4444', fontSize: '14px', fontWeight: '600',
+            }}>🗑️ {t('Effacer toutes les données', 'Clear all data')}</button>
+          </div>
+        </>
+      )}
 
     </div>
   )
