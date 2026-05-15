@@ -41,6 +41,8 @@ type Section =
   | 'billing'
   | 'employees'
   | 'taxes'
+  | 'clients'
+  | 'catalogue'
   | 'appearance'
   | 'language'
   | 'notifications'
@@ -52,6 +54,8 @@ const SECTIONS: { id: Section; labelFr: string; labelEn: string; icon: string }[
   { id: 'billing',       labelFr: '💳 Facturation',      labelEn: '💳 Billing',         icon: '💳' },
   { id: 'employees',     labelFr: '👷 Employés',          labelEn: '👷 Employees',       icon: '👷' },
   { id: 'taxes',         labelFr: '🧾 Taxes & WCB',       labelEn: '🧾 Taxes & WCB',    icon: '🧾' },
+  { id: 'clients',       labelFr: '👥 Clients',           labelEn: '👥 Clients',         icon: '👥' },
+  { id: 'catalogue',     labelFr: '📦 Catalogue',         labelEn: '📦 Catalogue',       icon: '📦' },
   { id: 'appearance',    labelFr: '🎨 Apparence',          labelEn: '🎨 Appearance',      icon: '🎨' },
   { id: 'language',      labelFr: '🌐 Langue',             labelEn: '🌐 Language',        icon: '🌐' },
   { id: 'notifications', labelFr: '🔔 Notifications',      labelEn: '🔔 Notifications',   icon: '🔔' },
@@ -452,6 +456,44 @@ export default function SettingsPage() {
                 <p className="text-xs mt-2 text-center font-medium text-orange-300">{pinMsg}</p>
               )}
             </div>
+          </SectionCard>
+        );
+
+      // ── CLIENTS ──────────────────────────────────────────────────────────────
+      case 'clients':
+        return (
+          <SectionCard title={t('Clients', 'Clients')}>
+            <div className="mb-3 rounded-xl bg-blue-500/10 border border-blue-500/20 p-3">
+              <p className="text-xs text-blue-400 font-semibold">
+                👥 {t('Gérez vos clients directement ici ou depuis la page Clients.', 'Manage your clients here or from the Clients page.')}
+              </p>
+            </div>
+            <a
+              href="/clients"
+              className="w-full flex items-center justify-between rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3 hover:bg-blue-500/20 transition"
+            >
+              <span className="text-sm font-bold text-blue-300">👥 {t('Ouvrir la page Clients', 'Open Clients page')}</span>
+              <span className="text-gray-400">→</span>
+            </a>
+          </SectionCard>
+        );
+
+      // ── CATALOGUE ─────────────────────────────────────────────────────────
+      case 'catalogue':
+        return (
+          <SectionCard title={t('Catalogue matériaux', 'Materials Catalogue')}>
+            <div className="mb-3 rounded-xl bg-purple-500/10 border border-purple-500/20 p-3">
+              <p className="text-xs text-purple-400 font-semibold">
+                📦 {t('Accédez au catalogue complet de matériaux.', 'Access the full materials catalogue.')}
+              </p>
+            </div>
+            <a
+              href="/catalogue"
+              className="w-full flex items-center justify-between rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 hover:bg-purple-500/20 transition"
+            >
+              <span className="text-sm font-bold text-purple-300">📦 {t('Ouvrir le Catalogue', 'Open Catalogue')}</span>
+              <span className="text-gray-400">→</span>
+            </a>
           </SectionCard>
         );
 
