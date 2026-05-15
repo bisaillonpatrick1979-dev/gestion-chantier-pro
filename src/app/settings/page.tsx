@@ -124,6 +124,40 @@ export default function SettingsPage() {
   const [newAdminPin, setNewAdminPin] = useState('');
   const [pinMsg, setPinMsg] = useState('');
 
+  // ── Formulaire ajout employé ─────────────────────────────────────────────
+  const [showAddEmp, setShowAddEmp] = useState(false);
+  const [empForm, setEmpForm] = useState({
+    name: '', pin: '', role: 'employee' as 'admin' | 'employee',
+    hourlyRate: '', color: '#f97316', workMode: 'hourly' as string,
+  });
+  const [empMsg, setEmpMsg] = useState('');
+
+  const handleAddEmployee = () => {
+    if (!empForm.name || empForm.pin.length < 4) {
+      setEmpMsg(t('❌ Nom et PIN (4 chiffres min) requis', '❌ Name and PIN (4 digits min) required'));
+      return;
+    }
+    const addEmp = (_s.addEmployee ?? _s.addNewEmployee) as ((emp: Record<string, unknown>) => void) | undefined;
+    if (!addEmp) {
+      setEmpMsg(t('❌ Fonction addEmployee introuvable dans le store', '❌ addEmployee not found in store'));
+      return;
+    }
+    addEmp({
+      id: Math.random().toString(36).slice(2, 10),
+      name: empForm.name,
+      pin: empForm.pin,
+      role: empForm.role,
+      hourlyRate: parseFloat(empForm.hourlyRate) || 0,
+      color: empForm.color,
+      workMode: empForm.workMode,
+      active: true,
+    });
+    setEmpMsg(t('✅ Employé ajouté!', '✅ Employee added!'));
+    setEmpForm({ name: '', pin: '', role: 'employee', hourlyRate: '', color: '#f97316', workMode: 'hourly' });
+    setShowAddEmp(false);
+    setTimeout(() => setEmpMsg(''), 3000);
+  };
+
   const t = (fr: string, en: string) => (isFr ? fr : en);
 
   const handleSave = () => {
@@ -293,36 +327,119 @@ export default function SettingsPage() {
       case 'employees':
         return (
           <SectionCard title={t('Gestion des employés', 'Employee Management')}>
-            <div className="space-y-2">
+            {/* Liste employés */}
+            <div className="space-y-2 mb-4">
               {employees.map((emp) => {
                 const e = emp as unknown as Record<string, unknown>;
                 return (
-                <div
-                  key={e.id as string}
-                  className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-semibold text-white text-sm">{e.name as string}</p>
-                    <p className="text-xs text-gray-400">
-                      {e.role === 'admin' ? '👑 Admin' : '👷 Employé'} · ${(e.hourlyRate as number) ?? 0}/h
-                    </p>
+                  <div key={e.id as string}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm"
+                        style={{ background: (e.color as string) ?? '#f97316' }}>
+                        {(e.name as string)?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">{e.name as string}</p>
+                        <p className="text-xs text-gray-400">
+                          {e.role === 'admin' ? '👑 Admin' : '👷 Employé'} · ${(e.hourlyRate as number) ?? 0}/h · PIN: {'•'.repeat(((e.pin as string) ?? '').length)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full border ${
+                      e.active ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                    }`}>{e.active ? t('Actif','Active') : t('Inactif','Inactive')}</span>
                   </div>
-                  <span className="text-xs text-gray-500">#{(e.id as string).slice(-4)}</span>
-                </div>
                 );
               })}
               {employees.length === 0 && (
                 <p className="text-gray-500 text-sm text-center py-4">
-                  {t('Aucun employé configuré.', 'No employees configured.')}
+                  {t('Aucun employé. Ajoutez-en un ci-dessous.', 'No employees. Add one below.')}
                 </p>
               )}
             </div>
-            <p className="mt-3 text-xs text-gray-500">
-              {t(
-                '→ Gérez les employés depuis la page Paye / Livre de paye.',
-                '→ Manage employees from the Payroll page.'
-              )}
-            </p>
+
+            {/* Bouton ajouter */}
+            <button onClick={() => setShowAddEmp(!showAddEmp)}
+              className="w-full rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-300 font-bold py-3 text-sm hover:bg-orange-500/30 transition mb-3">
+              {showAddEmp ? t('✕ Annuler', '✕ Cancel') : t('＋ Ajouter un employé', '＋ Add Employee')}
+            </button>
+
+            {/* Formulaire ajout */}
+            {showAddEmp && (
+              <div className="rounded-xl bg-black/20 border border-orange-500/20 p-4 space-y-3">
+                <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">
+                  👷 {t('Nouvel employé', 'New Employee')}
+                </p>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">{t('Nom complet *', 'Full Name *')}</label>
+                  <input value={empForm.name}
+                    onChange={(e) => setEmpForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Patrick Bisaillon"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">{t('PIN (4 chiffres min) *', 'PIN (4 digits min) *')}</label>
+                  <input type="password" value={empForm.pin}
+                    onChange={(e) => setEmpForm(f => ({ ...f, pin: e.target.value.replace(/\D/g,'').slice(0,6) }))}
+                    placeholder="1234"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">{t('Rôle', 'Role')}</label>
+                    <select value={empForm.role}
+                      onChange={(e) => setEmpForm(f => ({ ...f, role: e.target.value as 'admin' | 'employee' }))}
+                      className="w-full rounded-xl border border-white/10 bg-gray-800 px-3 py-2.5 text-sm text-white focus:border-orange-400 focus:outline-none">
+                      <option value="employee">👷 {t('Employé','Employee')}</option>
+                      <option value="admin">👑 Admin</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">{t('Taux ($/h)', 'Rate ($/h)')}</label>
+                    <input type="number" value={empForm.hourlyRate}
+                      onChange={(e) => setEmpForm(f => ({ ...f, hourlyRate: e.target.value }))}
+                      placeholder="45"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">{t('Mode travail', 'Work Mode')}</label>
+                    <select value={empForm.workMode}
+                      onChange={(e) => setEmpForm(f => ({ ...f, workMode: e.target.value }))}
+                      className="w-full rounded-xl border border-white/10 bg-gray-800 px-3 py-2.5 text-sm text-white focus:border-orange-400 focus:outline-none">
+                      <option value="hourly">{t('Horaire','Hourly')}</option>
+                      <option value="surface">{t('Pi² (surface)','Sqft (surface)')}</option>
+                      <option value="forfait">{t('Forfait','Fixed price')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">{t('Couleur', 'Color')}</label>
+                    <div className="flex gap-1 flex-wrap mt-1">
+                      {['#f97316','#3b82f6','#22c55e','#a855f7','#ef4444','#eab308','#06b6d4','#ec4899'].map(c => (
+                        <button key={c} onClick={() => setEmpForm(f => ({ ...f, color: c }))}
+                          className={`w-7 h-7 rounded-full border-2 transition-all ${empForm.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                          style={{ background: c }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {empMsg && (
+                  <p className={`text-xs text-center font-bold py-1 ${empMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>
+                    {empMsg}
+                  </p>
+                )}
+                <button onClick={handleAddEmployee}
+                  className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black py-3 text-sm transition">
+                  ✅ {t('Créer l'employé', 'Create Employee')}
+                </button>
+              </div>
+            )}
+
+            {empMsg && !showAddEmp && (
+              <p className="text-xs text-center font-bold text-green-400 mt-2">{empMsg}</p>
+            )}
           </SectionCard>
         );
 
