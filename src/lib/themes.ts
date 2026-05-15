@@ -19,6 +19,7 @@ export interface Theme {
     primary: string
     primaryLight: string
     secondary: string
+    secondaryLight: string
     glow1: string
     glow2: string
     success: string
@@ -52,6 +53,7 @@ const quantumGlass: Theme = {
     primary: '#2F80FF',
     primaryLight: '#38D9FF',
     secondary: '#7B61FF',
+    secondaryLight: '#9B8FFF',
     glow1: 'rgba(47,128,255,0.50)',
     glow2: 'rgba(123,97,255,0.28)',
     success: '#30D979',
@@ -89,6 +91,7 @@ const gamificationXP: Theme = {
     primary: '#A855F7',
     primaryLight: '#22D3EE',
     secondary: '#FACC15',
+    secondaryLight: '#FDE047',
     glow1: 'rgba(168,85,247,0.50)',
     glow2: 'rgba(34,211,238,0.30)',
     success: '#22C55E',
@@ -127,6 +130,7 @@ const aventureChantiers: Theme = {
     primary: '#FF9F1C',
     primaryLight: '#FFD166',
     secondary: '#F97316',
+    secondaryLight: '#FB923C',
     glow1: 'rgba(255,159,28,0.50)',
     glow2: 'rgba(249,115,22,0.28)',
     success: '#3BAA35',
@@ -165,6 +169,7 @@ const artDecoPrestige: Theme = {
     primary: '#D6B25E',
     primaryLight: '#F2D27A',
     secondary: '#A67C2D',
+    secondaryLight: '#C49A3C',
     glow1: 'rgba(214,178,94,0.35)',
     glow2: 'rgba(214,178,94,0.15)',
     success: '#6FAF5A',
@@ -209,6 +214,7 @@ const zenOrganique: Theme = {
     primary: '#C85F3D',
     primaryLight: '#D97745',
     secondary: '#7A8B67',
+    secondaryLight: '#A7B18A',
     glow1: 'rgba(200,95,61,0.30)',
     glow2: 'rgba(122,139,103,0.20)',
     success: '#6F8F5C',
@@ -249,6 +255,7 @@ const ludiquePremium: Theme = {
     primary: '#FF7A1A',
     primaryLight: '#FF9B3D',
     secondary: '#003B3D',
+    secondaryLight: '#0A5254',
     glow1: 'rgba(255,122,26,0.35)',
     glow2: 'rgba(255,122,26,0.15)',
     success: '#34C759',
