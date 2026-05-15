@@ -270,7 +270,7 @@ function ActionBar({ doc, onSave, saved, isFr }: {
   };
 
   return (
-    <div className="fixed left-0 right-0 z-40 bg-gray-950/98 backdrop-blur-md border-t border-white/10 px-3 py-3" style={{ bottom: "64px" }}>
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-gray-950/98 backdrop-blur-md border-t border-white/10 px-3 py-3">
       <div className="flex gap-2 max-w-lg mx-auto">
         <button
           onClick={() => document.getElementById('doc-preview')?.scrollIntoView({ behavior: 'smooth' })}
@@ -317,15 +317,9 @@ export default function DocumentPage() {
   const { clients } = useClientStore();
   const { documents, addDocument, updateDocument } = useDocumentStore();
 
-  // ── FIX HYDRATATION ── 
-  // Le store Zustand persist lit localStorage — pas disponible côté SSR
-  // On attend le montage client complet avant de rendre la page
+  // ── FIX HYDRATATION ── attendre le client avant de lire le store ──────────
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    // Petit délai pour laisser le store persist se réhydrater complètement
-    const t = setTimeout(() => setHydrated(true), 50);
-    return () => clearTimeout(t);
-  }, []);
+  useEffect(() => { setHydrated(true); }, []);
 
   const isNew = !docId || docId === 'new' || docId.startsWith('new-');
   const typeFromUrl: DocType =
@@ -426,17 +420,12 @@ export default function DocumentPage() {
 
   // ── Spinner pendant hydratation ───────────────────────────────────────────
   if (!hydrated) {
-    const loadEmoji = docId?.includes('quote') ? '📋' : docId?.includes('contract') ? '📝' : '🧾';
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
-        <div className="text-6xl animate-pulse">{loadEmoji}</div>
-        <div className="flex gap-1">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full bg-orange-400 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }} />
-          ))}
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="text-5xl animate-bounce">{label.emoji}</div>
+          <p className="text-gray-400 text-sm">Chargement...</p>
         </div>
-        <p className="text-gray-400 text-sm font-medium">Chargement du document...</p>
       </div>
     );
   }
@@ -449,7 +438,7 @@ export default function DocumentPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-40">
+    <div className="min-h-screen bg-gray-950 text-white pb-36">
 
       {/* HEADER */}
       <div className="sticky top-0 z-30 bg-gray-950/98 backdrop-blur border-b border-white/10 px-4 py-3">
