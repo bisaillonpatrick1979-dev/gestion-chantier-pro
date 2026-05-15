@@ -432,7 +432,7 @@ export default function SettingsPage() {
                 )}
                 <button onClick={handleAddEmployee}
                   className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black py-3 text-sm transition">
-                  ✅ {t('Créer l'employé', 'Create Employee')}
+                  ✅ {t("Créer l'employé", 'Create Employee')}
                 </button>
               </div>
             )}
