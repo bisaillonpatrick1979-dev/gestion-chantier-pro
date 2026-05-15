@@ -117,23 +117,17 @@ export default function HomePage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // ==================
-  // SCREEN: SELECT
-  // ==================
   if (screen === 'select') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '16px' }}>
         <div style={{ textAlign: 'center' }}>
-          <h1 className="metal-text" style={{
-            fontSize: '24px', fontWeight: '900', letterSpacing: '4px'
-          }}>
+          <h1 className="metal-text" style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '4px' }}>
             HAILITE XTERIORS
           </h1>
           <p style={{ color: theme.colors.textMuted, fontSize: '13px', marginTop: '4px' }}>
             {t('Sélectionnez votre profil', 'Select your profile')}
           </p>
         </div>
-
         <div style={{
           display: 'grid',
           gridTemplateColumns: employees.length > 3 ? '1fr 1fr' : '1fr',
@@ -156,9 +150,7 @@ export default function HomePage() {
                 {emp.name[0].toUpperCase()}
               </div>
               <div>
-                <p style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '700' }}>
-                  {emp.name}
-                </p>
+                <p style={{ color: theme.colors.text, fontSize: '16px', fontWeight: '700' }}>{emp.name}</p>
                 <p style={{ color: theme.colors.textMuted, fontSize: '12px' }}>
                   {emp.role === 'admin' ? '👑 Admin' : `⏱ ${emp.workMode}`}
                 </p>
@@ -166,8 +158,7 @@ export default function HomePage() {
               {activeSessions[emp.id] && (
                 <div style={{
                   marginLeft: 'auto', width: '10px', height: '10px',
-                  borderRadius: '50%', background: '#22c55e',
-                  boxShadow: '0 0 8px #22c55e',
+                  borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e',
                 }} />
               )}
             </button>
@@ -177,21 +168,14 @@ export default function HomePage() {
     )
   }
 
-  // ==================
-  // SCREEN: PIN
-  // ==================
   if (screen === 'pin') {
     const emp = employees.find(e => e.id === selectedId)
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: '24px', paddingTop: '24px'
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', paddingTop: '24px' }}>
         <button onClick={() => setScreen('select')} style={{
           alignSelf: 'flex-start', color: theme.colors.textMuted,
           background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px'
         }}>← {t('Retour', 'Back')}</button>
-
         <div style={{
           width: '72px', height: '72px', borderRadius: '50%',
           background: `radial-gradient(circle at 40% 35%, ${emp?.color}99, ${emp?.color})`,
@@ -201,33 +185,20 @@ export default function HomePage() {
         }}>
           {emp?.name[0].toUpperCase()}
         </div>
-
-        <p style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '700' }}>
-          {emp?.name}
-        </p>
-
+        <p style={{ color: theme.colors.text, fontSize: '18px', fontWeight: '700' }}>{emp?.name}</p>
         <div style={{ display: 'flex', gap: '16px' }}>
           {[0,1,2,3].map(i => (
             <div key={i} style={{
               width: '20px', height: '20px', borderRadius: '50%',
-              background: pin.length > i
-                ? pinError ? '#ef4444' : theme.colors.primary
-                : theme.colors.surface,
+              background: pin.length > i ? pinError ? '#ef4444' : theme.colors.primary : theme.colors.surface,
               border: `2px solid ${pinError ? '#ef4444' : theme.colors.border}`,
               transition: 'all 0.2s',
               boxShadow: pin.length > i ? `0 0 12px ${theme.colors.primary}` : 'none',
             }} />
           ))}
         </div>
-
-        {pinError && (
-          <p style={{ color: '#ef4444', fontSize: '13px' }}>{t('PIN incorrect', 'Incorrect PIN')}</p>
-        )}
-
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '12px', width: '100%', maxWidth: '280px'
-        }}>
+        {pinError && <p style={{ color: '#ef4444', fontSize: '13px' }}>{t('PIN incorrect', 'Incorrect PIN')}</p>}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', width: '100%', maxWidth: '280px' }}>
           {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
             <button key={i} onClick={() => {
               if (d === '⌫') setPin(p => p.slice(0, -1))
@@ -240,18 +211,13 @@ export default function HomePage() {
               color: theme.colors.text,
               fontSize: d === '⌫' ? '20px' : '24px',
               fontWeight: '700', opacity: d ? 1 : 0,
-            }}>
-              {d}
-            </button>
+            }}>{d}</button>
           ))}
         </div>
       </div>
     )
   }
 
-  // ==================
-  // SCREEN: DASHBOARD
-  // ==================
   const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('fr-CA', {
     month: 'long', year: 'numeric'
   })
@@ -272,12 +238,9 @@ export default function HomePage() {
           </div>
           <div>
             <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '700' }}>
-              {currentEmployee?.name}
-              {currentEmployee?.role === 'admin' && ' 👑'}
+              {currentEmployee?.name}{currentEmployee?.role === 'admin' && ' 👑'}
             </p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
-              {currentEmployee?.workMode}
-            </p>
+            <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>{currentEmployee?.workMode}</p>
           </div>
         </div>
         <button onClick={handleLogout} style={{
@@ -285,22 +248,25 @@ export default function HomePage() {
           border: `1px solid ${theme.colors.border}`,
           background: 'transparent', color: theme.colors.textMuted,
           fontSize: '12px', fontWeight: '600',
-        }}>
-          {t('Déconnexion', 'Logout')}
-        </button>
+        }}>{t('Déconnexion', 'Logout')}</button>
       </div>
 
-      {/* REVENUE + TIMER */}
+      {/* REVENUE + TIMER — GROS CHIFFRES */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div style={card}>
           <p style={{
             color: theme.colors.primary, fontSize: '10px',
             letterSpacing: '2px', fontWeight: '700', marginBottom: '8px'
           }}>{t('💰 REVENUS', '💰 REVENUE')}</p>
-          <p style={{ color: theme.colors.secondary, fontSize: '20px', fontWeight: '800' }}>
+          <p style={{
+            color: theme.colors.secondary,
+            fontSize: '28px',
+            fontWeight: '900',
+            lineHeight: 1.1,
+          }}>
             {formatCurrency(activeSession?.revenue || 0)}
           </p>
-          <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>CAD</p>
+          <p style={{ color: theme.colors.textMuted, fontSize: '11px', marginTop: '4px' }}>CAD</p>
         </div>
         <div style={card}>
           <p style={{
@@ -308,8 +274,11 @@ export default function HomePage() {
             letterSpacing: '2px', fontWeight: '700', marginBottom: '8px'
           }}>{t('⏱ TEMPS', '⏱ TIME')}</p>
           <p style={{
-            color: theme.colors.text, fontSize: '20px',
-            fontWeight: '800', fontFamily: 'monospace'
+            color: theme.colors.text,
+            fontSize: '28px',
+            fontWeight: '900',
+            fontFamily: 'monospace',
+            lineHeight: 1.1,
           }}>
             {formatTimer(activeSession?.elapsed || 0)}
           </p>
@@ -323,10 +292,7 @@ export default function HomePage() {
       </div>
 
       {/* PUNCH BUTTON */}
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: '16px', padding: '8px 0'
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '8px 0' }}>
         <button
           onClick={isRunning ? handlePunchOut : () => currentEmployeeId && punchIn(currentEmployeeId)}
           style={{
@@ -340,46 +306,40 @@ export default function HomePage() {
           }}>
           {isRunning ? 'PUNCH\nOUT' : 'PUNCH\nIN'}
         </button>
-
         <p style={{
           color: isOnBreak ? '#f97316' : isRunning ? '#22c55e' : theme.colors.textMuted,
           fontSize: '13px', letterSpacing: '1px'
         }}>
           ⬤ {isOnBreak ? t('EN PAUSE', 'ON BREAK') : isRunning ? t('EN COURS', 'IN PROGRESS') : t('PRÊT', 'READY')}
         </p>
-
         {isRunning && !isOnBreak && currentEmployeeId && (
           <button onClick={() => startBreak(currentEmployeeId)} style={{
             borderRadius: '999px', border: '2px solid #f97316',
             color: '#f97316', background: 'transparent',
-            padding: '12px 32px', fontSize: '15px',
-            cursor: 'pointer', fontWeight: '700',
+            padding: '12px 32px', fontSize: '15px', cursor: 'pointer', fontWeight: '700',
           }}>{t('☕ PAUSE', '☕ BREAK')}</button>
         )}
-
         {isRunning && isOnBreak && currentEmployeeId && (
           <button onClick={() => endBreak(currentEmployeeId)} style={{
             borderRadius: '999px', border: '2px solid #22c55e',
             color: '#22c55e', background: 'transparent',
-            padding: '12px 32px', fontSize: '15px',
-            cursor: 'pointer', fontWeight: '700',
+            padding: '12px 32px', fontSize: '15px', cursor: 'pointer', fontWeight: '700',
           }}>{t('▶ REPRENDRE', '▶ RESUME')}</button>
         )}
       </div>
 
-      {/* SURFACE PUNCH OUT MODAL */}
+      {/* SURFACE PUNCH OUT MODAL — CENTERED */}
       {showPunchOut && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.85)', zIndex: 100,
-          display: 'flex', alignItems: 'flex-end',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
         }}>
           <div style={{
-            background: theme.colors.surface,
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: '20px 20px 0 0',
-            padding: '24px', width: '100%',
+            background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+            borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '500px',
             display: 'flex', flexDirection: 'column', gap: '16px',
+            maxHeight: '80vh', overflowY: 'auto' as const,
           }}>
             <h2 style={{ color: theme.colors.primary, fontSize: '16px', fontWeight: '800' }}>
               📐 {t('Matériaux posés', 'Materials installed')}
@@ -393,8 +353,7 @@ export default function HomePage() {
                   onChange={e => updateMaterial(m.id, 'material', e.target.value)}
                   placeholder={t('Matériau (ex: bardeau, vinyle...)', 'Material (ex: shingle, vinyl...)')}
                   style={{
-                    background: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
                     borderRadius: '8px', padding: '10px',
                     color: theme.colors.text, fontSize: '14px', width: '100%',
                   }} />
@@ -403,19 +362,15 @@ export default function HomePage() {
                     onChange={e => updateMaterial(m.id, 'squareFeet', Number(e.target.value))}
                     placeholder="Pi²"
                     style={{
-                      background: theme.colors.surface,
-                      border: `1px solid ${theme.colors.border}`,
-                      borderRadius: '8px', padding: '10px',
-                      color: theme.colors.text, fontSize: '14px',
+                      background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '8px', padding: '10px', color: theme.colors.text, fontSize: '14px',
                     }} />
                   <input type="number" value={m.pricePerSqFt}
                     onChange={e => updateMaterial(m.id, 'pricePerSqFt', Number(e.target.value))}
                     placeholder="$/pi²"
                     style={{
-                      background: theme.colors.surface,
-                      border: `1px solid ${theme.colors.border}`,
-                      borderRadius: '8px', padding: '10px',
-                      color: theme.colors.text, fontSize: '14px',
+                      background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+                      borderRadius: '8px', padding: '10px', color: theme.colors.text, fontSize: '14px',
                     }} />
                 </div>
                 <p style={{ color: theme.colors.secondary, fontSize: '13px', fontWeight: '700' }}>
@@ -448,40 +403,29 @@ export default function HomePage() {
 
       {/* CALENDAR */}
       <div style={card}>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', marginBottom: '16px'
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <button onClick={() => {
             const [y, m] = currentMonth.split('-').map(Number)
-            const d = new Date(y, m - 2)
-            setCurrentMonth(d.toISOString().slice(0, 7))
+            setCurrentMonth(new Date(y, m - 2).toISOString().slice(0, 7))
           }} style={{
-            background: theme.colors.surface,
-            border: `1px solid ${theme.colors.border}`,
+            background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
             color: theme.colors.text, borderRadius: '8px',
             width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px'
           }}>‹</button>
-          <p style={{
-            color: theme.colors.text, fontWeight: '700',
-            fontSize: '14px', textTransform: 'capitalize' as const
-          }}>{monthLabel}</p>
+          <p style={{ color: theme.colors.text, fontWeight: '700', fontSize: '14px', textTransform: 'capitalize' as const }}>
+            {monthLabel}
+          </p>
           <button onClick={() => {
             const [y, m] = currentMonth.split('-').map(Number)
-            const d = new Date(y, m)
-            setCurrentMonth(d.toISOString().slice(0, 7))
+            setCurrentMonth(new Date(y, m).toISOString().slice(0, 7))
           }} style={{
-            background: theme.colors.surface,
-            border: `1px solid ${theme.colors.border}`,
+            background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
             color: theme.colors.text, borderRadius: '8px',
             width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px'
           }}>›</button>
         </div>
 
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: '4px', marginBottom: '8px'
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
           {(lang === 'fr'
             ? ['Di','Lu','Ma','Me','Je','Ve','Sa']
             : ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -497,16 +441,12 @@ export default function HomePage() {
           {getDaysInMonth().map((day, i) => {
             if (!day) return <div key={`e-${i}`} />
             const dateKey = day.toISOString().split('T')[0]
-            const detail = currentEmployeeId
-              ? dayDetails[`${currentEmployeeId}-${dateKey}`]
-              : null
+            const detail = currentEmployeeId ? dayDetails[`${currentEmployeeId}-${dateKey}`] : null
             const isToday = dateKey === today
             return (
               <button key={dateKey} onClick={() => setSelectedDay(dateKey)} style={{
                 minHeight: '44px', borderRadius: '8px',
-                border: isToday
-                  ? `2px solid ${theme.colors.primary}`
-                  : `1px solid ${theme.colors.border}`,
+                border: isToday ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`,
                 background: detail ? `${theme.colors.primary}22` : theme.colors.surface,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column',
@@ -548,8 +488,7 @@ export default function HomePage() {
           ].map(item => (
             <div key={item.emoji} style={{
               display: 'flex', alignItems: 'center', gap: '12px',
-              background: item.tint,
-              borderLeft: `3px solid ${item.color}`,
+              background: item.tint, borderLeft: `3px solid ${item.color}`,
               borderRadius: '8px', padding: '10px 12px',
             }}>
               <span style={{ fontSize: '20px' }}>{item.emoji}</span>
@@ -561,7 +500,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* DAY DETAIL MODAL */}
+      {/* DAY DETAIL MODAL — CENTERED */}
       {selectedDay && (() => {
         const detail = currentEmployeeId
           ? dayDetails[`${currentEmployeeId}-${selectedDay}`]
@@ -570,52 +509,91 @@ export default function HomePage() {
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.85)', zIndex: 100,
-            display: 'flex', alignItems: 'flex-end',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
           }}>
             <div style={{
               background: theme.colors.surface,
               border: `1px solid ${theme.colors.border}`,
-              borderRadius: '20px 20px 0 0', padding: '24px', width: '100%',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '500px',
               display: 'flex', flexDirection: 'column', gap: '12px',
               maxHeight: '80vh', overflowY: 'auto' as const,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h2 style={{ color: theme.colors.primary, fontSize: '16px', fontWeight: '800' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ color: theme.colors.primary, fontSize: '18px', fontWeight: '800' }}>
                   📅 {selectedDay}
                 </h2>
                 <button onClick={() => setSelectedDay(null)} style={{
-                  color: theme.colors.textMuted, background: 'none',
-                  border: 'none', cursor: 'pointer', fontSize: '20px'
+                  color: theme.colors.textMuted,
+                  background: theme.colors.card,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: '50%', cursor: 'pointer',
+                  fontSize: '18px', width: '36px', height: '36px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>×</button>
               </div>
+
               {!detail ? (
-                <p style={{ color: theme.colors.textMuted, textAlign: 'center' as const }}>
+                <p style={{ color: theme.colors.textMuted, textAlign: 'center' as const, padding: '20px' }}>
                   {t('Aucune donnée pour cette journée', 'No data for this day')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {[
-                      { label: t('Heures', 'Hours'),    value: `${detail.totalHours.toFixed(2)}h`,  color: theme.colors.primary     },
-                      { label: t('Revenus', 'Revenue'), value: formatCurrency(detail.totalRevenue), color: theme.colors.secondary   },
-                      { label: t('Pauses', 'Breaks'),   value: formatTimer(detail.totalBreak),       color: '#f97316'               },
-                      { label: 'Sessions',              value: `${detail.sessions.length}`,          color: theme.colors.primaryLight},
+                      { label: t('Heures', 'Hours'),    value: `${detail.totalHours.toFixed(2)}h`,  color: theme.colors.primary      },
+                      { label: t('Revenus', 'Revenue'), value: formatCurrency(detail.totalRevenue), color: theme.colors.secondary    },
+                      { label: t('Pauses', 'Breaks'),   value: formatTimer(detail.totalBreak),       color: '#f97316'                },
+                      { label: 'Sessions',              value: `${detail.sessions.length}`,          color: theme.colors.primaryLight },
                     ].map(item => (
                       <div key={item.label} style={{
-                        background: theme.colors.card, borderRadius: '10px', padding: '12px',
+                        background: theme.colors.card, borderRadius: '10px', padding: '16px',
+                        textAlign: 'center' as const,
                       }}>
-                        <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>{item.label}</p>
-                        <p style={{ color: item.color, fontSize: '16px', fontWeight: '800' }}>{item.value}</p>
+                        <p style={{ color: theme.colors.textMuted, fontSize: '11px', marginBottom: '6px' }}>
+                          {item.label}
+                        </p>
+                        <p style={{ color: item.color, fontSize: '20px', fontWeight: '800' }}>
+                          {item.value}
+                        </p>
                       </div>
                     ))}
                   </div>
-                  {detail.materials && detail.materials.length > 0 && (
-                    <div style={{
-                      background: theme.colors.card, borderRadius: '10px', padding: '12px',
-                    }}>
+
+                  {detail.sessions.length > 0 && (
+                    <div style={{ background: theme.colors.card, borderRadius: '10px', padding: '12px' }}>
                       <p style={{
                         color: theme.colors.primary, fontSize: '11px',
-                        marginBottom: '8px', letterSpacing: '2px'
+                        marginBottom: '8px', letterSpacing: '2px', fontWeight: '700'
+                      }}>SESSIONS</p>
+                      {detail.sessions.map((session, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex', justifyContent: 'space-between',
+                          borderBottom: `1px solid ${theme.colors.border}`,
+                          paddingBottom: '6px', marginBottom: '6px',
+                        }}>
+                          <span style={{ color: theme.colors.textMuted, fontSize: '12px' }}>
+                            {new Date(session.startTime).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
+                            {session.endTime && ` → ${new Date(session.endTime).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}`}
+                          </span>
+                          <span style={{ color: theme.colors.secondary, fontSize: '12px', fontWeight: '700' }}>
+                            {formatTimer(session.elapsed)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {detail.materials && detail.materials.length > 0 && (
+                    <div style={{ background: theme.colors.card, borderRadius: '10px', padding: '12px' }}>
+                      <p style={{
+                        color: theme.colors.primary, fontSize: '11px',
+                        marginBottom: '8px', letterSpacing: '2px', fontWeight: '700'
                       }}>{t('MATÉRIAUX', 'MATERIALS')}</p>
                       {detail.materials.map((m, idx) => (
                         <div key={idx} style={{
