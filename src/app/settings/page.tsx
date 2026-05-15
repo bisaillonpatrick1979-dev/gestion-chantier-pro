@@ -74,7 +74,11 @@ function SectionCard({ title, children }: { title: string; children: React.React
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { company, setCompany } = useCompanyStore();
-  const { employees, currentEmployee } = useEmployeeStore();
+  const employeeStore = useEmployeeStore();
+  const employees = employeeStore.employees ?? [];
+  // Support both 'currentEmployee' and 'activeEmployee' naming conventions
+  const currentEmployee = (employeeStore as Record<string, unknown>).currentEmployee as { role?: string; pin?: string; id?: string; name?: string } | undefined
+    ?? (employeeStore as Record<string, unknown>).activeEmployee as { role?: string; pin?: string; id?: string; name?: string } | undefined;
 
   const isAdmin = currentEmployee?.role === 'admin';
   const lang = (typeof window !== 'undefined' && localStorage.getItem('lang')) || 'fr';
@@ -257,20 +261,23 @@ export default function SettingsPage() {
         return (
           <SectionCard title={t('Gestion des employés', 'Employee Management')}>
             <div className="space-y-2">
-              {employees.map((emp) => (
+              {employees.map((emp) => {
+                const e = emp as Record<string, unknown>;
+                return (
                 <div
-                  key={emp.id}
+                  key={e.id as string}
                   className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3"
                 >
                   <div>
-                    <p className="font-semibold text-white text-sm">{emp.name}</p>
+                    <p className="font-semibold text-white text-sm">{e.name as string}</p>
                     <p className="text-xs text-gray-400">
-                      {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'} · ${emp.hourlyRate ?? 0}/h
+                      {e.role === 'admin' ? '👑 Admin' : '👷 Employé'} · ${(e.hourlyRate as number) ?? 0}/h
                     </p>
                   </div>
-                  <span className="text-xs text-gray-500">#{emp.id.slice(-4)}</span>
+                  <span className="text-xs text-gray-500">#{(e.id as string).slice(-4)}</span>
                 </div>
-              ))}
+                );
+              })}
               {employees.length === 0 && (
                 <p className="text-gray-500 text-sm text-center py-4">
                   {t('Aucun employé configuré.', 'No employees configured.')}
@@ -393,9 +400,9 @@ export default function SettingsPage() {
               />
               <button
                 onClick={() => {
-                  const admin = employees.find((e) => e.role === 'admin');
+                  const admin = employees.find((e) => (e as Record<string, unknown>).role === 'admin') as Record<string, unknown> | undefined;
                   if (!admin) return;
-                  if (admin.pin !== adminPinInput) {
+                  if ((admin.pin as string) !== adminPinInput) {
                     setPinMsg(t('❌ PIN actuel incorrect', '❌ Incorrect current PIN'));
                     return;
                   }
