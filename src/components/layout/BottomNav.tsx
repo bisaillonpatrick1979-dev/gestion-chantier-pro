@@ -11,11 +11,13 @@ export default function BottomNav() {
   const { lang } = useLangStore()
 
   const tabs = [
-    { href: '/',           emoji: '📊', label: tr('dashboard', lang)  },
-    { href: '/stats',      emoji: '📈', label: tr('stats', lang)       },
-    { href: '/documents',  emoji: '📁', label: tr('documents', lang)   },
-    { href: '/settings',   emoji: '⚙️', label: tr('settings', lang)   },
-  ]
+  { href: '/',             emoji: '📊', label: lang === 'fr' ? 'Dashboard'   : 'Dashboard'  },
+  { href: '/stats',        emoji: '📈', label: lang === 'fr' ? 'Stats'        : 'Stats'      },
+  { href: '/catalogue',    emoji: '📦', label: lang === 'fr' ? 'Catalogue'    : 'Catalog'    },
+  { href: '/documents',    emoji: '📁', label: lang === 'fr' ? 'Documents'    : 'Documents'  },
+  { href: '/comptabilite', emoji: '💰', label: lang === 'fr' ? 'Comptabilité' : 'Accounting' },
+  { href: '/settings',     emoji: '⚙️', label: lang === 'fr' ? 'Réglages'    : 'Settings'   },
+]
 
   return (
     <nav style={{
