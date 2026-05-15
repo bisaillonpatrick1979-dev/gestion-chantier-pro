@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/formatters'
 import SignaturePad from '@/components/documents/SignaturePad'
 import { useLangStore } from '@/store/useLangStore'
 import { tr } from '@/lib/translations'
+import { useClientStore } from '@/store/useClientStore'
 
 const STATUS_OPTIONS: DocumentStatus[] = [
   'brouillon', 'envoye', 'accepte', 'refuse', 'paye'
@@ -18,16 +19,22 @@ export default function DocumentDetailPage() {
   const router = useRouter()
   const {
     documents, updateDocument, deleteDocument,
-    addLineItem, updateLineItem, removeLineItem, addTax, updateTax, removeTax, updateDiscount, updateDeposit,
+    addLineItem, updateLineItem, removeLineItem,
+    addTax, updateTax, removeTax, updateDiscount, updateDeposit,
   } = useDocumentStore()
   const { theme } = useThemeStore()
   const { lang } = useLangStore()
+  const { clients } = useClientStore()
+
   const TYPE_LABELS: Record<string, string> = {
     facture: tr('invoices', lang),
     devis: tr('quotes', lang),
     contrat: tr('contracts', lang),
   }
+
   const [showPreview, setShowPreview] = useState(false)
+  const [showClientPicker, setShowClientPicker] = useState(false)
+  const [clientSearch, setClientSearch] = useState('')
 
   const doc = documents.find(d => d.id === id)
   if (!doc) return (
@@ -56,30 +63,48 @@ export default function DocumentDetailPage() {
   }
 
   const handleDelete = () => {
-    if (window.confirm('' + (lang === 'fr' ? 'Supprimer ce document ?' : 'Delete this document?') + '')) {
+    if (window.confirm(lang === 'fr' ? 'Supprimer ce document ?' : 'Delete this document?')) {
       deleteDocument(doc.id)
       router.push('/documents')
     }
   }
 
+  const handleSelectClient = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    if (!client) return
+    updateDocument(doc.id, {
+      client: {
+        name: client.name,
+        phone: client.phone,
+        email: client.email,
+        address: client.address,
+        city: client.city,
+        province: client.province,
+        postalCode: client.postalCode,
+      }
+    })
+    setShowClientPicker(false)
+    setClientSearch('')
+  }
+
+  const filteredClients = clients.filter(c =>
+    c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    c.phone.includes(clientSearch) ||
+    c.email.toLowerCase().includes(clientSearch.toLowerCase())
+  )
+
   const handleEmail = () => {
     const invoiceUrl = `${window.location.origin}/invoice/${doc.id}`
-    const subject = encodeURIComponent(
-      `${TYPE_LABELS[doc.type]} ${doc.number} - Hailite Xteriors`
-    )
+    const subject = encodeURIComponent(`${TYPE_LABELS[doc.type]} ${doc.number} - Hailite Xteriors`)
     const body = encodeURIComponent(
       `Bonjour ${doc.client.name},\n\n` +
       `Merci de nous faire confiance pour vos travaux d'extérieur.\n\n` +
       `Veuillez trouver votre ${TYPE_LABELS[doc.type].toLowerCase()} ` +
       `numéro ${doc.number} d'un montant de ${formatCurrency(doc.total)} ` +
-      `au lien suivant:\n\n` +
-      `${invoiceUrl}\n\n` +
+      `au lien suivant:\n\n${invoiceUrl}\n\n` +
       `Vous pouvez l'imprimer ou le sauvegarder en PDF directement depuis ce lien.\n\n` +
       `N'hésitez pas à nous contacter pour toute question.\n\n` +
-      `Cordialement,\n` +
-      `L'équipe Hailite Xteriors\n` +
-      `${doc.company.phone}\n` +
-      `${doc.company.email}`
+      `Cordialement,\nL'équipe Hailite Xteriors\n${doc.company.phone}\n${doc.company.email}`
     )
     window.location.href = `mailto:${doc.client.email}?subject=${subject}&body=${body}`
   }
@@ -96,7 +121,16 @@ export default function DocumentDetailPage() {
     window.location.href = `sms:${phone}?body=${message}`
   }
 
-  const handlePreview = () => setShowPreview(true)
+  const statusLabel = (s: string) => {
+    const labels: Record<string, { fr: string; en: string }> = {
+      brouillon: { fr: 'brouillon', en: 'draft' },
+      envoye: { fr: 'envoyé', en: 'sent' },
+      accepte: { fr: 'accepté', en: 'accepted' },
+      refuse: { fr: 'refusé', en: 'refused' },
+      paye: { fr: 'payé', en: 'paid' },
+    }
+    return lang === 'fr' ? labels[s]?.fr : labels[s]?.en
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -115,8 +149,7 @@ export default function DocumentDetailPage() {
         </div>
         <button onClick={handleDelete} style={{
           padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-          border: '1px solid #ef4444',
-          background: 'transparent', color: '#ef4444',
+          border: '1px solid #ef4444', background: 'transparent', color: '#ef4444',
           fontSize: '12px', fontWeight: '700',
         }}>🗑️</button>
       </div>
@@ -128,17 +161,14 @@ export default function DocumentDetailPage() {
         </p>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
           {STATUS_OPTIONS.map(s => (
-            <button key={s === 'brouillon' ? (lang === 'fr' ? 'brouillon' : 'draft') : s === 'envoye' ? (lang === 'fr' ? 'envoyé' : 'sent') : s === 'accepte' ? (lang === 'fr' ? 'accepté' : 'accepted') : s === 'refuse' ? (lang === 'fr' ? 'refusé' : 'refused') : (lang === 'fr' ? 'payé' : 'paid')} onClick={() => updateDocument(doc.id, { status: s })} style={{
+            <button key={s} onClick={() => updateDocument(doc.id, { status: s })} style={{
               padding: '6px 14px', borderRadius: '20px', cursor: 'pointer',
-              border: doc.status === s
-                ? `2px solid ${theme.colors.primary}`
-                : `1px solid ${theme.colors.border}`,
+              border: doc.status === s ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`,
               background: doc.status === s ? theme.colors.glow1 : 'transparent',
               color: doc.status === s ? theme.colors.primary : theme.colors.textMuted,
-              fontSize: '11px', fontWeight: '700',
-              textTransform: 'capitalize' as const,
+              fontSize: '11px', fontWeight: '700', textTransform: 'capitalize' as const,
             }}>
-              {s === 'brouillon' ? (lang === 'fr' ? 'brouillon' : 'draft') : s === 'envoye' ? (lang === 'fr' ? 'envoyé' : 'sent') : s === 'accepte' ? (lang === 'fr' ? 'accepté' : 'accepted') : s === 'refuse' ? (lang === 'fr' ? 'refusé' : 'refused') : (lang === 'fr' ? 'payé' : 'paid')}
+              {statusLabel(s)}
             </button>
           ))}
         </div>
@@ -146,9 +176,83 @@ export default function DocumentDetailPage() {
 
       {/* CLIENT */}
       <div style={card}>
-        <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
-          {lang === 'fr' ? '👤 CLIENT' : '👤 CLIENT'}
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            👤 {lang === 'fr' ? 'CLIENT' : 'CLIENT'}
+          </p>
+          {clients.length > 0 && (
+            <button onClick={() => setShowClientPicker(!showClientPicker)} style={{
+              padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
+              border: `1px solid ${theme.colors.primary}`,
+              background: showClientPicker ? theme.colors.glow1 : 'transparent',
+              color: theme.colors.primary, fontSize: '11px', fontWeight: '700',
+            }}>
+              {showClientPicker
+                ? (lang === 'fr' ? '× Fermer' : '× Close')
+                : (lang === 'fr' ? '👥 Choisir client' : '👥 Pick client')
+              }
+            </button>
+          )}
+        </div>
+
+        {/* CLIENT PICKER */}
+        {showClientPicker && (
+          <div style={{
+            background: theme.colors.surface, borderRadius: '10px', padding: '12px',
+            display: 'flex', flexDirection: 'column', gap: '8px',
+          }}>
+            <input
+              value={clientSearch}
+              onChange={e => setClientSearch(e.target.value)}
+              placeholder={lang === 'fr' ? '🔍 Rechercher...' : '🔍 Search...'}
+              style={inputStyle}
+              autoFocus
+            />
+            {filteredClients.length === 0 ? (
+              <p style={{ color: theme.colors.textMuted, fontSize: '13px', textAlign: 'center' as const, padding: '8px' }}>
+                {lang === 'fr' ? 'Aucun client trouvé' : 'No client found'}
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' as const }}>
+                {filteredClients.map(client => (
+                  <button key={client.id} onClick={() => handleSelectClient(client.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.card, textAlign: 'left' as const,
+                  }}>
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                      background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontWeight: '800', fontSize: '14px',
+                    }}>
+                      {client.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: '700' }}>
+                        {client.name}
+                      </p>
+                      <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+                        {client.phone || client.email || client.city}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={() => router.push('/clients')} style={{
+              padding: '10px', borderRadius: '8px', cursor: 'pointer',
+              border: `1px dashed ${theme.colors.primary}`,
+              background: 'transparent', color: theme.colors.primary,
+              fontSize: '12px', fontWeight: '700',
+            }}>
+              + {lang === 'fr' ? 'Créer un nouveau client' : 'Create new client'}
+            </button>
+          </div>
+        )}
+
+        {/* MANUAL CLIENT FIELDS */}
         {[
           { label: lang === 'fr' ? 'Nom' : 'Name', field: 'name', placeholder: 'Nom du client' },
           { label: lang === 'fr' ? 'Adresse' : 'Address', field: 'address', placeholder: '123 Rue...' },
@@ -184,7 +288,9 @@ export default function DocumentDetailPage() {
               style={inputStyle} />
           </div>
           <div>
-            <label style={{ color: theme.colors.textMuted, fontSize: '11px' }}>Échéance</label>
+            <label style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+              {lang === 'fr' ? 'Échéance' : 'Due date'}
+            </label>
             <input type="date" value={doc.dueDate}
               onChange={e => updateDocument(doc.id, { dueDate: e.target.value })}
               style={inputStyle} />
@@ -205,8 +311,7 @@ export default function DocumentDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: theme.colors.textMuted, fontSize: '11px' }}>Item {idx + 1}</span>
               <button onClick={() => removeLineItem(doc.id, item.id)} style={{
-                color: '#ef4444', background: 'none', border: 'none',
-                cursor: 'pointer', fontSize: '18px',
+                color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px',
               }}>×</button>
             </div>
             <input value={item.description}
@@ -215,13 +320,17 @@ export default function DocumentDetailPage() {
               style={inputStyle} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
               <div>
-                <label style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'Qté' : 'Qty'}</label>
+                <label style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
+                  {lang === 'fr' ? 'Qté' : 'Qty'}
+                </label>
                 <input type="number" value={item.quantity}
                   onChange={e => updateLineItem(doc.id, item.id, { quantity: Number(e.target.value) })}
                   style={{ ...inputStyle, textAlign: 'center' as const }} />
               </div>
               <div>
-                <label style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'Prix unit.' : 'Unit price'}</label>
+                <label style={{ color: theme.colors.textMuted, fontSize: '10px' }}>
+                  {lang === 'fr' ? 'Prix unit.' : 'Unit price'}
+                </label>
                 <input type="number" value={item.unitPrice}
                   onChange={e => updateLineItem(doc.id, item.id, { unitPrice: Number(e.target.value) })}
                   style={{ ...inputStyle, textAlign: 'center' as const }} />
@@ -247,20 +356,85 @@ export default function DocumentDetailPage() {
         }}>{lang === 'fr' ? '+ Ajouter un item' : '+ Add item'}</button>
       </div>
 
-
       {/* DISCOUNT */}
-      <div style={card}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>🏷️ {lang === 'fr' ? 'REMISE' : 'DISCOUNT'}</p>
-      <div style={{ display: 'flex', gap: '8px' }}>{(['none', 'percent', 'fixed'] as const).map(type => (<button key={type} onClick={() => updateDiscount(doc.id, type, doc.discountValue)} style={{ flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', border: doc.discountType === type ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`, background: doc.discountType === type ? theme.colors.glow1 : 'transparent', color: doc.discountType === type ? theme.colors.primary : theme.colors.textMuted, fontSize: '12px', fontWeight: '700' }}>{type === 'none' ? (lang === 'fr' ? 'Aucune' : 'None') : type === 'percent' ? '%' : '$'}</button>))}</div>
-      {doc.discountType !== 'none' && (<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><input type='number' value={doc.discountValue} onChange={e => updateDiscount(doc.id, doc.discountType, Number(e.target.value))} style={inputStyle} /><span style={{ color: theme.colors.primary, fontWeight: '700', fontSize: '16px' }}>{doc.discountType === 'percent' ? '%' : '$'}</span></div>)}
+      <div style={card}>
+        <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+          🏷️ {lang === 'fr' ? 'REMISE' : 'DISCOUNT'}
+        </p>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(['none', 'percent', 'fixed'] as const).map(type => (
+            <button key={type} onClick={() => updateDiscount(doc.id, type, doc.discountValue)} style={{
+              flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer',
+              border: doc.discountType === type ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`,
+              background: doc.discountType === type ? theme.colors.glow1 : 'transparent',
+              color: doc.discountType === type ? theme.colors.primary : theme.colors.textMuted,
+              fontSize: '12px', fontWeight: '700',
+            }}>
+              {type === 'none' ? (lang === 'fr' ? 'Aucune' : 'None') : type === 'percent' ? '%' : '$'}
+            </button>
+          ))}
+        </div>
+        {doc.discountType !== 'none' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="number" value={doc.discountValue}
+              onChange={e => updateDiscount(doc.id, doc.discountType, Number(e.target.value))}
+              style={inputStyle} />
+            <span style={{ color: theme.colors.primary, fontWeight: '700', fontSize: '16px' }}>
+              {doc.discountType === 'percent' ? '%' : '$'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* TAXES */}
-      <div style={card}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>🧾 TAXES</p><button onClick={() => addTax(doc.id)} style={{ padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${theme.colors.primary}`, background: 'transparent', color: theme.colors.primary, fontSize: '12px', fontWeight: '700' }}>+ {lang === 'fr' ? 'Ajouter' : 'Add'}</button></div>
-      {doc.taxes.map(tax => (<div key={tax.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: theme.colors.surface, borderRadius: '10px', padding: '10px' }}><button onClick={() => updateTax(doc.id, tax.id, { enabled: !tax.enabled })} style={{ width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', border: `2px solid ${tax.enabled ? theme.colors.primary : theme.colors.border}`, background: tax.enabled ? theme.colors.primary : 'transparent', color: 'white' }}>{tax.enabled ? '✓' : ''}</button><input value={tax.name} onChange={e => updateTax(doc.id, tax.id, { name: e.target.value })} style={{ ...inputStyle, flex: 2, marginTop: 0 }} /><input type='number' value={tax.rate} onChange={e => updateTax(doc.id, tax.id, { rate: Number(e.target.value) })} style={{ ...inputStyle, flex: 1, marginTop: 0, textAlign: 'center' as const }} /><span>%</span><button onClick={() => removeTax(doc.id, tax.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button></div>))}
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+            🧾 TAXES
+          </p>
+          <button onClick={() => addTax(doc.id)} style={{
+            padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
+            border: `1px solid ${theme.colors.primary}`,
+            background: 'transparent', color: theme.colors.primary,
+            fontSize: '12px', fontWeight: '700',
+          }}>+ {lang === 'fr' ? 'Ajouter' : 'Add'}</button>
+        </div>
+        {doc.taxes.map(tax => (
+          <div key={tax.id} style={{
+            display: 'flex', gap: '8px', alignItems: 'center',
+            background: theme.colors.surface, borderRadius: '10px', padding: '10px',
+          }}>
+            <button onClick={() => updateTax(doc.id, tax.id, { enabled: !tax.enabled })} style={{
+              width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer',
+              border: `2px solid ${tax.enabled ? theme.colors.primary : theme.colors.border}`,
+              background: tax.enabled ? theme.colors.primary : 'transparent', color: 'white',
+            }}>{tax.enabled ? '✓' : ''}</button>
+            <input value={tax.name}
+              onChange={e => updateTax(doc.id, tax.id, { name: e.target.value })}
+              style={{ ...inputStyle, flex: 2, marginTop: 0 }} />
+            <input type="number" value={tax.rate}
+              onChange={e => updateTax(doc.id, tax.id, { rate: Number(e.target.value) })}
+              style={{ ...inputStyle, flex: 1, marginTop: 0, textAlign: 'center' as const }} />
+            <span style={{ color: theme.colors.textMuted }}>%</span>
+            <button onClick={() => removeTax(doc.id, tax.id)} style={{
+              color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px',
+            }}>×</button>
+          </div>
+        ))}
       </div>
 
       {/* DEPOSIT */}
-      <div style={card}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>💵 {lang === 'fr' ? 'DÉPÔT / AVANCE' : 'DEPOSIT / ADVANCE'}</p><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><input type='number' value={doc.deposit || 0} onChange={e => updateDeposit(doc.id, Number(e.target.value))} style={inputStyle}/><span>CAD</span></div></div>
+      <div style={card}>
+        <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
+          💵 {lang === 'fr' ? 'DÉPÔT / AVANCE' : 'DEPOSIT / ADVANCE'}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input type="number" value={doc.deposit || 0}
+            onChange={e => updateDeposit(doc.id, Number(e.target.value))}
+            style={inputStyle} />
+          <span style={{ color: theme.colors.textMuted }}>CAD</span>
+        </div>
+      </div>
 
       {/* TOTALS */}
       <div style={card}>
@@ -274,13 +448,35 @@ export default function DocumentDetailPage() {
         ].map(row => (
           <div key={row.label} style={{
             display: 'flex', justifyContent: 'space-between',
-            borderBottom: `1px solid ${theme.colors.border}`,
-            paddingBottom: '8px',
+            borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '8px',
           }}>
             <span style={{ color: theme.colors.textMuted, fontSize: '13px' }}>{row.label}</span>
             <span style={{ color: row.color, fontSize: '14px', fontWeight: '700' }}>{row.value}</span>
           </div>
         ))}
+        {doc.deposit > 0 && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
+              <span style={{ color: '#22c55e', fontSize: '13px' }}>
+                {lang === 'fr' ? 'Dépôt reçu' : 'Deposit received'}
+              </span>
+              <span style={{ color: '#22c55e', fontSize: '14px', fontWeight: '700' }}>
+                -{formatCurrency(doc.deposit)}
+              </span>
+            </div>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              borderTop: `2px solid #ef4444`, paddingTop: '8px',
+            }}>
+              <span style={{ color: '#ef4444', fontSize: '15px', fontWeight: '800' }}>
+                {lang === 'fr' ? 'SOLDE DÛ' : 'BALANCE DUE'}
+              </span>
+              <span style={{ color: '#ef4444', fontSize: '15px', fontWeight: '800' }}>
+                {formatCurrency(doc.balanceDue)}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* NOTES & CONDITIONS */}
@@ -297,7 +493,9 @@ export default function DocumentDetailPage() {
             style={{ ...inputStyle, resize: 'vertical' as const }} />
         </div>
         <div>
-          <label style={{ color: theme.colors.textMuted, fontSize: '11px' }}>{lang === 'fr' ? 'Conditions' : 'Terms'}</label>
+          <label style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+            {lang === 'fr' ? 'Conditions' : 'Terms'}
+          </label>
           <textarea value={doc.terms}
             onChange={e => updateDocument(doc.id, { terms: e.target.value })}
             rows={3}
@@ -305,12 +503,11 @@ export default function DocumentDetailPage() {
         </div>
       </div>
 
-      {/* SIGNATURES - LAST SECTION */}
+      {/* SIGNATURES */}
       <div style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>
           ✍️ SIGNATURES
         </p>
-
         <SignaturePad
           label={lang === 'fr' ? 'Signature du contracteur' : 'Contractor signature'}
           existingSignature={doc.contractorSignature}
@@ -322,7 +519,6 @@ export default function DocumentDetailPage() {
             }),
           })}
         />
-
         {doc.type === 'contrat' && (
           <SignaturePad
             label={lang === 'fr' ? 'Signature du client' : 'Client signature'}
@@ -339,42 +535,30 @@ export default function DocumentDetailPage() {
       </div>
 
       {/* ACTION BUTTONS */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px',
-        paddingBottom: '16px',
-      }}>
-        <button onClick={handlePreview} style={{
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', paddingBottom: '16px' }}>
+        <button onClick={() => setShowPreview(true)} style={{
           padding: '14px 8px', borderRadius: '12px', cursor: 'pointer',
-          border: `1px solid ${theme.colors.primary}`,
-          background: theme.colors.glow1,
-          color: theme.colors.primary,
-          fontSize: '12px', fontWeight: '700',
-          display: 'flex', flexDirection: 'column' as const,
-          alignItems: 'center', gap: '4px',
+          border: `1px solid ${theme.colors.primary}`, background: theme.colors.glow1,
+          color: theme.colors.primary, fontSize: '12px', fontWeight: '700',
+          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
         }}>
           <span style={{ fontSize: '20px' }}>👁️</span>
           Preview PDF
         </button>
         <button onClick={handleEmail} style={{
           padding: '14px 8px', borderRadius: '12px', cursor: 'pointer',
-          border: `1px solid ${theme.colors.secondary}`,
-          background: `rgba(245,158,11,0.1)`,
-          color: theme.colors.secondary,
-          fontSize: '12px', fontWeight: '700',
-          display: 'flex', flexDirection: 'column' as const,
-          alignItems: 'center', gap: '4px',
+          border: `1px solid ${theme.colors.secondary}`, background: `rgba(245,158,11,0.1)`,
+          color: theme.colors.secondary, fontSize: '12px', fontWeight: '700',
+          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
         }}>
           <span style={{ fontSize: '20px' }}>📧</span>
           Email
         </button>
         <button onClick={handleSMS} style={{
           padding: '14px 8px', borderRadius: '12px', cursor: 'pointer',
-          border: '1px solid #22c55e',
-          background: 'rgba(34,197,94,0.1)',
-          color: '#22c55e',
-          fontSize: '12px', fontWeight: '700',
-          display: 'flex', flexDirection: 'column' as const,
-          alignItems: 'center', gap: '4px',
+          border: '1px solid #22c55e', background: 'rgba(34,197,94,0.1)',
+          color: '#22c55e', fontSize: '12px', fontWeight: '700',
+          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px',
         }}>
           <span style={{ fontSize: '20px' }}>💬</span>
           SMS
@@ -386,10 +570,8 @@ export default function DocumentDetailPage() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.95)', zIndex: 200,
-          display: 'flex', flexDirection: 'column',
-          overflowY: 'auto' as const,
+          display: 'flex', flexDirection: 'column', overflowY: 'auto' as const,
         }}>
-          {/* PREVIEW HEADER */}
           <div style={{
             position: 'sticky', top: 0, zIndex: 10,
             background: theme.colors.surface,
@@ -416,26 +598,21 @@ export default function DocumentDetailPage() {
             </div>
           </div>
 
-          {/* PDF CONTENT */}
           <div style={{
             background: 'white', margin: '16px', borderRadius: '12px',
-            padding: '32px', color: '#1a1a1a', position: 'relative',
-            overflow: 'hidden',
+            padding: '32px', color: '#1a1a1a', position: 'relative', overflow: 'hidden',
           }}>
-            {/* WATERMARK */}
             <div style={{
               position: 'absolute', top: '50%', left: '50%',
               transform: 'translate(-50%, -50%) rotate(-45deg)',
               fontSize: '48px', fontWeight: '900',
               color: 'rgba(234,88,12,0.06)', letterSpacing: '6px',
-              whiteSpace: 'nowrap' as const, pointerEvents: 'none',
-              zIndex: 0,
+              whiteSpace: 'nowrap' as const, pointerEvents: 'none', zIndex: 0,
             }}>
               HAILITE XTERIORS
             </div>
 
             <div style={{ position: 'relative', zIndex: 1 }}>
-              {/* COMPANY HEADER */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                 <div>
                   <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#ea580c', margin: 0 }}>
@@ -458,19 +635,15 @@ export default function DocumentDetailPage() {
                   <p style={{ fontSize: '14px', color: '#ea580c', fontWeight: '700', margin: '4px 0 0' }}>
                     #{doc.number}
                   </p>
+                  <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>Date: {doc.date}</p>
                   <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>
-                    Date: {doc.date}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>
-                    Échéance: {doc.dueDate}
+                    {lang === 'fr' ? 'Échéance' : 'Due'}: {doc.dueDate}
                   </p>
                 </div>
               </div>
 
-              {/* DIVIDER */}
               <div style={{ borderTop: '2px solid #ea580c', marginBottom: '20px' }} />
 
-              {/* CLIENT */}
               <div style={{ marginBottom: '20px' }}>
                 <p style={{ fontSize: '11px', color: '#666', letterSpacing: '2px', marginBottom: '6px' }}>
                   {lang === 'fr' ? 'FACTURER À' : 'BILL TO'}
@@ -484,7 +657,6 @@ export default function DocumentDetailPage() {
                 <p style={{ fontSize: '12px', color: '#444', margin: '2px 0 0' }}>{doc.client.email}</p>
               </div>
 
-              {/* ITEMS TABLE */}
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px' }}>
                 <thead>
                   <tr style={{ background: '#f5f5f5' }}>
@@ -499,8 +671,8 @@ export default function DocumentDetailPage() {
                 </thead>
                 <tbody>
                   {doc.items.map((item, i) => (
-                    <tr key={item.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                      <td style={{ padding: '8px 12px', fontSize: '13px' }}>{item.description}</td>
+                    <tr key={item.id} style={{ background: i % 2 === 0 ? 'white' : '#fdf8f5' }}>
+                      <td style={{ padding: '8px 12px', fontSize: '13px', borderLeft: i % 2 !== 0 ? '3px solid rgba(234,88,12,0.15)' : '3px solid transparent' }}>{item.description}</td>
                       <td style={{ padding: '8px 12px', fontSize: '13px', textAlign: 'right' as const }}>{item.quantity}</td>
                       <td style={{ padding: '8px 12px', fontSize: '13px', textAlign: 'right' as const }}>{formatCurrency(item.unitPrice)}</td>
                       <td style={{ padding: '8px 12px', fontSize: '13px', textAlign: 'right' as const, fontWeight: '700' }}>{formatCurrency(item.total)}</td>
@@ -509,50 +681,46 @@ export default function DocumentDetailPage() {
                 </tbody>
               </table>
 
-        
-      {/* DISCOUNT */}
-      <div style={card}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>🏷️ {lang === 'fr' ? 'REMISE' : 'DISCOUNT'}</p>
-      <div style={{ display: 'flex', gap: '8px' }}>{(['none', 'percent', 'fixed'] as const).map(type => (<button key={type} onClick={() => updateDiscount(doc.id, type, doc.discountValue)} style={{ flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', border: doc.discountType === type ? `2px solid ${theme.colors.primary}` : `1px solid ${theme.colors.border}`, background: doc.discountType === type ? theme.colors.glow1 : 'transparent', color: doc.discountType === type ? theme.colors.primary : theme.colors.textMuted, fontSize: '12px', fontWeight: '700' }}>{type === 'none' ? (lang === 'fr' ? 'Aucune' : 'None') : type === 'percent' ? '%' : '$'}</button>))}</div>
-      {doc.discountType !== 'none' && (<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><input type='number' value={doc.discountValue} onChange={e => updateDiscount(doc.id, doc.discountType, Number(e.target.value))} style={inputStyle} /><span style={{ color: theme.colors.primary, fontWeight: '700', fontSize: '16px' }}>{doc.discountType === 'percent' ? '%' : '$'}</span></div>)}
-      </div>
-
-      {/* TAXES */}
-      <div style={card}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>🧾 TAXES</p><button onClick={() => addTax(doc.id)} style={{ padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${theme.colors.primary}`, background: 'transparent', color: theme.colors.primary, fontSize: '12px', fontWeight: '700' }}>+ {lang === 'fr' ? 'Ajouter' : 'Add'}</button></div>
-      {doc.taxes.map(tax => (<div key={tax.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: theme.colors.surface, borderRadius: '10px', padding: '10px' }}><button onClick={() => updateTax(doc.id, tax.id, { enabled: !tax.enabled })} style={{ width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', border: `2px solid ${tax.enabled ? theme.colors.primary : theme.colors.border}`, background: tax.enabled ? theme.colors.primary : 'transparent', color: 'white' }}>{tax.enabled ? '✓' : ''}</button><input value={tax.name} onChange={e => updateTax(doc.id, tax.id, { name: e.target.value })} style={{ ...inputStyle, flex: 2, marginTop: 0 }} /><input type='number' value={tax.rate} onChange={e => updateTax(doc.id, tax.id, { rate: Number(e.target.value) })} style={{ ...inputStyle, flex: 1, marginTop: 0, textAlign: 'center' as const }} /><span>%</span><button onClick={() => removeTax(doc.id, tax.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button></div>))}
-      </div>
-
-      {/* DEPOSIT */}
-      <div style={card}><p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: '700' }}>💵 {lang === 'fr' ? 'DÉPÔT / AVANCE' : 'DEPOSIT / ADVANCE'}</p><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><input type='number' value={doc.deposit || 0} onChange={e => updateDeposit(doc.id, Number(e.target.value))} style={inputStyle}/><span>CAD</span></div></div>
-
-      {/* TOTALS */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                <div style={{ width: '220px' }}>
-                  {[
-                    { label: lang === 'fr' ? 'Sous-total' : 'Subtotal', value: formatCurrency(doc.subtotal) },
-                    { label: lang === 'fr' ? 'Taxes' : 'Taxes', value: formatCurrency(doc.totalTax) },
-                  ].map(row => (
-                    <div key={row.label} style={{
-                      display: 'flex', justifyContent: 'space-between',
-                      padding: '4px 0', borderBottom: '1px solid #eee',
-                    }}>
-                      <span style={{ fontSize: '12px', color: '#666' }}>{row.label}</span>
-                      <span style={{ fontSize: '12px' }}>{row.value}</span>
+                <div style={{ width: '260px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #eee' }}>
+                    <span style={{ fontSize: '12px', color: '#666' }}>{lang === 'fr' ? 'Sous-total' : 'Subtotal'}</span>
+                    <span style={{ fontSize: '12px' }}>{formatCurrency(doc.subtotal)}</span>
+                  </div>
+                  {doc.discountAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #eee' }}>
+                      <span style={{ fontSize: '12px', color: '#16a34a' }}>
+                        {lang === 'fr' ? 'Remise' : 'Discount'}
+                        {doc.discountType === 'percent' && ` (${doc.discountValue}%)`}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#16a34a' }}>-{formatCurrency(doc.discountAmount)}</span>
+                    </div>
+                  )}
+                  {doc.taxes.filter(t => t.enabled).map(tax => (
+                    <div key={tax.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #eee' }}>
+                      <span style={{ fontSize: '12px', color: '#666' }}>{tax.name} ({tax.rate}%)</span>
+                      <span style={{ fontSize: '12px' }}>{formatCurrency((doc.subtotal - (doc.discountAmount || 0)) * (tax.rate / 100))}</span>
                     </div>
                   ))}
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    padding: '8px 0', borderTop: '2px solid #ea580c',
-                    marginTop: '4px',
-                  }}>
-                    <span style={{ fontSize: '14px', fontWeight: '800' }}>TOTAL</span>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#ea580c' }}>
-                      {formatCurrency(doc.total)}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #ea580c', marginTop: '4px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: '800' }}>TOTAL</span>
+                    <span style={{ fontSize: '15px', fontWeight: '800', color: '#ea580c' }}>{formatCurrency(doc.total)}</span>
                   </div>
+                  {doc.deposit > 0 && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                        <span style={{ fontSize: '12px', color: '#16a34a' }}>{lang === 'fr' ? 'Dépôt reçu' : 'Deposit received'}</span>
+                        <span style={{ fontSize: '12px', color: '#16a34a' }}>-{formatCurrency(doc.deposit)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #ef4444', marginTop: '4px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '800', color: '#ef4444' }}>{lang === 'fr' ? 'SOLDE DÛ' : 'BALANCE DUE'}</span>
+                        <span style={{ fontSize: '15px', fontWeight: '800', color: '#ef4444' }}>{formatCurrency(doc.balanceDue)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* NOTES */}
               {doc.notes && (
                 <div style={{ marginBottom: '16px' }}>
                   <p style={{ fontSize: '11px', color: '#666', letterSpacing: '1px', marginBottom: '4px' }}>NOTES</p>
@@ -560,15 +728,15 @@ export default function DocumentDetailPage() {
                 </div>
               )}
 
-              {/* TERMS */}
               {doc.terms && (
                 <div style={{ marginBottom: '20px' }}>
-                  <p style={{ fontSize: '11px', color: '#666', letterSpacing: '1px', marginBottom: '4px' }}>{lang === 'fr' ? 'CONDITIONS' : 'TERMS'}</p>
+                  <p style={{ fontSize: '11px', color: '#666', letterSpacing: '1px', marginBottom: '4px' }}>
+                    {lang === 'fr' ? 'CONDITIONS' : 'TERMS'}
+                  </p>
                   <p style={{ fontSize: '12px', color: '#444' }}>{doc.terms}</p>
                 </div>
               )}
 
-              {/* SIGNATURES */}
               <div style={{
                 display: 'flex',
                 justifyContent: doc.type === 'contrat' ? 'space-between' : 'flex-end',
@@ -576,20 +744,26 @@ export default function DocumentDetailPage() {
               }}>
                 {doc.type === 'contrat' && doc.clientSignature && (
                   <div style={{ textAlign: 'center' as const }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={doc.clientSignature} alt="Signature client"
                       style={{ height: '50px', display: 'block', marginBottom: '4px' }} />
                     <div style={{ borderTop: '1px solid #999', paddingTop: '4px' }}>
-                      <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>{lang === 'fr' ? 'Signature du client' : 'Client signature'}</p>
+                      <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>
+                        {lang === 'fr' ? 'Signature du client' : 'Client signature'}
+                      </p>
                       <p style={{ fontSize: '10px', color: '#999', margin: 0 }}>{doc.clientSignatureDate}</p>
                     </div>
                   </div>
                 )}
                 {doc.contractorSignature && (
                   <div style={{ textAlign: 'center' as const }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={doc.contractorSignature} alt="Signature contracteur"
                       style={{ height: '50px', display: 'block', marginBottom: '4px' }} />
                     <div style={{ borderTop: '1px solid #999', paddingTop: '4px' }}>
-                      <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>{lang === 'fr' ? 'Signature du contracteur' : 'Contractor signature'}</p>
+                      <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>
+                        {lang === 'fr' ? 'Signature du contracteur' : 'Contractor signature'}
+                      </p>
                       <p style={{ fontSize: '10px', color: '#999', margin: 0 }}>{doc.contractorSignatureDate}</p>
                     </div>
                   </div>
@@ -600,7 +774,6 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      {/* PRINT STYLES */}
       <style>{`
         @media print {
           nav, button { display: none !important; }
@@ -608,8 +781,7 @@ export default function DocumentDetailPage() {
           .fire-bg, .stars { display: none !important; }
           body::before {
             content: 'HAILITE XTERIORS';
-            position: fixed;
-            top: 50%; left: 50%;
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 60px; font-weight: 900;
             color: rgba(234,88,12,0.06);
