@@ -11,21 +11,18 @@ export interface CompanyInfo {
   phone: string;
   email: string;
   website: string;
-  logo: string; // base64 ou URL
+  logo: string;
   gstNumber: string;
   wcbNumber: string;
   licenseNumber: string;
-  // Taxes Alberta
-  gstRate: number; // 5% par défaut
-  // Paiement
+  gstRate: number;
   bankInfo: string;
-  paymentTerms: string; // ex: "Net 30"
-  // Notes par défaut sur documents
+  paymentTerms: string;
   defaultNotes: string;
   defaultTerms: string;
 }
 
-interface CompanyStore {
+export interface CompanyStore {
   company: CompanyInfo;
   updateCompany: (data: Partial<CompanyInfo>) => void;
   resetCompany: () => void;
@@ -56,7 +53,7 @@ export const useCompanyStore = create<CompanyStore>()(
     (set) => ({
       company: defaultCompany,
 
-      updateCompany: (data) =>
+      updateCompany: (data: Partial<CompanyInfo>) =>
         set((state) => ({
           company: { ...state.company, ...data },
         })),
@@ -69,4 +66,3 @@ export const useCompanyStore = create<CompanyStore>()(
     }
   )
 );
-
