@@ -2,9 +2,11 @@
 import { useState } from 'react'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useThemeStore } from '@/store/useThemeStore'
+import { useProjectStore } from '@/store/useProjectStore'
 import { formatCurrency, formatTimer } from '@/lib/formatters'
 import { MaterialEntry } from '@/types/employee'
 import { useLangStore } from '@/store/useLangStore'
+import PunchInModal from '@/components/PunchInModal'
 
 type Screen = 'select' | 'pin' | 'dashboard'
 
@@ -16,14 +18,22 @@ export default function HomePage() {
   } = useEmployeeStore()
   const { theme } = useThemeStore()
   const { lang } = useLangStore()
+  const { getActiveLogForEmployee } = useProjectStore()
   const t = (fr: string, en: string) => (lang === 'fr' ? fr : en)
 
   const [screen, setScreen] = useState<Screen>('select')
   const [selectedId, setSelectedId] = useState<string>('')
   const [pin, setPin] = useState<string>('')
   const [pinError, setPinError] = useState(false)
+
+  // ── Nouveau : modal projet punch in/out ───────────────────────────────────
+  const [showPunchModal, setShowPunchModal] = useState(false)
+  const [punchModalMode, setPunchModalMode] = useState<'in' | 'out'>('in')
+
+  // ── Ancien modal surface (gardé pour compatibilité si employé sans projet) ─
   const [showPunchOut, setShowPunchOut] = useState(false)
   const [materials, setMaterials] = useState<MaterialEntry[]>([])
+
   const [currentMonth, setCurrentMonth] = useState(
     new Date().toISOString().slice(0, 7)
   )
@@ -33,6 +43,11 @@ export default function HomePage() {
   const activeSession = currentEmployeeId ? activeSessions[currentEmployeeId] : null
   const isRunning = !!activeSession
   const isOnBreak = activeSession?.isOnBreak ?? false
+
+  // Vérifie si l'employé a un projet actif dans useProjectStore
+  const activeProjectLog = currentEmployeeId
+    ? getActiveLogForEmployee(currentEmployeeId)
+    : null
 
   const card = {
     background: theme.colors.card,
@@ -71,12 +86,42 @@ export default function HomePage() {
     setSelectedId('')
   }
 
+  // ── Punch In : ouvre le modal projet ─────────────────────────────────────
+  const handlePunchIn = () => {
+    if (!currentEmployeeId) return
+    setPunchModalMode('in')
+    setShowPunchModal(true)
+  }
+
+  // ── Punch Out : si mode surface ET pas de projet → ancien modal
+  //               sinon → modal projet ─────────────────────────────────────
   const handlePunchOut = () => {
     if (!currentEmployeeId) return
+    // Si l'employé est sur un projet → modal projet pour punch out
+    if (activeProjectLog) {
+      setPunchModalMode('out')
+      setShowPunchModal(true)
+      return
+    }
+    // Fallback : ancien comportement surface sans projet
     if (currentEmployee?.workMode === 'surface') {
       setShowPunchOut(true)
     } else {
       punchOut(currentEmployeeId)
+    }
+  }
+
+  // ── Punch In complété via modal → on appelle aussi le punchIn du store employé
+  const handlePunchModalComplete = () => {
+    setShowPunchModal(false)
+    if (!currentEmployeeId) return
+    if (punchModalMode === 'in') {
+      // Déclenche aussi le timer/revenue du dashboard existant
+      punchIn(currentEmployeeId)
+    } else {
+      // Punch out du dashboard existant
+      punchOut(currentEmployeeId, materials)
+      setMaterials([])
     }
   }
 
@@ -117,6 +162,7 @@ export default function HomePage() {
 
   const today = new Date().toISOString().split('T')[0]
 
+  // ── SCREEN : SÉLECTION EMPLOYÉ ────────────────────────────────────────────
   if (screen === 'select') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '16px' }}>
@@ -168,6 +214,7 @@ export default function HomePage() {
     )
   }
 
+  // ── SCREEN : PIN ──────────────────────────────────────────────────────────
   if (screen === 'pin') {
     const emp = employees.find(e => e.id === selectedId)
     return (
@@ -218,6 +265,7 @@ export default function HomePage() {
     )
   }
 
+  // ── SCREEN : DASHBOARD ────────────────────────────────────────────────────
   const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('fr-CA', {
     month: 'long', year: 'numeric'
   })
@@ -240,7 +288,12 @@ export default function HomePage() {
             <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '700' }}>
               {currentEmployee?.name}{currentEmployee?.role === 'admin' && ' 👑'}
             </p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>{currentEmployee?.workMode}</p>
+            <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+              {/* Affiche le projet actif si disponible */}
+              {activeProjectLog
+                ? `🏗️ ${activeProjectLog.project.name}`
+                : currentEmployee?.workMode}
+            </p>
           </div>
         </div>
         <button onClick={handleLogout} style={{
@@ -251,7 +304,37 @@ export default function HomePage() {
         }}>{t('Déconnexion', 'Logout')}</button>
       </div>
 
-      {/* REVENUE + TIMER — GROS CHIFFRES */}
+      {/* PROJET ACTIF BADGE — affiché seulement si punché sur un projet */}
+      {activeProjectLog && (
+        <div style={{
+          background: `${theme.colors.primary}15`,
+          border: `1px solid ${theme.colors.primary}40`,
+          borderRadius: '12px', padding: '12px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <p style={{ color: theme.colors.primary, fontSize: '10px', letterSpacing: '2px', fontWeight: '700' }}>
+              🏗️ PROJET EN COURS
+            </p>
+            <p style={{ color: theme.colors.text, fontSize: '14px', fontWeight: '800', marginTop: '2px' }}>
+              {activeProjectLog.project.name}
+            </p>
+            <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
+              📍 {activeProjectLog.project.address}
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' as const }}>
+            <p style={{ color: '#22c55e', fontSize: '10px', fontWeight: '700' }}>🟢 ACTIF</p>
+            <p style={{ color: theme.colors.textMuted, fontSize: '10px', marginTop: '2px' }}>
+              {activeProjectLog.project.payMode === 'hourly' && `⏱️ ${activeProjectLog.log.hourlyRate}$/h`}
+              {activeProjectLog.project.payMode === 'job' && `💰 À la job`}
+              {activeProjectLog.project.payMode === 'sqft' && `📐 Au pi²`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* REVENUE + TIMER — GROS CHIFFRES (inchangé) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div style={card}>
           <p style={{
@@ -291,10 +374,10 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* PUNCH BUTTON */}
+      {/* PUNCH BUTTON (inchangé visuellement) */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '8px 0' }}>
         <button
-          onClick={isRunning ? handlePunchOut : () => currentEmployeeId && punchIn(currentEmployeeId)}
+          onClick={isRunning ? handlePunchOut : handlePunchIn}
           style={{
             width: '180px', height: '180px', borderRadius: '50%',
             background: `radial-gradient(circle at 40% 35%, ${theme.colors.primaryLight}, ${theme.colors.primary})`,
@@ -303,6 +386,7 @@ export default function HomePage() {
               : `0 0 40px ${theme.colors.glow1}`,
             color: 'white', fontWeight: '800', fontSize: '18px',
             letterSpacing: '2px', border: 'none', cursor: 'pointer',
+            whiteSpace: 'pre-line' as const,
           }}>
           {isRunning ? 'PUNCH\nOUT' : 'PUNCH\nIN'}
         </button>
@@ -328,7 +412,19 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* SURFACE PUNCH OUT MODAL — CENTERED */}
+      {/* ── MODAL PROJET PUNCH IN / OUT ─────────────────────────────────── */}
+      {showPunchModal && currentEmployee && (
+        <PunchInModal
+          employeeId={currentEmployee.id}
+          employeeName={currentEmployee.name}
+          employeeHourlyRate={(currentEmployee as unknown as Record<string, unknown>).hourlyRate as number ?? 0}
+          mode={punchModalMode}
+          onComplete={handlePunchModalComplete}
+          onCancel={() => setShowPunchModal(false)}
+        />
+      )}
+
+      {/* ── ANCIEN MODAL SURFACE (fallback sans projet) ──────────────────── */}
       {showPunchOut && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -401,7 +497,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* CALENDAR */}
+      {/* CALENDAR (inchangé) */}
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <button onClick={() => {
@@ -468,7 +564,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* LEGEND */}
+      {/* LEGEND (inchangé) */}
       <div style={card}>
         <p style={{
           color: theme.colors.primary, fontSize: '11px',
@@ -500,7 +596,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* DAY DETAIL MODAL — CENTERED */}
+      {/* DAY DETAIL MODAL — CENTERED (inchangé) */}
       {selectedDay && (() => {
         const detail = currentEmployeeId
           ? dayDetails[`${currentEmployeeId}-${selectedDay}`]
@@ -509,18 +605,11 @@ export default function HomePage() {
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.85)', zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
           }}>
             <div style={{
-              background: theme.colors.surface,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '20px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '500px',
+              background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+              borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '500px',
               display: 'flex', flexDirection: 'column', gap: '12px',
               maxHeight: '80vh', overflowY: 'auto' as const,
             }}>
@@ -529,8 +618,7 @@ export default function HomePage() {
                   📅 {selectedDay}
                 </h2>
                 <button onClick={() => setSelectedDay(null)} style={{
-                  color: theme.colors.textMuted,
-                  background: theme.colors.card,
+                  color: theme.colors.textMuted, background: theme.colors.card,
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: '50%', cursor: 'pointer',
                   fontSize: '18px', width: '36px', height: '36px',
@@ -548,7 +636,7 @@ export default function HomePage() {
                     {[
                       { label: t('Heures', 'Hours'),    value: `${detail.totalHours.toFixed(2)}h`,  color: theme.colors.primary      },
                       { label: t('Revenus', 'Revenue'), value: formatCurrency(detail.totalRevenue), color: theme.colors.secondary    },
-                      { label: t('Pauses', 'Breaks'),   value: formatTimer(detail.totalBreak),       color: '#f97316'                },
+                      { label: t('Pauses', 'Breaks'),   value: formatTimer(detail.totalBreak),       color: '#f97316'                 },
                       { label: 'Sessions',              value: `${detail.sessions.length}`,          color: theme.colors.primaryLight },
                     ].map(item => (
                       <div key={item.label} style={{
