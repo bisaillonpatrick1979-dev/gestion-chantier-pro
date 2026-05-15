@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useClientStore } from '@/store/useClientStore';
-import { useEmployeeStore } from '@/store/useEmployeeStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type DocType = 'invoice' | 'quote' | 'contract';
@@ -542,16 +541,16 @@ export default function DocumentPage() {
               ) : (
                 <div className="space-y-2">
                   {[
-                    { key: 'clientName', label: t('Nom', 'Name'), placeholder: 'John Smith' },
-                    { key: 'clientAddress', label: t('Adresse', 'Address'), placeholder: '456 Oak Ave' },
-                    { key: 'clientCity', label: t('Ville', 'City'), placeholder: 'Calgary, AB' },
-                    { key: 'clientPhone', label: t('Téléphone', 'Phone'), placeholder: '403-555-0000' },
-                    { key: 'clientEmail', label: 'Email', placeholder: 'client@email.com' },
+                    { key: 'clientName' as keyof DocumentData, label: t('Nom', 'Name'), placeholder: 'John Smith' },
+                    { key: 'clientAddress' as keyof DocumentData, label: t('Adresse', 'Address'), placeholder: '456 Oak Ave' },
+                    { key: 'clientCity' as keyof DocumentData, label: t('Ville', 'City'), placeholder: 'Calgary, AB' },
+                    { key: 'clientPhone' as keyof DocumentData, label: t('Téléphone', 'Phone'), placeholder: '403-555-0000' },
+                    { key: 'clientEmail' as keyof DocumentData, label: 'Email', placeholder: 'client@email.com' },
                   ].map(({ key, label, placeholder }) => (
                     <div key={key}>
                       <label className="block text-xs text-gray-500 mb-1">{label}</label>
                       <input
-                        value={(doc as Record<string, unknown>)[key] as string}
+                        value={doc[key] as string}
                         onChange={(e) => setDoc((d) => ({ ...d, [key]: e.target.value }))}
                         placeholder={placeholder}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none"
@@ -767,15 +766,15 @@ export default function DocumentPage() {
 
               <div className="space-y-3 mb-4">
                 {[
-                  { label: t('GST (%)', 'GST (%)'), key: 'gstRate', placeholder: '5' },
-                  { label: t('Remise (%)', 'Discount (%)'), key: 'discountPercent', placeholder: '0' },
-                  { label: t('Dépôt requis (%)', 'Required Deposit (%)'), key: 'depositPercent', placeholder: '30' },
+                  { label: t('GST (%)', 'GST (%)'), key: 'gstRate' as keyof DocumentData, placeholder: '5' },
+                  { label: t('Remise (%)', 'Discount (%)'), key: 'discountPercent' as keyof DocumentData, placeholder: '0' },
+                  { label: t('Dépôt requis (%)', 'Required Deposit (%)'), key: 'depositPercent' as keyof DocumentData, placeholder: '30' },
                 ].map(({ label, key, placeholder }) => (
                   <div key={key} className="flex items-center justify-between gap-3">
                     <label className="text-sm text-gray-300 flex-1">{label}</label>
                     <input
                       type="number"
-                      value={(doc as Record<string, unknown>)[key] as number}
+                      value={doc[key] as number}
                       onChange={(e) =>
                         setDoc((d) => ({ ...d, [key]: parseFloat(e.target.value) || 0 }))
                       }
@@ -788,14 +787,14 @@ export default function DocumentPage() {
 
               {/* Summary */}
               <div className="rounded-xl bg-black/30 border border-white/10 p-4 space-y-2">
-                {[
-                  { label: t('Sous-total', 'Subtotal'), value: doc.subtotal, dim: false },
-                  { label: `${t('Remise', 'Discount')} (${doc.discountPercent}%)`, value: -doc.discountAmount, dim: true },
-                  { label: `GST (${doc.gstRate}%)`, value: doc.gstAmount, dim: true },
-                  { label: t('TOTAL', 'TOTAL'), value: doc.total, bold: true },
-                  { label: `${t('Dépôt requis', 'Deposit Required')} (${doc.depositPercent}%)`, value: -doc.depositAmount, dim: true },
-                  { label: t('SOLDE DÛ', 'BALANCE DUE'), value: doc.balanceDue, big: true },
-                ].map(({ label, value, dim, bold, big }) => (
+                {([
+                  { label: t('Sous-total', 'Subtotal'), value: doc.subtotal, dim: false, bold: false, big: false },
+                  { label: `${t('Remise', 'Discount')} (${doc.discountPercent}%)`, value: -doc.discountAmount, dim: true, bold: false, big: false },
+                  { label: `GST (${doc.gstRate}%)`, value: doc.gstAmount, dim: true, bold: false, big: false },
+                  { label: t('TOTAL', 'TOTAL'), value: doc.total, dim: false, bold: true, big: false },
+                  { label: `${t('Dépôt requis', 'Deposit Required')} (${doc.depositPercent}%)`, value: -doc.depositAmount, dim: true, bold: false, big: false },
+                  { label: t('SOLDE DÛ', 'BALANCE DUE'), value: doc.balanceDue, dim: false, bold: false, big: true },
+                ] as { label: string; value: number; dim: boolean; bold: boolean; big: boolean }[]).map(({ label, value, dim, bold, big }) => (
                   <div key={label} className={`flex justify-between items-center ${(bold || big) ? 'border-t border-white/10 pt-2 mt-2' : ''}`}>
                     <span className={`text-sm ${dim ? 'text-gray-500' : bold ? 'font-bold text-white' : big ? 'font-black text-orange-400 text-base' : 'text-gray-300'}`}>
                       {label}
