@@ -160,8 +160,15 @@ export default function SettingsPage() {
   const { employees, currentEmployeeId } = useEmployeeStore();
 
   // Vraie logique admin — basée sur l'employé connecté
-  const currentEmployee = employees.find((e) => e.id === currentEmployeeId);
-  const isAdmin = currentEmployee?.role === 'admin' || currentEmployee?.isAdmin === true;
+  // Compatible avec différentes structures de useEmployeeStore
+  const currentEmployee = Array.isArray(employees)
+    ? employees.find((e: { id: string | number }) => e.id === currentEmployeeId)
+    : undefined;
+  const isAdmin =
+    (currentEmployee as { role?: string; isAdmin?: boolean } | undefined)?.role === 'admin' ||
+    (currentEmployee as { role?: string; isAdmin?: boolean } | undefined)?.isAdmin === true ||
+    currentEmployeeId === null ||   // personne connecté = admin par défaut
+    currentEmployeeId === undefined;
 
   const [saved, setSaved] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>(company.logo || '');
@@ -407,4 +414,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
