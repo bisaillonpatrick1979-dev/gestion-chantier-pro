@@ -163,6 +163,7 @@ export default function SettingsPage() {
       hourlyRate: newEmp.hourlyRate,
       pin: newEmp.pin || '0000',
       active: true,
+      color: '#f59e0b',
     });
     setNewEmp({ name: '', role: 'employee', workMode: 'heure', hourlyRate: 45, pin: '0000' });
     setShowAddEmp(false);
