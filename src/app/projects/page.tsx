@@ -45,7 +45,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function JobCardModal({ project, onClose }: { project: Project; onClose: () => void }) {
-  const { addExpense, removeExpense, closeProject } = useProjectStore();
+  const { addExpense, removeExpense, closeProject, updateProject } = useProjectStore();
+  const employeeStore = useEmployeeStore();
+  const allEmployees = (employeeStore as unknown as Record<string, unknown>).employees as Array<{
+    id: string; name: string; hourlyRate?: number; role?: string;
+  }> ?? [];
+
   const [expDesc, setExpDesc] = useState('');
   const [expAmt, setExpAmt] = useState('');
   const [tab, setTab] = useState<'overview' | 'employees' | 'expenses' | 'logs'>('overview');
@@ -58,9 +63,21 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
     setExpDesc(''); setExpAmt('');
   };
 
+  const toggleAssignEmployee = (empId: string) => {
+    const current = project.assignedEmployeeIds ?? [];
+    const updated = current.includes(empId)
+      ? current.filter(id => id !== empId)
+      : [...current, empId];
+    updateProject(project.id, { assignedEmployeeIds: updated });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center">
-      <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
+      style={{ paddingBottom: '64px' }}>
+      <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - 64px)' }}>
+
+        {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
           <div className="flex items-start justify-between mb-1">
             <div className="flex-1 pr-3">
@@ -90,7 +107,10 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
           </div>
         </div>
 
+        {/* Contenu scrollable */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+          {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
             <>
               {project.clientAmount !== undefined && (
@@ -140,37 +160,85 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
             </>
           )}
 
+          {/* ── ÉQUIPE — ajouter/retirer employés en temps réel ── */}
           {tab === 'employees' && (
-            <div className="space-y-3">
-              {Object.values(stats.byEmployee).length === 0 && (
-                <p className="text-center text-gray-500 text-sm py-6">Aucune heure enregistrée.</p>
-              )}
-              {Object.values(stats.byEmployee).map(emp => (
-                <div key={emp.employeeId} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-bold text-white">{emp.employeeName}</p>
-                      <p className="text-xs text-gray-400">${emp.hourlyRate}/h · {emp.sessions} session(s)</p>
+            <div className="space-y-4">
+
+              {/* Gérer l'équipe */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-3">
+                  ✏️ Gérer l'équipe du projet
+                </p>
+                <div className="space-y-2">
+                  {allEmployees.length === 0 && (
+                    <p className="text-gray-500 text-sm text-center py-3">Aucun employé dans le système.</p>
+                  )}
+                  {allEmployees.map(emp => {
+                    const assigned = (project.assignedEmployeeIds ?? []).includes(emp.id);
+                    return (
+                      <button key={emp.id} onClick={() => toggleAssignEmployee(emp.id)}
+                        className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
+                          assigned ? 'border-orange-400 bg-orange-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{assigned ? '✅' : '⬜'}</span>
+                          <div className="text-left">
+                            <p className="text-sm font-semibold text-white">{emp.name}</p>
+                            <p className="text-xs text-gray-400">${emp.hourlyRate ?? 0}/h · {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                          assigned ? 'bg-orange-500/30 text-orange-300' : 'text-gray-500'
+                        }`}>
+                          {assigned ? 'Assigné' : 'Ajouter'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Stats par employé */}
+              {Object.values(stats.byEmployee).length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">📊 Heures enregistrées</p>
+                  {Object.values(stats.byEmployee).map(emp => (
+                    <div key={emp.employeeId} className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="font-bold text-white">{emp.employeeName}</p>
+                          <p className="text-xs text-gray-400">${emp.hourlyRate}/h · {emp.sessions} session(s)</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-black text-orange-400">{fmt(emp.totalPay)}</p>
+                          {emp.totalHours > 0 && <p className="text-xs text-gray-400">{emp.totalHours.toFixed(2)}h</p>}
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-orange-400 rounded-full"
+                          style={{ width: `${Math.min(100, (emp.totalPay / (stats.totalLaborCost || 1)) * 100)}%` }} />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-black text-orange-400">{fmt(emp.totalPay)}</p>
-                      {emp.totalHours > 0 && <p className="text-xs text-gray-400">{emp.totalHours.toFixed(2)}h</p>}
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-orange-400 rounded-full"
-                      style={{ width: `${Math.min(100, (emp.totalPay / (stats.totalLaborCost || 1)) * 100)}%` }} />
+                  ))}
+                  <div className="rounded-2xl bg-orange-500/10 border border-orange-500/30 p-4 flex justify-between items-center">
+                    <span className="text-sm font-bold text-orange-300">Total main d'œuvre</span>
+                    <span className="text-xl font-black text-orange-400">{fmt(stats.totalLaborCost)}</span>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {Object.values(stats.byEmployee).length === 0 && (
+                <p className="text-center text-gray-500 text-sm py-4">Aucune heure enregistrée pour ce projet.</p>
+              )}
             </div>
           )}
 
+          {/* ── DÉPENSES ── */}
           {tab === 'expenses' && (
             <div className="space-y-3">
               <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">➕ Ajouter une dépense</p>
-                <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Description..."
+                <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Description (gaz, matériaux...)"
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none mb-2" />
                 <div className="flex gap-2">
                   <input type="number" value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="Montant $"
@@ -192,12 +260,19 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
                 </div>
               ))}
               {project.expenses.length === 0 && <p className="text-center text-gray-500 text-sm py-4">Aucune dépense.</p>}
+              {project.expenses.length > 0 && (
+                <div className="rounded-2xl bg-red-500/10 border border-red-500/30 p-4 flex justify-between items-center">
+                  <span className="text-sm font-bold text-red-300">Total dépenses</span>
+                  <span className="text-xl font-black text-red-400">{fmt(stats.totalExpenses)}</span>
+                </div>
+              )}
             </div>
           )}
 
+          {/* ── LOGS ── */}
           {tab === 'logs' && (
             <div className="space-y-2">
-              {project.workLogs.length === 0 && <p className="text-center text-gray-500 text-sm py-6">Aucun log.</p>}
+              {project.workLogs.length === 0 && <p className="text-center text-gray-500 text-sm py-6">Aucun log de travail.</p>}
               {[...project.workLogs].reverse().map((log, idx) => (
                 <div key={idx} className={`rounded-2xl border p-4 ${!log.punchOut ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/10'}`}>
                   <div className="flex justify-between items-start">
@@ -261,7 +336,8 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center" style={{ paddingBottom: '64px' }}>
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
+      style={{ paddingBottom: '64px' }}>
       <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 flex flex-col"
         style={{ maxHeight: 'calc(100dvh - 64px)' }}>
 
@@ -270,7 +346,6 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-gray-400 text-2xl hover:text-white">✕</button>
         </div>
 
-        {/* Contenu scrollable */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Nom du projet *</label>
@@ -295,7 +370,6 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
             <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Calgary"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
           </div>
-
           <div>
             <label className="block text-xs text-gray-400 mb-2">Mode de paiement des employés</label>
             <div className="grid grid-cols-3 gap-2">
@@ -309,7 +383,6 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
-
           {form.payMode === 'hourly' && (
             <div>
               <label className="block text-xs text-gray-400 mb-1">Taux horaire par défaut ($/h)</label>
@@ -331,13 +404,11 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
             </div>
           )}
-
           <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-3">
             <label className="block text-xs text-orange-400 font-bold mb-1">💼 Montant client (admin seulement)</label>
             <input type="number" value={form.clientAmount} onChange={e => set('clientAmount', e.target.value)} placeholder="Ex: 3500"
               className="w-full rounded-xl border border-orange-500/30 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
           </div>
-
           <div>
             <label className="block text-xs text-gray-400 mb-2">Employés assignés</label>
             <div className="space-y-2">
@@ -355,7 +426,6 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </div>
-
           <div>
             <label className="block text-xs text-gray-400 mb-1">Notes</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
@@ -364,7 +434,6 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* ── Bouton fixe en bas du modal — toujours visible ── */}
         <div className="px-5 py-4 shrink-0 border-t border-white/10 bg-gray-900">
           <button onClick={handleSubmit} disabled={!form.name || !form.address}
             className="w-full rounded-2xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-black py-4 text-base transition-all">
@@ -381,7 +450,6 @@ export default function ProjectsPage() {
   const [showNew, setShowNew] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open');
-
   const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter);
 
   return (
@@ -399,9 +467,9 @@ export default function ProjectsPage() {
         </div>
         <div className="flex gap-1 bg-white/5 rounded-xl p-1 mt-3">
           {([
-            { id: 'open' as const, label: '🟢 Ouverts' },
+            { id: 'open'   as const, label: '🟢 Ouverts' },
             { id: 'closed' as const, label: '🔒 Fermés' },
-            { id: 'all' as const, label: '📋 Tous' },
+            { id: 'all'    as const, label: '📋 Tous' },
           ]).map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)}
               className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
