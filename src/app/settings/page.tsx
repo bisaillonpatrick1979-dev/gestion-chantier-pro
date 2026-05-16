@@ -1,413 +1,639 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useCompanyStore, CompanyInfo } from '@/store/useCompanyStore';
-import { useEmployeeStore } from '@/store/useEmployeeStore';
-import { useThemeStore } from '@/store/useThemeStore';
-import { useLangStore } from '@/store/useLangStore';
-import { getAllThemes } from '@/lib/themes';
-import BottomNav from '@/components/BottomNav';
+import { useState } from "react";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
 
-const THEMES = getAllThemes();
+// ─── Themes ──────────────────────────────────────────────────────────────────
+const ALL_THEMES = [
+  { id: "dark", label: "Nuit Professionnelle", emoji: "🌙", preview: "#1a1a2e" },
+  { id: "light", label: "Blanc Épuré", emoji: "☀️", preview: "#f8f8f8" },
+  { id: "blue", label: "Bleu Acier", emoji: "🔵", preview: "#0f2d4a" },
+  { id: "green", label: "Forêt Industriel", emoji: "🌲", preview: "#1a2e1a" },
+  { id: "red", label: "Rouge Chantier", emoji: "🔴", preview: "#2e1a1a" },
+  { id: "deco", label: "Art Déco Prestige", emoji: "✨", preview: "#1a1400" },
+];
 
-const ChevronRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-);
-const SaveIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-    <polyline points="17 21 17 13 7 13 7 21" />
-    <polyline points="7 3 7 8 15 8" />
-  </svg>
-);
+// ─── Section IDs ──────────────────────────────────────────────────────────────
+type SectionId =
+  | "company"
+  | "contact"
+  | "legal"
+  | "payment"
+  | "billing"
+  | "employees"
+  | "theme"
+  | "numbering"
+  | "danger";
 
-function Section({ title, emoji, children, defaultOpen = false }: {
-  title: string; emoji: string; children: React.ReactNode; defaultOpen?: boolean;
+interface Section {
+  id: SectionId;
+  emoji: string;
+  labelFr: string;
+  labelEn: string;
+}
+
+const SECTIONS: Section[] = [
+  { id: "company", emoji: "🏢", labelFr: "Compagnie", labelEn: "Company" },
+  { id: "contact", emoji: "📞", labelFr: "Contact", labelEn: "Contact" },
+  { id: "legal", emoji: "📋", labelFr: "Légal & Taxes", labelEn: "Legal & Taxes" },
+  { id: "payment", emoji: "💳", labelFr: "Paiement", labelEn: "Payment" },
+  { id: "billing", emoji: "🧾", labelFr: "Facturation", labelEn: "Billing" },
+  { id: "employees", emoji: "👷", labelFr: "Employés", labelEn: "Employees" },
+  { id: "theme", emoji: "🎨", labelFr: "Thème", labelEn: "Theme" },
+  { id: "numbering", emoji: "🔢", labelFr: "Numérotation", labelEn: "Numbering" },
+  { id: "danger", emoji: "⚠️", labelFr: "Zone Danger", labelEn: "Danger Zone" },
+];
+
+// ─── Styles helpers ───────────────────────────────────────────────────────────
+const card: React.CSSProperties = {
+  background: "var(--card-bg, #1e1e1e)",
+  border: "1px solid var(--border, #2a2a2a)",
+  borderRadius: "12px",
+  padding: "20px",
+  marginBottom: "16px",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "var(--input-bg, #111)",
+  border: "1px solid var(--border, #333)",
+  borderRadius: "8px",
+  padding: "10px 12px",
+  color: "var(--text, #fff)",
+  fontSize: "15px",
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "12px",
+  color: "#888",
+  marginBottom: "4px",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+};
+
+const btnGold: React.CSSProperties = {
+  background: "linear-gradient(135deg, #D4AF37, #B8963E)",
+  color: "#000",
+  border: "none",
+  borderRadius: "10px",
+  padding: "12px 24px",
+  fontWeight: 700,
+  fontSize: "15px",
+  cursor: "pointer",
+  width: "100%",
+};
+
+const btnDanger: React.CSSProperties = {
+  background: "#7f1d1d",
+  color: "#fca5a5",
+  border: "1px solid #991b1b",
+  borderRadius: "10px",
+  padding: "12px 24px",
+  fontWeight: 700,
+  fontSize: "15px",
+  cursor: "pointer",
+  width: "100%",
+  marginTop: "8px",
+};
+
+// ─── Field helper ─────────────────────────────────────────────────────────────
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}: {
+  label: string;
+  value: string | number;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="mb-2 rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-      <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
-        <span className="font-semibold text-white text-sm">{emoji} {title}</span>
-        <span className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>
-          <ChevronRight />
-        </span>
-      </button>
-      {open && <div className="px-4 pb-4 space-y-3 border-t border-white/10 pt-3">{children}</div>}
+    <div style={{ marginBottom: "12px" }}>
+      <label style={labelStyle}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={inputStyle}
+      />
     </div>
   );
 }
 
-function NavLink({ emoji, title, subtitle, onClick }: {
-  emoji: string; title: string; subtitle?: string; onClick: () => void;
-}) {
-  return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 hover:bg-white/10 hover:border-orange-400/30 transition text-left">
-      <span className="text-2xl">{emoji}</span>
-      <div className="flex-1">
-        <p className="text-white text-sm font-semibold">{title}</p>
-        {subtitle && <p className="text-gray-400 text-xs">{subtitle}</p>}
-      </div>
-      <ChevronRight />
-    </button>
-  );
-}
-
-function Field({ label, value, onChange, placeholder = '', type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400 transition" />
-    </div>
-  );
-}
-
-function NumberField({ label, value, onChange, min = 0, max = 100, step = 1, suffix = '' }: {
-  label: string; value: number; onChange: (v: number) => void;
-  min?: number; max?: number; step?: number; suffix?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <div className="flex items-center gap-2">
-        <input type="number" value={value} min={min} max={max} step={step}
-          onChange={e => onChange(parseFloat(e.target.value) || 0)}
-          className="w-28 bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-400 transition" />
-        {suffix && <span className="text-gray-400 text-xs">{suffix}</span>}
-      </div>
-    </div>
-  );
-}
-
-function TextArea({ label, value, onChange, placeholder = '', rows = 3 }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
-        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400 transition resize-none" />
-    </div>
-  );
-}
-
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const router = useRouter();
+  const { company, updateCompany, resetNumbering } = useCompanyStore();
+  const { employees, removeEmployee, currentEmployee } = useEmployeeStore();
 
-  const company = useCompanyStore(s => s.company);
-  const updateCompany = useCompanyStore(s => s.updateCompany);
-  const employees = useEmployeeStore(s => s.employees);
-  const addEmployee = useEmployeeStore(s => s.addEmployee);
-  const deleteEmployee = useEmployeeStore(s => s.deleteEmployee);
-  const currentEmployeeId = useEmployeeStore(s => s.currentEmployeeId);
-  const currentEmployee = currentEmployeeId != null
-    ? employees.find(e => e.id === currentEmployeeId)
-    : undefined;
-  const isAdmin =
-    currentEmployee?.role === 'admin' ||
-    currentEmployeeId == null;
-
-  const themeId = useThemeStore(s => s.themeId);
-  const setTheme = useThemeStore(s => s.setTheme);
-
-  const lang = useLangStore(s => s.lang);
-  const setLang = useLangStore(s => s.setLang);
-
-  const [form, setForm] = useState<CompanyInfo>({ ...company });
+  const [activeSection, setActiveSection] = useState<SectionId>("company");
   const [saved, setSaved] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string>(company.logo || company.logoUrl || '');
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [newEmp, setNewEmp] = useState({ name: '', role: 'employee' as 'employee' | 'admin', workMode: 'heure' as 'heure' | 'surface', hourlyRate: 45, pin: '0000' });
-  const [showAddEmp, setShowAddEmp] = useState(false);
+  const [lang] = useState<"fr" | "en">("fr");
+  const [currentTheme, setCurrentTheme] = useState("dark");
 
-  const setField = (field: keyof CompanyInfo) => (v: string) => setForm(p => ({ ...p, [field]: v }));
+  const isAdmin = currentEmployee?.role === "admin";
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const data = ev.target?.result as string;
-      setLogoPreview(data);
-      setForm(p => ({ ...p, logo: data, logoUrl: data }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = () => {
-    updateCompany({ ...form, logoUrl: form.logo || form.logoUrl });
+  function save() {
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
+    setTimeout(() => setSaved(false), 2000);
+  }
 
-  const handleAddEmployee = () => {
-    if (!newEmp.name.trim()) return;
-    addEmployee({
-      name: newEmp.name.trim(),
-      role: newEmp.role,
-      workMode: newEmp.workMode,
-      hourlyRate: newEmp.hourlyRate,
-      pin: newEmp.pin || '0000',
-      active: true,
-      color: '#f59e0b',
-    });
-    setNewEmp({ name: '', role: 'employee', workMode: 'heure', hourlyRate: 45, pin: '0000' });
-    setShowAddEmp(false);
-  };
+  function applyTheme(themeId: string) {
+    setCurrentTheme(themeId);
+    if (typeof document !== "undefined") {
+      document.body.setAttribute("data-theme", themeId);
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("gcp-theme", themeId);
+    }
+  }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center space-y-4">
-            <div className="text-6xl">🔒</div>
-            <h2 className="text-xl font-bold text-white">Accès restreint</h2>
-            <p className="text-gray-400 text-sm">Seuls les administrateurs peuvent accéder aux réglages.</p>
-            <button onClick={() => router.push('/')}
-              className="mt-4 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition">
-              Retour au tableau de bord
-            </button>
-          </div>
-        </div>
-        <BottomNav />
+      <div style={{ padding: "40px 20px", textAlign: "center", color: "#888" }}>
+        <p style={{ fontSize: "48px" }}>🔒</p>
+        <p>Accès réservé à l&apos;administrateur</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-white">⚙️ Réglages</h1>
-          <p className="text-xs text-gray-400">Hailite Xteriors</p>
-        </div>
-        <button onClick={handleSave}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-            saved ? 'bg-green-500/20 text-green-400 border border-green-500/40'
-                  : 'bg-orange-500 text-white hover:bg-orange-600 active:scale-95'
-          }`}>
-          {saved ? '✅ Sauvegardé!' : <><SaveIcon /> Sauvegarder</>}
-        </button>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--bg, #111)",
+        color: "var(--text, #fff)",
+        paddingBottom: "80px",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "20px 16px 0",
+          borderBottom: "1px solid var(--border, #222)",
+          marginBottom: "16px",
+        }}
+      >
+        <h1 style={{ fontSize: "22px", fontWeight: 800, margin: 0, color: "#D4AF37" }}>
+          ⚙️ {lang === "fr" ? "Réglages" : "Settings"}
+        </h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-32 space-y-2">
+      {/* Tabs */}
+      <div
+        style={{
+          display: "flex",
+          overflowX: "auto",
+          gap: "8px",
+          padding: "0 16px 12px",
+          scrollbarWidth: "none",
+        }}
+      >
+        {SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setActiveSection(s.id)}
+            style={{
+              flexShrink: 0,
+              padding: "8px 14px",
+              borderRadius: "20px",
+              border: activeSection === s.id ? "none" : "1px solid #333",
+              background:
+                activeSection === s.id
+                  ? "linear-gradient(135deg,#D4AF37,#B8963E)"
+                  : "transparent",
+              color: activeSection === s.id ? "#000" : "#aaa",
+              fontWeight: activeSection === s.id ? 700 : 400,
+              fontSize: "13px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {s.emoji} {lang === "fr" ? s.labelFr : s.labelEn}
+          </button>
+        ))}
+      </div>
 
-        {/* Liens rapides */}
-        <div className="mb-2">
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-2 px-1">Navigation rapide</p>
-          <div className="space-y-2">
-            <NavLink emoji="👥" title="Clients" subtitle="Gérer la liste des clients" onClick={() => router.push('/clients')} />
-            <NavLink emoji="📦" title="Catalogue matériaux" subtitle="Prix et inventaire" onClick={() => router.push('/catalogue')} />
-            <NavLink emoji="💼" title="Comptabilité" subtitle="Revenus, dépenses, rapports" onClick={() => router.push('/comptabilite')} />
-            <NavLink emoji="📋" title="Livre de paye" subtitle="Employés, heures, paie" onClick={() => router.push('/paye')} />
-            <NavLink emoji="📁" title="Projets" subtitle="Chantiers en cours" onClick={() => router.push('/projects')} />
-          </div>
-        </div>
-
-        {/* Langue */}
-        <Section emoji="🌐" title="Langue / Language">
-          <div className="flex gap-3">
-            <button onClick={() => setLang('fr')}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm border transition ${
-                lang === 'fr' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-              }`}>
-              🇫🇷 Français
+      <div style={{ padding: "0 16px" }}>
+        {/* ── COMPANY ── */}
+        {activeSection === "company" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              🏢 Informations Compagnie
+            </h2>
+            <Field
+              label="Nom de la compagnie"
+              value={company.name}
+              onChange={(v) => updateCompany({ name: v })}
+            />
+            <Field
+              label="Slogan"
+              value={company.tagline}
+              onChange={(v) => updateCompany({ tagline: v })}
+            />
+            <Field
+              label="Nom du propriétaire"
+              value={company.ownerName}
+              onChange={(v) => updateCompany({ ownerName: v })}
+            />
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
             </button>
-            <button onClick={() => setLang('en')}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm border transition ${
-                lang === 'en' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-              }`}>
-              🇨🇦 English
+          </div>
+        )}
+
+        {/* ── CONTACT ── */}
+        {activeSection === "contact" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              📞 Coordonnées
+            </h2>
+            <Field
+              label="Adresse"
+              value={company.address}
+              onChange={(v) => updateCompany({ address: v })}
+            />
+            <Field
+              label="Ville"
+              value={company.city}
+              onChange={(v) => updateCompany({ city: v })}
+            />
+            <Field
+              label="Province"
+              value={company.province}
+              onChange={(v) => updateCompany({ province: v })}
+            />
+            <Field
+              label="Code postal"
+              value={company.postalCode}
+              onChange={(v) => updateCompany({ postalCode: v })}
+            />
+            <Field
+              label="Téléphone"
+              value={company.phone}
+              onChange={(v) => updateCompany({ phone: v })}
+              type="tel"
+            />
+            <Field
+              label="Courriel"
+              value={company.email}
+              onChange={(v) => updateCompany({ email: v })}
+              type="email"
+            />
+            <Field
+              label="Site web"
+              value={company.website}
+              onChange={(v) => updateCompany({ website: v })}
+            />
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
             </button>
           </div>
-        </Section>
+        )}
 
-        {/* Thèmes */}
-        <Section emoji="🎨" title="Thème / Skin">
-          <div className="grid grid-cols-3 gap-2">
-            {THEMES.map(th => (
-              <button key={th.id} onClick={() => setTheme(th.id)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition ${
-                  themeId === th.id
-                    ? 'border-orange-400 bg-orange-500/10'
-                    : 'border-white/10 bg-white/5 hover:bg-white/10'
-                }`}>
-                <span className="text-2xl">{th.emoji}</span>
-                <span className="text-xs text-white font-medium text-center leading-tight">{th.nameFr}</span>
-                {themeId === th.id && (
-                  <span className="text-xs text-orange-400 font-bold">✓ Actif</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        {/* Infos compagnie */}
-        <Section emoji="🏢" title="Informations Compagnie" defaultOpen>
-          <div className="flex items-center gap-4 mb-2">
-            <div onClick={() => fileRef.current?.click()}
-              className="w-20 h-20 rounded-2xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-orange-400 transition overflow-hidden bg-white/5">
-              {logoPreview
-                ? <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
-                : <div className="text-center text-gray-500 text-xs">📷<br />Logo</div>
-              }
+        {/* ── LEGAL ── */}
+        {activeSection === "legal" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              📋 Légal & Taxes (Alberta)
+            </h2>
+            <div
+              style={{
+                background: "#1a2010",
+                border: "1px solid #3a5a20",
+                borderRadius: "8px",
+                padding: "12px",
+                marginBottom: "16px",
+                fontSize: "13px",
+                color: "#86efac",
+              }}
+            >
+              ℹ️ Alberta = GST 5% seulement (pas de PST/HST). WCB pour assurance employés.
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-white font-medium">Logo compagnie</p>
-              <p className="text-xs text-gray-400">PNG, JPG — max 2 MB</p>
-              <button onClick={() => fileRef.current?.click()} className="mt-2 text-xs text-orange-400 underline">
-                Changer le logo
-              </button>
+            <Field
+              label="Numéro GST/HST (5% Alberta)"
+              value={company.gstNumber}
+              onChange={(v) => updateCompany({ gstNumber: v })}
+              placeholder="123456789 RT 0001"
+            />
+            <Field
+              label="Numéro WCB"
+              value={company.wcbNumber}
+              onChange={(v) => updateCompany({ wcbNumber: v })}
+            />
+            <Field
+              label="Numéro d'entreprise (CRA)"
+              value={company.businessNumber}
+              onChange={(v) => updateCompany({ businessNumber: v })}
+            />
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
+            </button>
+          </div>
+        )}
+
+        {/* ── PAYMENT ── */}
+        {activeSection === "payment" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              💳 Informations de Paiement
+            </h2>
+            <Field
+              label="Courriel Interac e-Transfer"
+              value={company.etransferEmail}
+              onChange={(v) => updateCompany({ etransferEmail: v })}
+              type="email"
+            />
+            <Field
+              label="Nom de la banque"
+              value={company.bankName}
+              onChange={(v) => updateCompany({ bankName: v })}
+            />
+            <Field
+              label="Numéro de transit"
+              value={company.bankTransit}
+              onChange={(v) => updateCompany({ bankTransit: v })}
+            />
+            <Field
+              label="Numéro de compte"
+              value={company.bankAccount}
+              onChange={(v) => updateCompany({ bankAccount: v })}
+            />
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
+            </button>
+          </div>
+        )}
+
+        {/* ── BILLING ── */}
+        {activeSection === "billing" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              🧾 Paramètres Facturation
+            </h2>
+            <Field
+              label="Dépôt requis (%)"
+              value={company.defaultDepositPercent}
+              onChange={(v) => updateCompany({ defaultDepositPercent: Number(v) })}
+              type="number"
+            />
+            <Field
+              label="Délai de paiement (jours)"
+              value={company.defaultPaymentTermsDays}
+              onChange={(v) => updateCompany({ defaultPaymentTermsDays: Number(v) })}
+              type="number"
+            />
+            <div style={{ marginBottom: "12px" }}>
+              <label style={labelStyle}>Notes par défaut</label>
+              <textarea
+                value={company.defaultNotes}
+                onChange={(e) => updateCompany({ defaultNotes: e.target.value })}
+                rows={3}
+                style={{
+                  ...inputStyle,
+                  resize: "vertical",
+                }}
+              />
             </div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
+            </button>
           </div>
-          <Field label="Nom" value={form.name} onChange={setField('name')} placeholder="Hailite Xteriors" />
-          <Field label="Adresse" value={form.address} onChange={setField('address')} placeholder="123 Main St" />
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Ville" value={form.city} onChange={setField('city')} placeholder="Calgary" />
-            <Field label="Province" value={form.province} onChange={setField('province')} placeholder="AB" />
-          </div>
-          <Field label="Code postal" value={form.postalCode} onChange={setField('postalCode')} placeholder="T2P 1J9" />
-          <Field label="Téléphone" value={form.phone} onChange={setField('phone')} type="tel" placeholder="(403) 555-0100" />
-          <Field label="Courriel" value={form.email} onChange={setField('email')} type="email" placeholder="info@hailitexteriors.ca" />
-          <Field label="Site web" value={form.website} onChange={setField('website')} placeholder="www.hailitexteriors.ca" />
-        </Section>
+        )}
 
-        {/* Numéros légaux */}
-        <Section emoji="📋" title="Numéros légaux et Taxes">
-          <Field label="Numéro GST" value={form.gstNumber} onChange={setField('gstNumber')} placeholder="123456789 RT0001" />
-          <Field label="Numéro WCB" value={form.wcbNumber} onChange={setField('wcbNumber')} placeholder="WCB-XXXX" />
-          <Field label="Numéro de licence" value={form.licenseNumber} onChange={setField('licenseNumber')} placeholder="Contractor #" />
-          <NumberField label="Taux GST (%)" value={form.defaultGstRate}
-            onChange={v => setForm(p => ({ ...p, gstRate: v, defaultGstRate: v }))}
-            step={0.5} suffix="Alberta = 5% seulement" />
-        </Section>
-
-        {/* Paiement */}
-        <Section emoji="💳" title="Paiement et Modalités">
-          <Field label="E-Transfer (courriel)" value={form.eTransferEmail} onChange={setField('eTransferEmail')} type="email" placeholder="factures@hailitexteriors.ca" />
-          <Field label="Délai de paiement" value={form.paymentTerms} onChange={setField('paymentTerms')} placeholder="Net 30" />
-          <NumberField label="Dépôt par défaut (%)" value={form.defaultDepositPercent}
-            onChange={v => setForm(p => ({ ...p, defaultDepositPercent: v }))} suffix="% du total" />
-          <TextArea label="Info bancaire" value={form.bankInfo} onChange={setField('bankInfo')}
-            placeholder="E-Transfer : factures@hailitexteriors.ca" rows={2} />
-        </Section>
-
-        {/* Numéros séquentiels */}
-        <Section emoji="🔢" title="Numéros séquentiels">
-          <NumberField label="Prochain # Facture" value={form.invoiceNextNumber}
-            onChange={v => setForm(p => ({ ...p, invoiceNextNumber: Math.floor(v) }))}
-            min={1} max={99999} suffix="FACT-2026-XXXX" />
-          <NumberField label="Prochain # Devis" value={form.quoteNextNumber}
-            onChange={v => setForm(p => ({ ...p, quoteNextNumber: Math.floor(v) }))}
-            min={1} max={99999} suffix="DEV-2026-XXXX" />
-          <NumberField label="Prochain # Contrat" value={form.contractNextNumber}
-            onChange={v => setForm(p => ({ ...p, contractNextNumber: Math.floor(v) }))}
-            min={1} max={99999} suffix="CONT-2026-XXXX" />
-        </Section>
-
-        {/* Notes */}
-        <Section emoji="📝" title="Notes et Conditions par défaut">
-          <TextArea label="Notes par défaut" value={form.invoiceNotes}
-            onChange={v => setForm(p => ({ ...p, invoiceNotes: v, defaultNotes: v }))}
-            placeholder="Merci pour votre confiance!" rows={3} />
-          <TextArea label="Conditions générales" value={form.defaultTerms} onChange={setField('defaultTerms')}
-            placeholder="Paiement dû dans les 30 jours..." rows={3} />
-        </Section>
-
-        {/* Employés */}
-        <Section emoji="👷" title="Employés et PIN">
-          <div className="space-y-2">
+        {/* ── EMPLOYEES ── */}
+        {activeSection === "employees" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              👷 Gestion des Employés
+            </h2>
             {employees.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-3">Aucun employé enregistré.</p>
+              <p style={{ color: "#666", textAlign: "center", padding: "20px 0" }}>
+                Aucun employé enregistré
+              </p>
             ) : (
-              employees.map(emp => (
-                <div key={emp.id} className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
+              employees.map((emp) => (
+                <div
+                  key={emp.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px",
+                    background: "#111",
+                    borderRadius: "8px",
+                    marginBottom: "8px",
+                  }}
+                >
                   <div>
-                    <p className="text-white text-sm font-medium">{emp.name}</p>
-                    <p className="text-gray-400 text-xs">
-                      {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}
-                      {emp.hourlyRate ? ` · $${emp.hourlyRate}/h` : ''}
-                      {` · ${emp.workMode === 'surface' ? '📐 Surface' : '⏱️ Heure'}`}
-                    </p>
+                    <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                    <div style={{ fontSize: "12px", color: "#888" }}>
+                      {emp.role === "admin" ? "👑 Admin" : "👷 Employé"} •{" "}
+                      {emp.hourlyRate ? `$${emp.hourlyRate}/h` : "Taux non défini"}
+                    </div>
                   </div>
-                  <button onClick={() => deleteEmployee(String(emp.id))}
-                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded-lg hover:bg-red-500/10">✕</button>
+                  {emp.role !== "admin" && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Supprimer ${emp.name}?`)) {
+                          removeEmployee(emp.id);
+                        }
+                      }}
+                      style={{
+                        background: "#7f1d1d",
+                        color: "#fca5a5",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "6px 12px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                      }}
+                    >
+                      Supprimer
+                    </button>
+                  )}
                 </div>
               ))
             )}
           </div>
-          {!showAddEmp ? (
-            <button onClick={() => setShowAddEmp(true)}
-              className="w-full mt-2 py-2.5 border border-dashed border-orange-500/40 text-orange-400 rounded-xl text-sm font-semibold hover:bg-orange-500/5 transition">
-              + Ajouter un employé
-            </button>
-          ) : (
-            <div className="mt-2 space-y-2 border border-white/10 rounded-xl p-3 bg-white/5">
-              <p className="text-xs font-bold text-orange-400">Nouvel employé</p>
-              <input value={newEmp.name} onChange={e => setNewEmp(p => ({ ...p, name: e.target.value }))}
-                placeholder="Nom complet"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400" />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={newEmp.role} onChange={e => setNewEmp(p => ({ ...p, role: e.target.value as 'employee' | 'admin' }))}
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none">
-                  <option value="employee">👷 Employé</option>
-                  <option value="admin">👑 Admin</option>
-                </select>
-                <input type="number" value={newEmp.hourlyRate}
-                  onChange={e => setNewEmp(p => ({ ...p, hourlyRate: parseFloat(e.target.value) || 0 }))}
-                  placeholder="$/h"
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
-              </div>
-              <select value={newEmp.workMode} onChange={e => setNewEmp(p => ({ ...p, workMode: e.target.value as 'heure' | 'surface' }))}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none">
-                <option value="heure">⏱️ À heure</option>
-                <option value="surface">📐 Au pied carré</option>
-              </select>
-              <input value={newEmp.pin} onChange={e => setNewEmp(p => ({ ...p, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                placeholder="PIN (4 chiffres)" maxLength={4} type="password"
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400" />
-              <div className="flex gap-2">
-                <button onClick={() => setShowAddEmp(false)}
-                  className="flex-1 py-2 border border-white/10 rounded-xl text-gray-400 text-sm hover:bg-white/5">Annuler</button>
-                <button onClick={handleAddEmployee}
-                  className="flex-1 py-2 bg-orange-500 rounded-xl text-white font-bold text-sm hover:bg-orange-600">Ajouter</button>
-              </div>
+        )}
+
+        {/* ── THEME ── */}
+        {activeSection === "theme" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              🎨 Thème de l&apos;application
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {ALL_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => applyTheme(theme.id)}
+                  style={{
+                    background: theme.preview,
+                    border:
+                      currentTheme === theme.id
+                        ? "2px solid #D4AF37"
+                        : "2px solid transparent",
+                    borderRadius: "10px",
+                    padding: "16px 12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    color: "#fff",
+                  }}
+                >
+                  <div style={{ fontSize: "20px", marginBottom: "4px" }}>{theme.emoji}</div>
+                  <div style={{ fontSize: "12px", fontWeight: 600 }}>{theme.label}</div>
+                  {currentTheme === theme.id && (
+                    <div style={{ fontSize: "11px", color: "#D4AF37", marginTop: "4px" }}>
+                      ✓ Actif
+                    </div>
+                  )}
+                </button>
+              ))}
             </div>
-          )}
-          <button onClick={() => router.push('/paye')}
-            className="w-full mt-2 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm hover:bg-white/10 transition">
-            📚 Livre de paye et Reset PIN →
-          </button>
-        </Section>
-
-        {/* Sécurité */}
-        <Section emoji="🔒" title="Sécurité">
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-sm text-orange-300">
-            ⚠️ Reset PIN admin → <strong>Livre de paye</strong>
           </div>
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 text-sm text-blue-300">
-            💡 Connecté : <strong>{currentEmployee?.name ?? 'Admin'}</strong>
+        )}
+
+        {/* ── NUMBERING ── */}
+        {activeSection === "numbering" && (
+          <div style={card}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px" }}>
+              🔢 Numérotation des Documents
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+                marginBottom: "16px",
+              }}
+            >
+              <Field
+                label="Préfixe Facture"
+                value={company.invoicePrefix}
+                onChange={(v) => updateCompany({ invoicePrefix: v })}
+                placeholder="FAC"
+              />
+              <Field
+                label="Prochain # Facture"
+                value={company.nextInvoiceNumber}
+                onChange={(v) => updateCompany({ nextInvoiceNumber: Number(v) })}
+                type="number"
+              />
+              <Field
+                label="Préfixe Devis"
+                value={company.quotePrefix}
+                onChange={(v) => updateCompany({ quotePrefix: v })}
+                placeholder="DEV"
+              />
+              <Field
+                label="Prochain # Devis"
+                value={company.nextQuoteNumber}
+                onChange={(v) => updateCompany({ nextQuoteNumber: Number(v) })}
+                type="number"
+              />
+              <Field
+                label="Préfixe Contrat"
+                value={company.contractPrefix}
+                onChange={(v) => updateCompany({ contractPrefix: v })}
+                placeholder="CTR"
+              />
+              <Field
+                label="Prochain # Contrat"
+                value={company.nextContractNumber}
+                onChange={(v) => updateCompany({ nextContractNumber: Number(v) })}
+                type="number"
+              />
+            </div>
+            <div
+              style={{
+                background: "#111",
+                borderRadius: "8px",
+                padding: "12px",
+                marginBottom: "12px",
+                fontSize: "13px",
+                color: "#aaa",
+              }}
+            >
+              Exemple: <strong style={{ color: "#D4AF37" }}>
+                {company.invoicePrefix}-{String(company.nextInvoiceNumber).padStart(3, "0")}
+              </strong>
+            </div>
+            <button style={btnGold} onClick={save}>
+              {saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}
+            </button>
           </div>
-        </Section>
+        )}
 
-        <button onClick={handleSave}
-          className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
-            saved ? 'bg-green-500/20 text-green-400 border border-green-500/40'
-                  : 'bg-orange-500 text-white hover:bg-orange-600'
-          }`}>
-          {saved ? '✅ Réglages sauvegardés!' : <><SaveIcon /> Sauvegarder tous les réglages</>}
-        </button>
-
+        {/* ── DANGER ZONE ── */}
+        {activeSection === "danger" && (
+          <div style={{ ...card, borderColor: "#7f1d1d" }}>
+            <h2
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                marginTop: 0,
+                marginBottom: "16px",
+                color: "#fca5a5",
+              }}
+            >
+              ⚠️ Zone Danger
+            </h2>
+            <p style={{ fontSize: "13px", color: "#888", marginBottom: "16px" }}>
+              Ces actions sont irréversibles. Procédez avec prudence.
+            </p>
+            <button
+              style={btnDanger}
+              onClick={() => {
+                if (
+                  confirm(
+                    "Réinitialiser la numérotation? Les prochains numéros repartiront à 001."
+                  )
+                ) {
+                  resetNumbering();
+                  alert("Numérotation réinitialisée.");
+                }
+              }}
+            >
+              🔢 Réinitialiser numérotation (001)
+            </button>
+            <button
+              style={{ ...btnDanger, marginTop: "12px" }}
+              onClick={() => {
+                if (
+                  confirm(
+                    "ATTENTION: Effacer TOUTES les données de la compagnie? Cette action est irréversible."
+                  )
+                ) {
+                  updateCompany({
+                    name: "Hailite Xteriors",
+                    tagline: "",
+                    address: "",
+                    city: "",
+                    phone: "",
+                    email: "",
+                    gstNumber: "",
+                    wcbNumber: "",
+                    businessNumber: "",
+                    etransferEmail: "",
+                  });
+                  alert("Données réinitialisées.");
+                }
+              }}
+            >
+              🗑️ Réinitialiser infos compagnie
+            </button>
+          </div>
+        )}
       </div>
-      <BottomNav />
     </div>
   );
 }
