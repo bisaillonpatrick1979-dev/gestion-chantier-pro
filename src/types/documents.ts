@@ -1,5 +1,4 @@
 // src/types/documents.ts
-// Exports nommés — compatibles avec tous les fichiers qui importent depuis ici
 
 export type DocumentType   = 'facture' | 'devis' | 'contrat'
 export type DocumentStatus = 'brouillon' | 'envoye' | 'accepte' | 'refuse' | 'paye'
@@ -35,6 +34,7 @@ export interface Document {
   number: string
   date: string
   dueDate: string
+  createdAt?: string
   status: DocumentStatus
   client: DocumentClient
   items: LineItem[]
