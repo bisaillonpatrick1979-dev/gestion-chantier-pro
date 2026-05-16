@@ -48,10 +48,7 @@ interface DocumentData {
 }
 
 function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("fr-CA", {
-    style: "currency",
-    currency: "CAD",
-  }).format(n);
+  return new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(n);
 }
 
 function today(): string {
@@ -65,13 +62,7 @@ function addDays(dateStr: string, days: number): string {
 }
 
 function newLineItem(): LineItem {
-  return {
-    id: Math.random().toString(36).slice(2),
-    description: "",
-    quantity: 1,
-    unitPrice: 0,
-    total: 0,
-  };
+  return { id: Math.random().toString(36).slice(2), description: "", quantity: 1, unitPrice: 0, total: 0 };
 }
 
 const card: React.CSSProperties = {
@@ -155,6 +146,7 @@ export default function DocumentPage() {
   const { clients } = useClientStore();
   const { employees, currentEmployeeId } = useEmployeeStore();
   const currentEmployee = employees.find((e) => e.id === currentEmployeeId) ?? null;
+  void currentEmployee;
 
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -199,11 +191,11 @@ export default function DocumentPage() {
     if (isNew) {
       let num = "";
       if (doc.type === "invoice") {
-        num = `${company.invoicePrefix}-${String(company.nextInvoiceNumber).padStart(3, "0")}`;
+        num = company.invoicePrefix + "-" + String(company.nextInvoiceNumber).padStart(3, "0");
       } else if (doc.type === "quote") {
-        num = `${company.quotePrefix}-${String(company.nextQuoteNumber).padStart(3, "0")}`;
+        num = company.quotePrefix + "-" + String(company.nextQuoteNumber).padStart(3, "0");
       } else {
-        num = `${company.contractPrefix}-${String(company.nextContractNumber).padStart(3, "0")}`;
+        num = company.contractPrefix + "-" + String(company.nextContractNumber).padStart(3, "0");
       }
       setDoc((d) => ({ ...d, number: num }));
     }
@@ -279,15 +271,14 @@ export default function DocumentPage() {
 
   const statusLabels: Record<DocStatus, string> = {
     draft: "Brouillon",
-    sent: "Envoyé",
-    paid: "Payé",
-    cancelled: "Annulé",
+    sent: "Envoye",
+    paid: "Paye",
+    cancelled: "Annule",
   };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg, #111)", color: "var(--text, #fff)", paddingBottom: "100px" }}>
 
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", borderBottom: "1px solid #222" }}>
         <button onClick={() => router.back()} style={{ background: "none", border: "1px solid #333", borderRadius: "8px", color: "#aaa", padding: "8px 12px", cursor: "pointer", fontSize: "14px" }}>
           Retour
@@ -298,12 +289,11 @@ export default function DocumentPage() {
           </h1>
           <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>{company.name}</div>
         </div>
-        <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, background: statusColors[doc.status] + "22", color: statusColors[doc.status], border: `1px solid ${statusColors[doc.status]}44` }}>
+        <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, background: statusColors[doc.status] + "22", color: statusColors[doc.status], border: "1px solid " + statusColors[doc.status] + "44" }}>
           {statusLabels[doc.status]}
         </span>
       </div>
 
-      {/* Type selector */}
       {isNew && (
         <div style={{ display: "flex", gap: "8px", padding: "12px 16px", borderBottom: "1px solid #222" }}>
           {(["invoice", "quote", "contract"] as DocType[]).map((t) => (
@@ -315,7 +305,6 @@ export default function DocumentPage() {
         </div>
       )}
 
-      {/* Tabs */}
       <div style={{ display: "flex", borderBottom: "1px solid #222" }}>
         {[
           { id: "info", label: "Info" },
@@ -332,20 +321,247 @@ export default function DocumentPage() {
 
       <div style={{ padding: "16px" }}>
 
-        {/* INFO */}
         {activeTab === "info" && (
           <>
             <div style={{ ...card, border: "1px solid #D4AF3733", background: "#1a1400" }}>
               <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "0.1em", marginBottom: "12px", textTransform: "uppercase" }}>
-                De (Auto — Réglages)
+                De (Auto — Reglages)
               </div>
               <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "4px" }}>{company.name}</div>
-              {company.tagline && <div style={{ fontSize: "12px", color: "#D4AF37", marginBottom: "8px" }}>{company.tagline}</div>}
+              {company.tagline && (
+                <div style={{ fontSize: "12px", color: "#D4AF37", marginBottom: "8px" }}>{company.tagline}</div>
+              )}
               <div style={{ fontSize: "13px", color: "#aaa", lineHeight: "1.6" }}>
-                {[
-                  company.address,
-                  company.city && company.province ? `${company.city}, ${company.province} ${company.postalCode}` : "",
-                  company.phone,
-                  company.email,
-                  company.gstNumber && `GST: ${company.gstNumber}`,
-                  company.wcbNumb
+                {company.address && <div>{company.address}</div>}
+                {(company.city || company.province) && (
+                  <div>{company.city}{company.city && company.province ? ", " : ""}{company.province} {company.postalCode}</div>
+                )}
+                {company.phone && <div>{company.phone}</div>}
+                {company.email && <div>{company.email}</div>}
+                {company.gstNumber && <div>GST: {company.gstNumber}</div>}
+                {company.wcbNumber && <div>WCB: {company.wcbNumber}</div>}
+              </div>
+            </div>
+
+            <div style={card}>
+              <Field label="Numero de document" value={doc.number} onChange={(v) => setDoc((d) => ({ ...d, number: v }))} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <Field label="Date" value={doc.date} onChange={(v) => setDoc((d) => ({ ...d, date: v }))} type="date" />
+                <Field label="Echeance" value={doc.dueDate} onChange={(v) => setDoc((d) => ({ ...d, dueDate: v }))} type="date" />
+              </div>
+            </div>
+
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <span style={{ fontWeight: 700 }}>Client</span>
+                <button onClick={() => setShowClientPicker(true)} style={{ background: "#1a2e1a", border: "1px solid #3a5a20", color: "#86efac", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontSize: "13px" }}>
+                  Choisir client
+                </button>
+              </div>
+              <Field label="Nom" value={doc.clientName} onChange={(v) => setDoc((d) => ({ ...d, clientName: v }))} placeholder="Nom du client" />
+              <Field label="Courriel" value={doc.clientEmail} onChange={(v) => setDoc((d) => ({ ...d, clientEmail: v }))} type="email" />
+              <Field label="Telephone" value={doc.clientPhone} onChange={(v) => setDoc((d) => ({ ...d, clientPhone: v }))} type="tel" />
+              <Field label="Adresse" value={doc.clientAddress} onChange={(v) => setDoc((d) => ({ ...d, clientAddress: v }))} />
+            </div>
+
+            <div style={card}>
+              <label style={labelStyle}>Description du projet</label>
+              <textarea value={doc.projectDescription} onChange={(e) => setDoc((d) => ({ ...d, projectDescription: e.target.value }))} rows={4} placeholder="Description des travaux..." style={{ ...inputStyle, resize: "vertical" }} />
+            </div>
+          </>
+        )}
+
+        {activeTab === "items" && (
+          <div style={card}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Articles / Services</h3>
+            {doc.lineItems.map((item, idx) => (
+              <div key={item.id} style={{ background: "#111", borderRadius: "10px", padding: "14px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", color: "#666" }}>Article {idx + 1}</span>
+                  {doc.lineItems.length > 1 && (
+                    <button onClick={() => removeLineItem(item.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "20px", lineHeight: "1" }}>x</button>
+                  )}
+                </div>
+                <div style={{ marginBottom: "8px" }}>
+                  <label style={labelStyle}>Description</label>
+                  <input type="text" value={item.description} onChange={(e) => updateLineItem(item.id, "description", e.target.value)} placeholder="Description..." style={inputStyle} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <label style={labelStyle}>Qte</label>
+                    <input type="number" value={item.quantity} onChange={(e) => updateLineItem(item.id, "quantity", Number(e.target.value))} min="0" step="0.5" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Prix unit.</label>
+                    <input type="number" value={item.unitPrice} onChange={(e) => updateLineItem(item.id, "unitPrice", Number(e.target.value))} min="0" step="0.01" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Total</label>
+                    <input type="text" value={formatCurrency(item.total)} readOnly style={{ ...inputStyle, opacity: 0.6 }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button onClick={addLineItem} style={{ width: "100%", padding: "12px", background: "transparent", border: "2px dashed #333", borderRadius: "10px", color: "#D4AF37", cursor: "pointer", fontSize: "14px", fontWeight: 600 }}>
+              + Ajouter un article
+            </button>
+          </div>
+        )}
+
+        {activeTab === "totals" && (
+          <>
+            <div style={card}>
+              <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Totaux</h3>
+              <div style={{ marginBottom: "12px" }}>
+                <label style={labelStyle}>Remise (%)</label>
+                <input type="number" value={doc.discountPercent} onChange={(e) => setDoc((d) => ({ ...d, discountPercent: Number(e.target.value) }))} min="0" max="100" style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: "12px" }}>
+                <label style={labelStyle}>Depot requis (%)</label>
+                <input type="number" value={doc.depositPercent} onChange={(e) => setDoc((d) => ({ ...d, depositPercent: Number(e.target.value) }))} min="0" max="100" style={inputStyle} />
+              </div>
+              <div style={{ background: "#111", borderRadius: "10px", padding: "16px", marginTop: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px", color: "#aaa" }}>
+                  <span>Sous-total</span><span>{formatCurrency(doc.subtotal)}</span>
+                </div>
+                {doc.discountPercent > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px", color: "#22c55e" }}>
+                    <span>Remise ({doc.discountPercent}%)</span><span>-{formatCurrency(doc.discountAmount)}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "14px", color: "#aaa" }}>
+                  <span>GST (5% Alberta)</span><span>{formatCurrency(doc.gstAmount)}</span>
+                </div>
+                <div style={{ borderTop: "1px solid #333", paddingTop: "12px", marginTop: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "20px", fontWeight: 800, color: "#D4AF37", marginBottom: "12px" }}>
+                    <span>TOTAL</span><span>{formatCurrency(doc.total)}</span>
+                  </div>
+                  {doc.depositPercent > 0 && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#3b82f6", marginBottom: "6px" }}>
+                        <span>Depot ({doc.depositPercent}%)</span><span>{formatCurrency(doc.depositAmount)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: 700, color: "#ef4444" }}>
+                        <span>Solde du</span><span>{formatCurrency(doc.balanceDue)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            {(company.etransferEmail || company.bankName) && (
+              <div style={{ ...card, border: "1px solid #1e3a5f" }}>
+                <div style={{ fontSize: "11px", color: "#3b82f6", letterSpacing: "0.1em", marginBottom: "10px", textTransform: "uppercase" }}>
+                  Paiement (Auto — Reglages)
+                </div>
+                {company.etransferEmail && (
+                  <div style={{ fontSize: "14px", color: "#aaa", marginBottom: "4px" }}>
+                    Interac e-Transfer: <strong style={{ color: "#fff" }}>{company.etransferEmail}</strong>
+                  </div>
+                )}
+                {company.bankName && (
+                  <div style={{ fontSize: "14px", color: "#aaa" }}>
+                    {company.bankName}{company.bankAccount && " — Compte: " + company.bankAccount}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "notes" && (
+          <div style={card}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Notes et Signature</h3>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={labelStyle}>Notes pour le client</label>
+              <textarea value={doc.notes} onChange={(e) => setDoc((d) => ({ ...d, notes: e.target.value }))} rows={5} style={{ ...inputStyle, resize: "vertical" }} />
+            </div>
+            <div style={{ background: "#111", borderRadius: "10px", padding: "14px" }}>
+              <label style={{ ...labelStyle, marginBottom: "10px", display: "block" }}>Zone de signature</label>
+              <canvas
+                ref={signatureRef}
+                width={320}
+                height={120}
+                style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: "8px", touchAction: "none", display: "block", width: "100%" }}
+                onMouseDown={() => setIsDrawing(true)}
+                onMouseUp={() => setIsDrawing(false)}
+                onMouseMove={(e) => {
+                  if (!isDrawing || !signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  const rect = signatureRef.current.getBoundingClientRect();
+                  const scaleX = signatureRef.current.width / rect.width;
+                  const scaleY = signatureRef.current.height / rect.height;
+                  ctx.strokeStyle = "#D4AF37";
+                  ctx.lineWidth = 2;
+                  ctx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  setIsDrawing(true);
+                  signatureRef.current?.getContext("2d")?.beginPath();
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault();
+                  if (!isDrawing || !signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  const rect = signatureRef.current.getBoundingClientRect();
+                  const scaleX = signatureRef.current.width / rect.width;
+                  const scaleY = signatureRef.current.height / rect.height;
+                  const touch = e.touches[0];
+                  ctx.strokeStyle = "#D4AF37";
+                  ctx.lineWidth = 2;
+                  ctx.lineTo((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+                }}
+                onTouchEnd={() => setIsDrawing(false)}
+              />
+              <button
+                onClick={() => {
+                  const ctx = signatureRef.current?.getContext("2d");
+                  if (ctx && signatureRef.current) {
+                    ctx.clearRect(0, 0, signatureRef.current.width, signatureRef.current.height);
+                  }
+                }}
+                style={{ marginTop: "8px", background: "none", border: "1px solid #333", color: "#888", borderRadius: "6px", padding: "6px 14px", cursor: "pointer", fontSize: "13px" }}>
+                Effacer
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+          <button style={btnGold} onClick={saveDocument}>
+            {saved ? "Sauvegarde!" : isNew ? "Creer le document" : "Sauvegarder"}
+          </button>
+        </div>
+      </div>
+
+      {showClientPicker && (
+        <div style={{ position: "fixed", inset: 0, background: "#000b", zIndex: 100, display: "flex", alignItems: "flex-end" }} onClick={() => setShowClientPicker(false)}>
+          <div style={{ background: "#1a1a1a", width: "100%", maxHeight: "70vh", borderRadius: "20px 20px 0 0", padding: "20px", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Choisir un client</h3>
+            {clients.length === 0 ? (
+              <p style={{ color: "#666", textAlign: "center" }}>Aucun client. Ajoutez-en dans Clients.</p>
+            ) : (
+              clients.map((client) => (
+                <button key={client.id} onClick={() => selectClient(client.id)}
+                  style={{ display: "block", width: "100%", background: "#111", border: "1px solid #333", borderRadius: "10px", padding: "14px", color: "#fff", textAlign: "left", cursor: "pointer", marginBottom: "8px" }}>
+                  <div style={{ fontWeight: 700 }}>{client.name}</div>
+                  {client.email && <div style={{ fontSize: "12px", color: "#888" }}>{client.email}</div>}
+                  {client.phone && <div style={{ fontSize: "12px", color: "#888" }}>{client.phone}</div>}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+      }
