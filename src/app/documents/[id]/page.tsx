@@ -1,736 +1,1049 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useDocumentStore } from '@/store/useDocumentStore';
-import { useCompanyStore } from '@/store/useCompanyStore';
-import { useClientStore } from '@/store/useClientStore';
-import { useLangStore } from '@/store/useLangStore';
-import { useThemeStore } from '@/store/useThemeStore';
-import { Document, DocumentType, DocumentStatus } from '@/types/documents';
-import BottomNav from '@/components/BottomNav';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { useClientStore } from "@/store/useClientStore";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type DocType = "invoice" | "quote" | "contract";
+type DocStatus = "draft" | "sent" | "paid" | "cancelled";
+
+interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+interface DocumentData {
+  id: string;
+  type: DocType;
+  status: DocStatus;
+  number: string;
+  date: string;
+  dueDate: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  clientAddress: string;
+  projectDescription: string;
+  lineItems: LineItem[];
+  subtotal: number;
+  gstRate: number;
+  gstAmount: number;
+  discountPercent: number;
+  discountAmount: number;
+  depositPercent: number;
+  depositAmount: number;
+  total: number;
+  balanceDue: number;
+  notes: string;
+  signature: string;
+  signatureDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (n: number) => `$${(n || 0).toFixed(2)}`;
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const addDays = (d: string, n: number) => {
-  const date = new Date(d);
-  date.setDate(date.getDate() + n);
-  return date.toISOString().slice(0, 10);
+
+function formatCurrency(n: number): string {
+  return new Intl.NumberFormat("fr-CA", {
+    style: "currency",
+    currency: "CAD",
+  }).format(n);
+}
+
+function today(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+function newLineItem(): LineItem {
+  return {
+    id: Math.random().toString(36).slice(2),
+    description: "",
+    quantity: 1,
+    unitPrice: 0,
+    total: 0,
+  };
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const card: React.CSSProperties = {
+  background: "var(--card-bg, #1e1e1e)",
+  border: "1px solid var(--border, #2a2a2a)",
+  borderRadius: "12px",
+  padding: "20px",
+  marginBottom: "16px",
 };
 
-const DOC_LABELS: Record<DocumentType, { fr: string; en: string; emoji: string }> = {
-  facture:  { fr: 'Facture',  en: 'Invoice',  emoji: '🧾' },
-  devis:    { fr: 'Devis',    en: 'Quote',    emoji: '📋' },
-  contrat:  { fr: 'Contrat',  en: 'Contract', emoji: '📝' },
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "var(--input-bg, #111)",
+  border: "1px solid var(--border, #333)",
+  borderRadius: "8px",
+  padding: "10px 12px",
+  color: "var(--text, #fff)",
+  fontSize: "15px",
+  boxSizing: "border-box",
+  outline: "none",
 };
 
-const STATUS_COLORS: Record<DocumentStatus, string> = {
-  brouillon: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-  envoye:    'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  accepte:   'bg-green-500/20 text-green-300 border-green-500/30',
-  refuse:    'bg-red-500/20 text-red-300 border-red-500/30',
-  paye:      'bg-amber-500/20 text-amber-300 border-amber-500/30',
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "11px",
+  color: "#888",
+  marginBottom: "4px",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
 };
 
-const STATUS_LABELS: Record<DocumentStatus, { fr: string; en: string }> = {
-  brouillon: { fr: 'Brouillon', en: 'Draft' },
-  envoye:    { fr: 'Envoyé',    en: 'Sent' },
-  accepte:   { fr: 'Accepté',  en: 'Accepted' },
-  refuse:    { fr: 'Refusé',   en: 'Declined' },
-  paye:      { fr: 'Payé',     en: 'Paid' },
+const btnGold: React.CSSProperties = {
+  background: "linear-gradient(135deg, #D4AF37, #B8963E)",
+  color: "#000",
+  border: "none",
+  borderRadius: "10px",
+  padding: "14px 20px",
+  fontWeight: 700,
+  fontSize: "15px",
+  cursor: "pointer",
+  flex: 1,
 };
 
-// ─── Signature Pad ────────────────────────────────────────────────────────────
-function SignaturePad({ onSave, existing, onClear, label }: {
-  onSave: (data: string) => void;
-  existing?: string;
-  onClear: () => void;
+// ─── Field component ──────────────────────────────────────────────────────────
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+  readOnly = false,
+}: {
   label: string;
+  value: string | number;
+  onChange?: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  readOnly?: boolean;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [drawing, setDrawing] = useState(false);
-  const [hasDraw, setHasDraw] = useState(false);
-
-  const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
-    const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width;
-    const sy = canvas.height / rect.height;
-    if ('touches' in e) {
-      return { x: (e.touches[0].clientX - rect.left) * sx, y: (e.touches[0].clientY - rect.top) * sy };
-    }
-    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
-  };
-
-  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    const pos = getPos(e, canvas);
-    ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-    setDrawing(true); setHasDraw(true);
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!drawing) return;
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const pos = getPos(e, canvas);
-    ctx.lineTo(pos.x, pos.y); ctx.stroke();
-  };
-
-  const stopDraw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); setDrawing(false); };
-
-  const clear = () => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDraw(false); onClear();
-  };
-
-  const save = () => {
-    const canvas = canvasRef.current; if (!canvas || !hasDraw) return;
-    onSave(canvas.toDataURL());
-  };
-
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-bold text-yellow-400 uppercase tracking-widest">✍️ {label}</label>
-      {existing && (
-        <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-2 mb-1">
-          <p className="text-xs text-green-400 mb-1">✅ Signature enregistrée</p>
-          <img src={existing} alt="sig" className="max-h-10 mx-auto" />
-        </div>
-      )}
-      <canvas
-        ref={canvasRef} width={600} height={150}
-        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
-        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
-        className="w-full rounded-xl border-2 border-dashed border-orange-400/50 bg-white/5 cursor-crosshair touch-none"
-        style={{ height: '110px' }}
+    <div style={{ marginBottom: "10px" }}>
+      <label style={labelStyle}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        style={{
+          ...inputStyle,
+          opacity: readOnly ? 0.6 : 1,
+        }}
       />
-      <div className="flex gap-2">
-        <button onClick={clear}
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm text-gray-300 hover:bg-white/10 transition font-semibold">
-          🗑️ Effacer
-        </button>
-        <button onClick={save} disabled={!hasDraw && !existing}
-          className="flex-1 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 py-2.5 text-sm font-bold text-white transition">
-          ✅ Enregistrer
-        </button>
-      </div>
     </div>
   );
 }
 
-// ─── Client Picker ────────────────────────────────────────────────────────────
-function ClientPickerModal({ onSelect, onClose, lang }: {
-  onSelect: (id: string) => void;
-  onClose: () => void;
-  lang: string;
-}) {
-  const { clients } = useClientStore();
-  const [search, setSearch] = useState('');
-  const filtered = (clients as Array<{id:string;name:string;email?:string;phone?:string;address?:string;city?:string}>)
-    .filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || (c.email ?? '').toLowerCase().includes(search.toLowerCase()));
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-t-3xl bg-gray-900 border-t border-white/10 p-5 pb-8 max-h-[70vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-white text-lg">👥 {lang === 'fr' ? 'Choisir un client' : 'Choose a client'}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">✕</button>
-        </div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={lang === 'fr' ? 'Rechercher...' : 'Search...'}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:border-orange-400 focus:outline-none mb-3" />
-        <div className="overflow-y-auto space-y-2 flex-1">
-          {filtered.map(c => (
-            <button key={c.id} onClick={() => onSelect(c.id)}
-              className="w-full text-left rounded-xl bg-white/5 border border-white/10 px-4 py-3 hover:border-orange-400/50 hover:bg-orange-500/10 transition">
-              <p className="font-semibold text-white text-sm">{c.name}</p>
-              <p className="text-xs text-gray-400">{c.email} · {c.phone}</p>
-            </button>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-center text-gray-500 text-sm py-6">
-              {lang === 'fr' ? 'Aucun client trouvé' : 'No client found'}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Page principale ──────────────────────────────────────────────────────────
 export default function DocumentPage() {
   const params = useParams();
   const router = useRouter();
   const docId = params.id as string;
+  const isNew = docId === "new";
 
-  const { documents, updateDocument, addDocument, addLineItem, updateLineItem, removeLineItem,
-          calculateTotals, addTax, updateTax, removeTax, updateDiscount, updateDeposit } = useDocumentStore();
-  const { company } = useCompanyStore();
+  const { company, getNextInvoiceNumber, getNextQuoteNumber, getNextContractNumber } =
+    useCompanyStore();
   const { clients } = useClientStore();
-  const { lang } = useLangStore();
-  const { theme } = useThemeStore();
+  const { currentEmployee } = useEmployeeStore();
 
-  const t = (fr: string, en: string) => lang === 'fr' ? fr : en;
-
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { setHydrated(true); }, []);
-
-  // Trouver le doc existant
-  const doc = documents.find(d => d.id === docId);
-
-  const [tab, setTab] = useState<'details' | 'items' | 'financials' | 'preview'>('details');
-  const [saved, setSaved] = useState(false);
+  const [docType, setDocType] = useState<DocType>("invoice");
   const [showClientPicker, setShowClientPicker] = useState(false);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<"info" | "items" | "totals" | "notes">("info");
+  const signatureRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  // ── Spinner hydratation ───────────────────────────────────────────────────
-  if (!hydrated) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="text-5xl animate-bounce">📄</div>
-          <p className="text-gray-400 text-sm">{t('Chargement...', 'Loading...')}</p>
-        </div>
-      </div>
-    );
+  const defaultDate = today();
+  const defaultDueDate = addDays(
+    defaultDate,
+    company.defaultPaymentTermsDays || 14
+  );
+
+  const [doc, setDoc] = useState<DocumentData>({
+    id: isNew ? Math.random().toString(36).slice(2) : docId,
+    type: "invoice",
+    status: "draft",
+    number: "",
+    date: defaultDate,
+    dueDate: defaultDueDate,
+    clientId: "",
+    clientName: "",
+    clientEmail: "",
+    clientPhone: "",
+    clientAddress: "",
+    projectDescription: "",
+    lineItems: [newLineItem()],
+    subtotal: 0,
+    gstRate: 5,
+    gstAmount: 0,
+    discountPercent: 0,
+    discountAmount: 0,
+    depositPercent: company.defaultDepositPercent || 30,
+    depositAmount: 0,
+    total: 0,
+    balanceDue: 0,
+    notes: company.defaultNotes || "",
+    signature: "",
+    signatureDate: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Auto-generate number on type change
+  useEffect(() => {
+    if (isNew && !doc.number) {
+      let num = "";
+      if (doc.type === "invoice") num = `${company.invoicePrefix}-${String(company.nextInvoiceNumber).padStart(3, "0")}`;
+      else if (doc.type === "quote") num = `${company.quotePrefix}-${String(company.nextQuoteNumber).padStart(3, "0")}`;
+      else num = `${company.contractPrefix}-${String(company.nextContractNumber).padStart(3, "0")}`;
+      setDoc((d) => ({ ...d, number: num }));
+    }
+  }, [doc.type, isNew]);
+
+  // Recalculate totals
+  useEffect(() => {
+    const subtotal = doc.lineItems.reduce((s, item) => s + item.total, 0);
+    const discountAmount = (subtotal * doc.discountPercent) / 100;
+    const afterDiscount = subtotal - discountAmount;
+    const gstAmount = (afterDiscount * doc.gstRate) / 100;
+    const total = afterDiscount + gstAmount;
+    const depositAmount = (total * doc.depositPercent) / 100;
+    const balanceDue = total - depositAmount;
+
+    setDoc((d) => ({
+      ...d,
+      subtotal,
+      discountAmount,
+      gstAmount,
+      total,
+      depositAmount,
+      balanceDue,
+    }));
+  }, [doc.lineItems, doc.discountPercent, doc.gstRate, doc.depositPercent]);
+
+  function updateLineItem(id: string, field: keyof LineItem, value: string | number) {
+    setDoc((d) => ({
+      ...d,
+      lineItems: d.lineItems.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, [field]: value };
+        if (field === "quantity" || field === "unitPrice") {
+          updated.total = Number(updated.quantity) * Number(updated.unitPrice);
+        }
+        return updated;
+      }),
+    }));
   }
 
-  // ── Doc introuvable ───────────────────────────────────────────────────────
-  if (!doc) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center space-y-4 p-6">
-          <div className="text-5xl">❓</div>
-          <p className="text-white font-bold">{t('Document introuvable', 'Document not found')}</p>
-          <button onClick={() => router.push('/documents')}
-            className="px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold">
-            {t('Retour', 'Back')}
-          </button>
-        </div>
-      </div>
-    );
+  function addLineItem() {
+    setDoc((d) => ({ ...d, lineItems: [...d.lineItems, newLineItem()] }));
   }
 
-  const label = DOC_LABELS[doc.type];
+  function removeLineItem(id: string) {
+    setDoc((d) => ({
+      ...d,
+      lineItems: d.lineItems.filter((item) => item.id !== id),
+    }));
+  }
 
-  const handleSelectClient = (clientId: string) => {
-    const c = (clients as Array<{id:string;name:string;email?:string;phone?:string;address?:string;city?:string;province?:string;postalCode?:string}>)
-      .find(cl => cl.id === clientId);
-    if (!c) return;
-    updateDocument(doc.id, {
-      client: {
-        name: c.name,
-        address: c.address ?? '',
-        city: c.city ?? '',
-        province: c.province ?? 'AB',
-        postalCode: c.postalCode ?? '',
-        email: c.email ?? '',
-        phone: c.phone ?? '',
-      }
-    });
+  function selectClient(clientId: string) {
+    const client = clients.find((c) => c.id === clientId);
+    if (!client) return;
+    setDoc((d) => ({
+      ...d,
+      clientId: client.id,
+      clientName: client.name,
+      clientEmail: client.email || "",
+      clientPhone: client.phone || "",
+      clientAddress: client.address || "",
+    }));
     setShowClientPicker(false);
-  };
+  }
 
-  const handleSave = () => {
-    // Auto-remplir infos compagnie depuis le store
-    updateDocument(doc.id, {
-      company: {
-        name: company.name || 'Hailite Xteriors',
-        address: company.address,
-        city: `${company.city}${company.province ? ', ' + company.province : ''} ${company.postalCode}`.trim(),
-        province: company.province,
-        postalCode: company.postalCode,
-        email: company.email,
-        phone: company.phone,
-        license: company.licenseNumber,
-      }
-    });
+  function saveDocument() {
+    // Incrémenter le numéro séquentiel
+    if (isNew) {
+      if (doc.type === "invoice") getNextInvoiceNumber();
+      else if (doc.type === "quote") getNextQuoteNumber();
+      else getNextContractNumber();
+    }
+    // TODO: Sauvegarder dans le store documents
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setTimeout(() => {
+      setSaved(false);
+      router.push("/documents");
+    }, 1500);
+  }
+
+  const typeLabels: Record<DocType, string> = {
+    invoice: "📄 Facture",
+    quote: "📝 Devis",
+    contract: "📋 Contrat",
   };
 
-  const handleEmail = () => {
-    const subj = encodeURIComponent(`${lang === 'fr' ? label.fr : label.en} #${doc.number} — ${doc.company.name}`);
-    const body = encodeURIComponent(
-      lang === 'fr'
-        ? `Bonjour ${doc.client.name},\n\nVeuillez trouver votre ${label.fr.toLowerCase()} #${doc.number}.\n\nTotal : ${fmt(doc.total)} | Solde dû : ${fmt(doc.balanceDue)}\n\nMerci,\n${doc.company.name}`
-        : `Hello ${doc.client.name},\n\nPlease find your ${label.en.toLowerCase()} #${doc.number}.\n\nTotal: ${fmt(doc.total)} | Balance due: ${fmt(doc.balanceDue)}\n\nThank you,\n${doc.company.name}`
-    );
-    window.location.href = `mailto:${doc.client.email}?subject=${subj}&body=${body}`;
+  const statusColors: Record<DocStatus, string> = {
+    draft: "#888",
+    sent: "#3b82f6",
+    paid: "#22c55e",
+    cancelled: "#ef4444",
   };
 
-  const handleSMS = () => {
-    const msg = encodeURIComponent(
-      `${doc.company.name} — ${lang === 'fr' ? label.fr : label.en} #${doc.number}\nTotal: ${fmt(doc.total)} | ${lang === 'fr' ? 'Solde dû' : 'Balance due'}: ${fmt(doc.balanceDue)}`
-    );
-    window.location.href = `sms:${doc.client.phone}?body=${msg}`;
+  const statusLabels: Record<DocStatus, string> = {
+    draft: "Brouillon",
+    sent: "Envoyé",
+    paid: "Payé",
+    cancelled: "Annulé",
   };
-
-  const TABS = [
-    { id: 'details'    as const, label: t('Détails', 'Details') },
-    { id: 'items'      as const, label: t('Lignes', 'Items') },
-    { id: 'financials' as const, label: t('Montants', 'Amounts') },
-    { id: 'preview'    as const, label: t('Aperçu', 'Preview') },
-  ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-
-      {/* HEADER */}
-      <div className="sticky top-0 z-30 bg-gray-950/98 backdrop-blur border-b border-white/10 px-4 py-3">
-        <div className="flex items-center gap-2 mb-3">
-          <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-2xl leading-none">←</button>
-          <span className="text-lg">{label.emoji}</span>
-          <span className="font-black text-base flex-1 truncate">
-            {lang === 'fr' ? label.fr : label.en} {doc.number}
-          </span>
-          {/* Status badge cliquable */}
-          <div className="relative">
-            <button
-              onClick={() => setShowStatusMenu(!showStatusMenu)}
-              className={`text-xs px-2 py-1 rounded-full border font-semibold ${STATUS_COLORS[doc.status]}`}>
-              {STATUS_LABELS[doc.status][lang as 'fr' | 'en'] ?? doc.status} ▾
-            </button>
-            {showStatusMenu && (
-              <div className="absolute right-0 top-8 bg-gray-800 border border-white/10 rounded-xl overflow-hidden z-50 min-w-32">
-                {(Object.keys(STATUS_LABELS) as DocumentStatus[]).map(s => (
-                  <button key={s} onClick={() => { updateDocument(doc.id, { status: s }); setShowStatusMenu(false); }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 text-white">
-                    {STATUS_LABELS[s][lang as 'fr' | 'en']}
-                  </button>
-                ))}
-              </div>
-            )}
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--bg, #111)",
+        color: "var(--text, #fff)",
+        paddingBottom: "100px",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "16px",
+          borderBottom: "1px solid #222",
+        }}
+      >
+        <button
+          onClick={() => router.back()}
+          style={{
+            background: "none",
+            border: "1px solid #333",
+            borderRadius: "8px",
+            color: "#aaa",
+            padding: "8px 12px",
+            cursor: "pointer",
+            fontSize: "14px",
+          }}
+        >
+          ← Retour
+        </button>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "#D4AF37" }}>
+            {isNew ? "Nouveau Document" : doc.number}
+          </h1>
+          <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+            {company.name}
           </div>
         </div>
-        {/* Tabs */}
-        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
-          {TABS.map(tb => (
-            <button key={tb.id} onClick={() => setTab(tb.id)}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                tab === tb.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
-              }`}>
-              {tb.label}
+        <span
+          style={{
+            padding: "4px 10px",
+            borderRadius: "20px",
+            fontSize: "11px",
+            fontWeight: 700,
+            background: statusColors[doc.status] + "22",
+            color: statusColors[doc.status],
+            border: `1px solid ${statusColors[doc.status]}44`,
+          }}
+        >
+          {statusLabels[doc.status]}
+        </span>
+      </div>
+
+      {/* Doc type selector (new only) */}
+      {isNew && (
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            padding: "12px 16px",
+            borderBottom: "1px solid #222",
+          }}
+        >
+          {(["invoice", "quote", "contract"] as DocType[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => {
+                setDoc((d) => ({ ...d, type: t, number: "" }));
+              }}
+              style={{
+                flex: 1,
+                padding: "10px 4px",
+                borderRadius: "10px",
+                border: doc.type === t ? "none" : "1px solid #333",
+                background:
+                  doc.type === t
+                    ? "linear-gradient(135deg,#D4AF37,#B8963E)"
+                    : "transparent",
+                color: doc.type === t ? "#000" : "#aaa",
+                fontWeight: doc.type === t ? 700 : 400,
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              {typeLabels[t]}
             </button>
           ))}
         </div>
+      )}
+
+      {/* Tabs */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0",
+          borderBottom: "1px solid #222",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}
+      >
+        {[
+          { id: "info", label: "📋 Info" },
+          { id: "items", label: "📦 Articles" },
+          { id: "totals", label: "💰 Totaux" },
+          { id: "notes", label: "📝 Notes" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            style={{
+              flex: 1,
+              padding: "12px 8px",
+              border: "none",
+              borderBottom:
+                activeTab === tab.id ? "2px solid #D4AF37" : "2px solid transparent",
+              background: "none",
+              color: activeTab === tab.id ? "#D4AF37" : "#666",
+              fontWeight: activeTab === tab.id ? 700 : 400,
+              fontSize: "13px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* CONTENU — padding bas généreux pour la barre d'actions */}
-      <div className="px-4 pt-4 pb-44 space-y-4">
-
-        {/* ═══ DÉTAILS ═══ */}
-        {tab === 'details' && (
+      <div style={{ padding: "16px" }}>
+        {/* ── INFO TAB ── */}
+        {activeTab === "info" && (
           <>
-            {/* Compagnie auto */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-xs font-bold text-orange-400 uppercase tracking-widest">🏢 {t('Compagnie', 'Company')}</h3>
-                <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">✅ Auto</span>
+            {/* Company info card (read-only, auto from settings) */}
+            <div
+              style={{
+                ...card,
+                border: "1px solid #D4AF3733",
+                background: "#1a1400",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#D4AF37",
+                  letterSpacing: "0.1em",
+                  marginBottom: "12px",
+                  textTransform: "uppercase",
+                }}
+              >
+                ✨ De (Auto — Réglages)
               </div>
-              {(company.logo || company.logoUrl) && (
-                <img src={company.logo || company.logoUrl} alt="logo" className="h-10 mb-2 rounded object-contain" />
+              <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "4px" }}>
+                {company.name}
+              </div>
+              {company.tagline && (
+                <div style={{ fontSize: "12px", color: "#D4AF37", marginBottom: "8px" }}>
+                  {company.tagline}
+                </div>
               )}
-              <div className="text-sm text-gray-300 space-y-0.5">
-                <p className="font-bold text-white">{company.name || 'Hailite Xteriors'}</p>
-                {company.address && <p>{company.address}</p>}
-                {company.city && <p>{company.city}, {company.province} {company.postalCode}</p>}
-                {company.phone && <p>{company.phone}</p>}
-                {company.email && <p>{company.email}</p>}
-                {company.gstNumber && <p className="text-xs text-gray-500">GST: {company.gstNumber}</p>}
-                {company.wcbNumber && <p className="text-xs text-gray-500">WCB: {company.wcbNumber}</p>}
+              <div style={{ fontSize: "13px", color: "#aaa", lineHeight: "1.6" }}>
+                {[
+                  company.address,
+                  company.city && company.province
+                    ? `${company.city}, ${company.province} ${company.postalCode}`
+                    : company.city || company.province,
+                  company.phone,
+                  company.email,
+                  company.gstNumber && `GST: ${company.gstNumber}`,
+                  company.wcbNumber && `WCB: ${company.wcbNumber}`,
+                ]
+                  .filter(Boolean)
+                  .map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
               </div>
-              <button onClick={() => router.push('/settings')}
-                className="mt-2 text-xs text-orange-400 underline">
-                ✏️ {t('Modifier dans Réglages', 'Edit in Settings')}
-              </button>
+            </div>
+
+            {/* Document number & dates */}
+            <div style={card}>
+              <Field
+                label="Numéro de document"
+                value={doc.number}
+                onChange={(v) => setDoc((d) => ({ ...d, number: v }))}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <Field
+                  label="Date"
+                  value={doc.date}
+                  onChange={(v) => setDoc((d) => ({ ...d, date: v }))}
+                  type="date"
+                />
+                <Field
+                  label="Échéance"
+                  value={doc.dueDate}
+                  onChange={(v) => setDoc((d) => ({ ...d, dueDate: v }))}
+                  type="date"
+                />
+              </div>
             </div>
 
             {/* Client */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest">👤 Client</h3>
-                <button onClick={() => setShowClientPicker(true)}
-                  className="rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-300 px-3 py-1.5 text-xs font-bold hover:bg-blue-500/30 transition">
-                  👥 {t('Choisir', 'Choose')}
+            <div style={card}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "12px",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>👥 Client</span>
+                <button
+                  onClick={() => setShowClientPicker(true)}
+                  style={{
+                    background: "#1a2e1a",
+                    border: "1px solid #3a5a20",
+                    color: "#86efac",
+                    borderRadius: "8px",
+                    padding: "6px 12px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                  }}
+                >
+                  👥 Choisir client
                 </button>
               </div>
-              {doc.client.name ? (
-                <div className="text-sm text-gray-300 space-y-0.5">
-                  <p className="font-bold text-white">{doc.client.name}</p>
-                  {doc.client.address && <p>{doc.client.address}</p>}
-                  {doc.client.city && <p>{doc.client.city}</p>}
-                  {doc.client.phone && <p>{doc.client.phone}</p>}
-                  {doc.client.email && <p>{doc.client.email}</p>}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {([
-                    { k: 'name',       lbl: t('Nom', 'Name'),         ph: 'John Smith'      },
-                    { k: 'address',    lbl: t('Adresse', 'Address'),  ph: '456 Oak Ave'     },
-                    { k: 'city',       lbl: t('Ville', 'City'),       ph: 'Calgary, AB'     },
-                    { k: 'phone',      lbl: t('Tél', 'Phone'),        ph: '403-555-0000'    },
-                    { k: 'email',      lbl: 'Email',                   ph: 'client@email.com'},
-                  ] as {k: keyof typeof doc.client; lbl: string; ph: string}[]).map(({ k, lbl, ph }) => (
-                    <div key={k}>
-                      <label className="block text-xs text-gray-500 mb-1">{lbl}</label>
-                      <input value={doc.client[k]}
-                        onChange={e => updateDocument(doc.id, { client: { ...doc.client, [k]: e.target.value } })}
-                        placeholder={ph}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Dates */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">📅 {t('Dates', 'Dates')}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">{t('Date', 'Date')}</label>
-                  <input type="date" value={doc.date}
-                    onChange={e => updateDocument(doc.id, { date: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">
-                    {doc.type === 'facture' ? t('Échéance', 'Due Date') : t('Valide jusqu\'au', 'Valid Until')}
-                  </label>
-                  <input type="date" value={doc.dueDate}
-                    onChange={e => updateDocument(doc.id, { dueDate: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* Notes & Termes */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">📝 Notes</h3>
-              <textarea value={doc.notes}
-                onChange={e => updateDocument(doc.id, { notes: e.target.value })}
-                rows={3} placeholder="Notes..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none resize-none" />
-              <label className="block text-xs text-gray-500 mb-1">{t('Termes', 'Terms')}</label>
-              <textarea value={doc.terms}
-                onChange={e => updateDocument(doc.id, { terms: e.target.value })}
-                rows={2} placeholder="Net 30..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none resize-none" />
-            </div>
-
-            {/* Signatures */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-4">
-              <h3 className="text-xs font-bold text-yellow-400 uppercase tracking-widest">✍️ Signatures</h3>
-              <SignaturePad
-                label={t('Signature contracteur', 'Contractor Signature')}
-                onSave={data => updateDocument(doc.id, { contractorSignature: data, contractorSignatureDate: new Date().toISOString() })}
-                existing={doc.contractorSignature}
-                onClear={() => updateDocument(doc.id, { contractorSignature: '', contractorSignatureDate: '' })}
+              <Field
+                label="Nom"
+                value={doc.clientName}
+                onChange={(v) => setDoc((d) => ({ ...d, clientName: v }))}
+                placeholder="Nom du client"
               />
-              <SignaturePad
-                label={t('Signature client', 'Client Signature')}
-                onSave={data => updateDocument(doc.id, { clientSignature: data, clientSignatureDate: new Date().toISOString() })}
-                existing={doc.clientSignature}
-                onClear={() => updateDocument(doc.id, { clientSignature: '', clientSignatureDate: '' })}
+              <Field
+                label="Courriel"
+                value={doc.clientEmail}
+                onChange={(v) => setDoc((d) => ({ ...d, clientEmail: v }))}
+                type="email"
+              />
+              <Field
+                label="Téléphone"
+                value={doc.clientPhone}
+                onChange={(v) => setDoc((d) => ({ ...d, clientPhone: v }))}
+                type="tel"
+              />
+              <Field
+                label="Adresse"
+                value={doc.clientAddress}
+                onChange={(v) => setDoc((d) => ({ ...d, clientAddress: v }))}
+              />
+            </div>
+
+            {/* Project description */}
+            <div style={card}>
+              <label style={labelStyle}>Description du projet</label>
+              <textarea
+                value={doc.projectDescription}
+                onChange={(e) => setDoc((d) => ({ ...d, projectDescription: e.target.value }))}
+                rows={4}
+                placeholder="Description des travaux..."
+                style={{
+                  ...inputStyle,
+                  resize: "vertical",
+                }}
               />
             </div>
           </>
         )}
 
-        {/* ═══ LIGNES ═══ */}
-        {tab === 'items' && (
-          <div className="space-y-3">
-            {doc.items.map((item, idx) => (
-              <div key={item.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <div className="flex justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
-                  <button onClick={() => removeLineItem(doc.id, item.id)} className="text-red-400 hover:text-red-300 text-lg leading-none">✕</button>
+        {/* ── ITEMS TAB ── */}
+        {activeTab === "items" && (
+          <div style={card}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>📦 Articles / Services</h3>
+            {doc.lineItems.map((item, idx) => (
+              <div
+                key={item.id}
+                style={{
+                  background: "#111",
+                  borderRadius: "10px",
+                  padding: "14px",
+                  marginBottom: "10px",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#666" }}>Article {idx + 1}</span>
+                  {doc.lineItems.length > 1 && (
+                    <button
+                      onClick={() => removeLineItem(item.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#ef4444",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        lineHeight: 1,
+                      }}
+                    >
+                      x
+                    </button>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <input value={item.description}
-                    onChange={e => updateLineItem(doc.id, item.id, { description: e.target.value })}
-                    placeholder={t('Description...', 'Description...')}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">{t('Qté', 'Qty')}</label>
-                      <input type="number" value={item.quantity}
-                        onChange={e => updateLineItem(doc.id, item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">$/u</label>
-                      <input type="number" value={item.unitPrice}
-                        onChange={e => updateLineItem(doc.id, item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-                    </div>
-                    <div className="flex items-end pb-2">
-                      <p className="text-sm font-bold text-orange-400">= {fmt(item.quantity * item.unitPrice)}</p>
-                    </div>
+                <div style={{ marginBottom: "8px" }}>
+                  <label style={labelStyle}>Description</label>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                    placeholder="Description du service..."
+                    style={inputStyle}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "8px",
+                  }}
+                >
+                  <div>
+                    <label style={labelStyle}>Qté</label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateLineItem(item.id, "quantity", Number(e.target.value))
+                      }
+                      min="0"
+                      step="0.5"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Prix unit.</label>
+                    <input
+                      type="number"
+                      value={item.unitPrice}
+                      onChange={(e) =>
+                        updateLineItem(item.id, "unitPrice", Number(e.target.value))
+                      }
+                      min="0"
+                      step="0.01"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Total</label>
+                    <input
+                      type="text"
+                      value={formatCurrency(item.total)}
+                      readOnly
+                      style={{ ...inputStyle, opacity: 0.6 }}
+                    />
                   </div>
                 </div>
               </div>
             ))}
-            <button onClick={() => addLineItem(doc.id)}
-              className="w-full rounded-2xl border border-dashed border-orange-500/50 bg-orange-500/5 py-4 text-orange-400 font-bold hover:bg-orange-500/10 transition text-sm">
-              ＋ {t('Ajouter une ligne', 'Add Line')}
+            <button
+              onClick={addLineItem}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: "transparent",
+                border: "2px dashed #333",
+                borderRadius: "10px",
+                color: "#D4AF37",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: 600,
+              }}
+            >
+              + Ajouter un article
             </button>
           </div>
         )}
 
-        {/* ═══ MONTANTS ═══ */}
-        {tab === 'financials' && (
-          <div className="space-y-4">
-            {/* Taxes */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-orange-400 uppercase tracking-widest">🏛️ Taxes</h3>
-              {doc.taxes.map(tax => (
-                <div key={tax.id} className="flex items-center gap-2">
-                  <input type="checkbox" checked={tax.enabled}
-                    onChange={e => updateTax(doc.id, tax.id, { enabled: e.target.checked })}
-                    className="w-4 h-4 accent-orange-500" />
-                  <input value={tax.name}
-                    onChange={e => updateTax(doc.id, tax.id, { name: e.target.value })}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-                  <input type="number" value={tax.rate}
-                    onChange={e => updateTax(doc.id, tax.id, { rate: parseFloat(e.target.value) || 0 })}
-                    className="w-16 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white text-right focus:border-orange-400 focus:outline-none" />
-                  <span className="text-gray-400 text-sm">%</span>
-                  <button onClick={() => removeTax(doc.id, tax.id)} className="text-red-400 text-sm">✕</button>
-                </div>
-              ))}
-              <button onClick={() => addTax(doc.id)}
-                className="text-xs text-orange-400 underline">+ {t('Ajouter taxe', 'Add tax')}</button>
-            </div>
+        {/* ── TOTALS TAB ── */}
+        {activeTab === "totals" && (
+          <>
+            <div style={card}>
+              <h3 style={{ marginTop: 0, marginBottom: "16px" }}>💰 Totaux</h3>
 
-            {/* Remise */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-orange-400 uppercase tracking-widest">🏷️ {t('Remise', 'Discount')}</h3>
-              <div className="flex gap-2">
-                {(['none', 'percent', 'fixed'] as const).map(dt => (
-                  <button key={dt} onClick={() => updateDiscount(doc.id, dt, doc.discountValue)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition ${
-                      doc.discountType === dt
-                        ? 'bg-orange-500 border-orange-400 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400'
-                    }`}>
-                    {dt === 'none' ? t('Aucune', 'None') : dt === 'percent' ? '%' : '$'}
-                  </button>
-                ))}
+              <div style={{ marginBottom: "12px" }}>
+                <label style={labelStyle}>Remise (%)</label>
+                <input
+                  type="number"
+                  value={doc.discountPercent}
+                  onChange={(e) =>
+                    setDoc((d) => ({ ...d, discountPercent: Number(e.target.value) }))
+                  }
+                  min="0"
+                  max="100"
+                  style={inputStyle}
+                />
               </div>
-              {doc.discountType !== 'none' && (
-                <input type="number" value={doc.discountValue}
-                  onChange={e => updateDiscount(doc.id, doc.discountType, parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-              )}
-            </div>
 
-            {/* Dépôt */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
-              <h3 className="text-xs font-bold text-orange-400 uppercase tracking-widest">💰 {t('Dépôt reçu', 'Deposit Received')}</h3>
-              <input type="number" value={doc.deposit}
-                onChange={e => updateDeposit(doc.id, parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none" />
-            </div>
+              <div style={{ marginBottom: "12px" }}>
+                <label style={labelStyle}>Dépôt requis (%)</label>
+                <input
+                  type="number"
+                  value={doc.depositPercent}
+                  onChange={(e) =>
+                    setDoc((d) => ({ ...d, depositPercent: Number(e.target.value) }))
+                  }
+                  min="0"
+                  max="100"
+                  style={inputStyle}
+                />
+              </div>
 
-            {/* Totaux */}
-            <div className="rounded-2xl bg-black/40 border border-white/10 p-4 space-y-2">
-              {[
-                { lbl: t('Sous-total', 'Subtotal'), val: doc.subtotal, cls: 'text-gray-300 text-sm' },
-                ...(doc.discountAmount > 0 ? [{ lbl: t('Remise', 'Discount'), val: -doc.discountAmount, cls: 'text-gray-400 text-sm' }] : []),
-                { lbl: t('Taxes', 'Taxes'), val: doc.totalTax, cls: 'text-gray-300 text-sm' },
-                { lbl: 'TOTAL', val: doc.total, cls: 'font-bold text-white border-t border-white/20 pt-2 mt-1' },
-                ...(doc.deposit > 0 ? [{ lbl: t('Dépôt', 'Deposit'), val: -doc.deposit, cls: 'text-gray-400 text-sm' }] : []),
-                { lbl: t('SOLDE DÛ', 'BALANCE DUE'), val: doc.balanceDue, cls: 'font-black text-orange-400 text-lg border-t border-orange-500/30 pt-2 mt-1' },
-              ].map(({ lbl, val, cls }) => (
-                <div key={lbl} className={`flex justify-between items-center ${cls}`}>
-                  <span>{lbl}</span>
-                  <span className="font-mono">{val < 0 ? `−${fmt(Math.abs(val))}` : fmt(val)}</span>
+              {/* Summary */}
+              <div
+                style={{
+                  background: "#111",
+                  borderRadius: "10px",
+                  padding: "16px",
+                  marginTop: "16px",
+                }}
+              >
+                {[
+                  { label: "Sous-total", value: formatCurrency(doc.subtotal) },
+                  doc.discountPercent > 0
+                    ? {
+                        label: `Remise (${doc.discountPercent}%)`,
+                        value: `-${formatCurrency(doc.discountAmount)}`,
+                        color: "#22c55e",
+                      }
+                    : null,
+                  { label: `GST (${doc.gstRate}% Alberta)`, value: formatCurrency(doc.gstAmount) },
+                ]
+                  .filter(Boolean)
+                  .map((row, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "8px",
+                        fontSize: "14px",
+                        color: (row as { color?: string }).color || "#aaa",
+                      }}
+                    >
+                      <span>{(row as { label: string }).label}</span>
+                      <span>{(row as { value: string }).value}</span>
+                    </div>
+                  ))}
+
+                <div
+                  style={{
+                    borderTop: "1px solid #333",
+                    paddingTop: "12px",
+                    marginTop: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "20px",
+                      fontWeight: 800,
+                      color: "#D4AF37",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <span>TOTAL</span>
+                    <span>{formatCurrency(doc.total)}</span>
+                  </div>
+                  {doc.depositPercent > 0 && (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "14px",
+                          color: "#3b82f6",
+                          marginBottom: "6px",
+                        }}
+                      >
+                        <span>Dépôt ({doc.depositPercent}%)</span>
+                        <span>{formatCurrency(doc.depositAmount)}</span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "16px",
+                          fontWeight: 700,
+                          color: "#ef4444",
+                        }}
+                      >
+                        <span>Solde dû</span>
+                        <span>{formatCurrency(doc.balanceDue)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
 
-            {company.eTransferEmail && (
-              <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3">
-                <p className="text-xs text-green-400 font-semibold">💳 E-Transfer: {company.eTransferEmail}</p>
+            {/* Payment info from settings */}
+            {(company.etransferEmail || company.bankName) && (
+              <div style={{ ...card, border: "1px solid #1e3a5f" }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#3b82f6",
+                    letterSpacing: "0.1em",
+                    marginBottom: "10px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  💳 Paiement (Auto — Réglages)
+                </div>
+                {company.etransferEmail && (
+                  <div style={{ fontSize: "14px", color: "#aaa", marginBottom: "4px" }}>
+                    Interac e-Transfer:{" "}
+                    <strong style={{ color: "#fff" }}>{company.etransferEmail}</strong>
+                  </div>
+                )}
+                {company.bankName && (
+                  <div style={{ fontSize: "14px", color: "#aaa" }}>
+                    {company.bankName}
+                    {company.bankAccount && ` — Compte: ${company.bankAccount}`}
+                  </div>
+                )}
               </div>
             )}
+          </>
+        )}
+
+        {/* ── NOTES TAB ── */}
+        {activeTab === "notes" && (
+          <div style={card}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>📝 Notes & Signature</h3>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={labelStyle}>Notes pour le client</label>
+              <textarea
+                value={doc.notes}
+                onChange={(e) => setDoc((d) => ({ ...d, notes: e.target.value }))}
+                rows={5}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+
+            <div
+              style={{
+                background: "#111",
+                borderRadius: "10px",
+                padding: "14px",
+              }}
+            >
+              <label style={{ ...labelStyle, marginBottom: "10px", display: "block" }}>
+                ✍️ Zone de signature
+              </label>
+              <canvas
+                ref={signatureRef}
+                width={320}
+                height={120}
+                style={{
+                  background: "#1a1a1a",
+                  border: "1px solid #333",
+                  borderRadius: "8px",
+                  touchAction: "none",
+                  display: "block",
+                  width: "100%",
+                }}
+                onMouseDown={() => setIsDrawing(true)}
+                onMouseUp={() => setIsDrawing(false)}
+                onMouseMove={(e) => {
+                  if (!isDrawing || !signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  const rect = signatureRef.current.getBoundingClientRect();
+                  const scaleX = signatureRef.current.width / rect.width;
+                  const scaleY = signatureRef.current.height / rect.height;
+                  ctx.strokeStyle = "#D4AF37";
+                  ctx.lineWidth = 2;
+                  ctx.lineTo(
+                    (e.clientX - rect.left) * scaleX,
+                    (e.clientY - rect.top) * scaleY
+                  );
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(
+                    (e.clientX - rect.left) * scaleX,
+                    (e.clientY - rect.top) * scaleY
+                  );
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  setIsDrawing(true);
+                  if (!signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  ctx.beginPath();
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault();
+                  if (!isDrawing || !signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  const rect = signatureRef.current.getBoundingClientRect();
+                  const scaleX = signatureRef.current.width / rect.width;
+                  const scaleY = signatureRef.current.height / rect.height;
+                  const touch = e.touches[0];
+                  ctx.strokeStyle = "#D4AF37";
+                  ctx.lineWidth = 2;
+                  ctx.lineTo(
+                    (touch.clientX - rect.left) * scaleX,
+                    (touch.clientY - rect.top) * scaleY
+                  );
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(
+                    (touch.clientX - rect.left) * scaleX,
+                    (touch.clientY - rect.top) * scaleY
+                  );
+                }}
+                onTouchEnd={() => setIsDrawing(false)}
+              />
+              <button
+                onClick={() => {
+                  if (!signatureRef.current) return;
+                  const ctx = signatureRef.current.getContext("2d");
+                  if (!ctx) return;
+                  ctx.clearRect(
+                    0,
+                    0,
+                    signatureRef.current.width,
+                    signatureRef.current.height
+                  );
+                }}
+                style={{
+                  marginTop: "8px",
+                  background: "none",
+                  border: "1px solid #333",
+                  color: "#888",
+                  borderRadius: "6px",
+                  padding: "6px 14px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                Effacer
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ═══ APERÇU ═══ */}
-        {tab === 'preview' && (
-          <div id="doc-preview" className="rounded-2xl bg-white text-gray-900 p-5 shadow-2xl">
-            {/* En-tête */}
-            <div className="flex items-start justify-between mb-5">
-              <div>
-                {(company.logo || company.logoUrl) && (
-                  <img src={company.logo || company.logoUrl} alt="logo" className="h-12 mb-2 object-contain" />
-                )}
-                <p className="font-black text-xl">{doc.company.name || company.name || 'Hailite Xteriors'}</p>
-                {doc.company.address && <p className="text-xs text-gray-500">{doc.company.address}</p>}
-                {doc.company.city && <p className="text-xs text-gray-500">{doc.company.city}</p>}
-                {doc.company.phone && <p className="text-xs text-gray-500">{doc.company.phone}</p>}
-                {doc.company.email && <p className="text-xs text-gray-500">{doc.company.email}</p>}
-                {company.gstNumber && <p className="text-xs text-gray-500">GST: {company.gstNumber}</p>}
-              </div>
-              <div className="text-right">
-                <p className="font-black text-2xl text-orange-500">
-                  {(lang === 'fr' ? label.fr : label.en).toUpperCase()}
-                </p>
-                <p className="font-bold text-gray-700">#{doc.number}</p>
-                <p className="text-xs text-gray-500">{t('Date', 'Date')}: {doc.date}</p>
-                <p className="text-xs text-gray-500">
-                  {doc.type === 'facture' ? t('Échéance', 'Due') : t('Valide', 'Valid')}: {doc.dueDate}
-                </p>
-                <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-semibold ${
-                  doc.status === 'paye' ? 'bg-green-100 text-green-700' :
-                  doc.status === 'brouillon' ? 'bg-gray-100 text-gray-600' :
-                  'bg-orange-100 text-orange-700'
-                }`}>
-                  {STATUS_LABELS[doc.status][lang as 'fr' | 'en'].toUpperCase()}
-                </span>
-              </div>
-            </div>
-
-            {/* Client */}
-            {doc.client.name && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-xl">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-1">{t('Facturé à', 'Bill To')}</p>
-                <p className="font-bold">{doc.client.name}</p>
-                {doc.client.address && <p className="text-xs text-gray-600">{doc.client.address}</p>}
-                {doc.client.city && <p className="text-xs text-gray-600">{doc.client.city}</p>}
-                {doc.client.phone && <p className="text-xs text-gray-600">{doc.client.phone}</p>}
-                {doc.client.email && <p className="text-xs text-gray-600">{doc.client.email}</p>}
-              </div>
-            )}
-
-            {/* Lignes */}
-            <table className="w-full text-sm mb-4">
-              <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="text-left py-2 text-xs font-bold text-gray-500 uppercase">{t('Description', 'Description')}</th>
-                  <th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">{t('Qté', 'Qty')}</th>
-                  <th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">$/u</th>
-                  <th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {doc.items.map(item => (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="py-2 text-gray-800">{item.description || '—'}</td>
-                    <td className="py-2 text-right text-gray-600">{item.quantity}</td>
-                    <td className="py-2 text-right text-gray-600">{fmt(item.unitPrice)}</td>
-                    <td className="py-2 text-right font-semibold">{fmt(item.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Totaux */}
-            <div className="ml-auto w-56 space-y-1 text-sm mb-4">
-              <div className="flex justify-between text-gray-600"><span>{t('Sous-total', 'Subtotal')}</span><span>{fmt(doc.subtotal)}</span></div>
-              {doc.discountAmount > 0 && (
-                <div className="flex justify-between text-gray-600"><span>{t('Remise', 'Disc.')}</span><span>−{fmt(doc.discountAmount)}</span></div>
-              )}
-              {doc.taxes.filter(t => t.enabled).map(tax => (
-                <div key={tax.id} className="flex justify-between text-gray-600">
-                  <span>{tax.name} ({tax.rate}%)</span>
-                  <span>{fmt((doc.subtotal - doc.discountAmount) * tax.rate / 100)}</span>
-                </div>
-              ))}
-              <div className="flex justify-between font-bold border-t border-gray-300 pt-1"><span>TOTAL</span><span>{fmt(doc.total)}</span></div>
-              {doc.deposit > 0 && (
-                <>
-                  <div className="flex justify-between text-xs text-gray-500"><span>{t('Dépôt', 'Deposit')}</span><span>−{fmt(doc.deposit)}</span></div>
-                  <div className="flex justify-between font-black text-orange-600 text-base border-t border-orange-200 pt-1">
-                    <span>{t('SOLDE DÛ', 'BALANCE DUE')}</span><span>{fmt(doc.balanceDue)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {doc.notes && (
-              <div className="border-t border-gray-200 pt-3 mb-2">
-                <p className="text-xs font-bold text-gray-400 uppercase mb-1">Notes</p>
-                <p className="text-xs text-gray-600">{doc.notes}</p>
-              </div>
-            )}
-            {doc.terms && <p className="text-xs text-gray-500">{t('Termes', 'Terms')}: {doc.terms}</p>}
-            {company.eTransferEmail && <p className="text-xs text-gray-500 mt-1">💳 E-Transfer: {company.eTransferEmail}</p>}
-
-            {/* Signatures */}
-            {(doc.contractorSignature || doc.clientSignature) && (
-              <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-2 gap-4">
-                {doc.contractorSignature && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase mb-2">{t('Contracteur', 'Contractor')}</p>
-                    <img src={doc.contractorSignature} alt="sig" className="h-10 border-b border-gray-400 w-full object-contain" />
-                    {doc.contractorSignatureDate && <p className="text-xs text-gray-400 mt-1">{new Date(doc.contractorSignatureDate).toLocaleDateString('fr-CA')}</p>}
-                  </div>
-                )}
-                {doc.clientSignature && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase mb-2">{t('Client', 'Client')}</p>
-                    <img src={doc.clientSignature} alt="sig" className="h-10 border-b border-gray-400 w-full object-contain" />
-                    {doc.clientSignatureDate && <p className="text-xs text-gray-400 mt-1">{new Date(doc.clientSignatureDate).toLocaleDateString('fr-CA')}</p>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* BARRE D'ACTIONS — au-dessus de la BottomNav */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-gray-950/98 backdrop-blur-md border-t border-white/10 px-3 py-2">
-        <div className="flex gap-2 max-w-lg mx-auto">
-          <button onClick={() => setTab('preview')}
-            className="flex-1 flex flex-col items-center gap-0.5 rounded-xl bg-white/5 border border-white/10 py-2 hover:bg-white/10 transition">
-            <span className="text-base">👁️</span>
-            <span className="text-[10px] text-gray-400 font-bold">{t('Aperçu', 'Preview')}</span>
-          </button>
-          <button onClick={() => window.print()}
-            className="flex-1 flex flex-col items-center gap-0.5 rounded-xl bg-white/5 border border-white/10 py-2 hover:bg-white/10 transition">
-            <span className="text-base">📄</span>
-            <span className="text-[10px] text-gray-400 font-bold">PDF</span>
-          </button>
-          <button onClick={handleEmail}
-            className="flex-1 flex flex-col items-center gap-0.5 rounded-xl bg-blue-500/20 border border-blue-500/30 py-2 hover:bg-blue-500/30 transition">
-            <span className="text-base">📧</span>
-            <span className="text-[10px] text-blue-300 font-bold">Email</span>
-          </button>
-          <button onClick={handleSMS}
-            className="flex-1 flex flex-col items-center gap-0.5 rounded-xl bg-green-500/20 border border-green-500/30 py-2 hover:bg-green-500/30 transition">
-            <span className="text-base">💬</span>
-            <span className="text-[10px] text-green-300 font-bold">SMS</span>
-          </button>
-          <button onClick={handleSave}
-            className={`flex-1 flex flex-col items-center gap-0.5 rounded-xl py-2 transition border ${
-              saved ? 'bg-green-500 border-green-400' : 'bg-orange-500 hover:bg-orange-600 border-orange-400'
-            }`}>
-            <span className="text-base">{saved ? '✅' : '💾'}</span>
-            <span className="text-[10px] text-white font-bold">{saved ? t('Sauvé!', 'Saved!') : t('Sauver', 'Save')}</span>
+        {/* Save button */}
+        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+          <button style={btnGold} onClick={saveDocument}>
+            {saved ? "✅ Sauvegardé!" : isNew ? "💾 Créer le document" : "💾 Sauvegarder"}
           </button>
         </div>
       </div>
 
+      {/* Client picker modal */}
       {showClientPicker && (
-        <ClientPickerModal onSelect={handleSelectClient} onClose={() => setShowClientPicker(false)} lang={lang} />
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "#000b",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "flex-end",
+          }}
+          onClick={() => setShowClientPicker(false)}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              width: "100%",
+              maxHeight: "70vh",
+              borderRadius: "20px 20px 0 0",
+              padding: "20px",
+              overflowY: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>👥 Choisir un client</h3>
+            {clients.length === 0 ? (
+              <p style={{ color: "#666", textAlign: "center" }}>
+                Aucun client. Ajoutez-en dans la section Clients.
+              </p>
+            ) : (
+              clients.map((client) => (
+                <button
+                  key={client.id}
+                  onClick={() => selectClient(client.id)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: "#111",
+                    border: "1px solid #333",
+                    borderRadius: "10px",
+                    padding: "14px",
+                    color: "#fff",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>{client.name}</div>
+                  {client.email && (
+                    <div style={{ fontSize: "12px", color: "#888" }}>{client.email}</div>
+                  )}
+                  {client.phone && (
+                    <div style={{ fontSize: "12px", color: "#888" }}>{client.phone}</div>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
       )}
-
-      <BottomNav />
     </div>
   );
 }
