@@ -104,30 +104,20 @@ function TextArea({ label, value, onChange, placeholder = '', rows = 3 }: {
   );
 }
 
-type AnyEmployee = {
-  id: string | number; role?: string; isAdmin?: boolean; name?: string; hourlyRate?: number; pin?: string;
-};
-
 export default function SettingsPage() {
   const router = useRouter();
 
   const company = useCompanyStore(s => s.company);
   const updateCompany = useCompanyStore(s => s.updateCompany);
-  const employees = useEmployeeStore(s => s.employees) as AnyEmployee[];
-  const addEmployee = useEmployeeStore(
-    s => (s as unknown as { addEmployee?: (e: AnyEmployee) => void }).addEmployee
-  );
-  const removeEmployee = useEmployeeStore(
-    s => (s as unknown as { removeEmployee?: (id: string | number) => void }).removeEmployee
-  );
-  const storeState = useEmployeeStore(s => s) as unknown as { currentEmployeeId?: string | number };
-  const currentEmployeeId = storeState.currentEmployeeId;
+  const employees = useEmployeeStore(s => s.employees);
+  const addEmployee = useEmployeeStore(s => s.addEmployee);
+  const deleteEmployee = useEmployeeStore(s => s.deleteEmployee);
+  const currentEmployeeId = useEmployeeStore(s => s.currentEmployeeId);
   const currentEmployee = currentEmployeeId != null
     ? employees.find(e => e.id === currentEmployeeId)
     : undefined;
   const isAdmin =
     currentEmployee?.role === 'admin' ||
-    currentEmployee?.isAdmin === true ||
     currentEmployeeId == null;
 
   // ── Thème — vrais noms du store ──
@@ -142,7 +132,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>(company.logo || company.logoUrl || '');
   const fileRef = useRef<HTMLInputElement>(null);
-  const [newEmp, setNewEmp] = useState({ name: '', role: 'employee', hourlyRate: 45, pin: '' });
+  const [newEmp, setNewEmp] = useState({ name: '', role: 'employee' as 'employee' | 'admin', workMode: 'heure' as 'heure' | 'surface', hourlyRate: 45, pin: '0000' });
   const [showAddEmp, setShowAddEmp] = useState(false);
 
   const setField = (field: keyof CompanyInfo) => (v: string) => setForm(p => ({ ...p, [field]: v }));
@@ -166,8 +156,15 @@ export default function SettingsPage() {
 
   const handleAddEmployee = () => {
     if (!newEmp.name.trim()) return;
-    if (addEmployee) addEmployee({ id: Date.now().toString(), ...newEmp });
-    setNewEmp({ name: '', role: 'employee', hourlyRate: 45, pin: '' });
+    addEmployee({
+      name: newEmp.name.trim(),
+      role: newEmp.role,
+      workMode: newEmp.workMode,
+      hourlyRate: newEmp.hourlyRate,
+      pin: newEmp.pin || '0000',
+      active: true,
+    });
+    setNewEmp({ name: '', role: 'employee', workMode: 'heure', hourlyRate: 45, pin: '0000' });
     setShowAddEmp(false);
   };
 
@@ -338,15 +335,13 @@ export default function SettingsPage() {
                   <div>
                     <p className="text-white text-sm font-medium">{emp.name}</p>
                     <p className="text-gray-400 text-xs">
-                      {emp.role === 'admin' || emp.isAdmin ? '👑 Admin' : '👷 Employé'}
+                      {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}
                       {emp.hourlyRate ? ` · $${emp.hourlyRate}/h` : ''}
-                      {emp.pin ? ` · PIN: ${'•'.repeat(emp.pin.length)}` : ''}
+                      {` · ${emp.workMode === 'surface' ? '📐 Surface' : '⏱️ Heure'}`}
                     </p>
                   </div>
-                  {removeEmployee && (
-                    <button onClick={() => removeEmployee(emp.id)}
-                      className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded-lg hover:bg-red-500/10">✕</button>
-                  )}
+                  <button onClick={() => deleteEmployee(String(emp.id))}
+                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded-lg hover:bg-red-500/10">✕</button>
                 </div>
               ))
             )}
@@ -363,7 +358,7 @@ export default function SettingsPage() {
                 placeholder="Nom complet"
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400" />
               <div className="grid grid-cols-2 gap-2">
-                <select value={newEmp.role} onChange={e => setNewEmp(p => ({ ...p, role: e.target.value }))}
+                <select value={newEmp.role} onChange={e => setNewEmp(p => ({ ...p, role: e.target.value as 'employee' | 'admin' }))}
                   className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none">
                   <option value="employee">👷 Employé</option>
                   <option value="admin">👑 Admin</option>
@@ -373,7 +368,12 @@ export default function SettingsPage() {
                   placeholder="$/h"
                   className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-400" />
               </div>
-              <input value={newEmp.pin} onChange={e => setNewEmp(p => ({ ...p, pin: e.target.value }))}
+              <select value={newEmp.workMode} onChange={e => setNewEmp(p => ({ ...p, workMode: e.target.value as 'heure' | 'surface' }))}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-sm focus:outline-none">
+                <option value="heure">⏱️ À l'heure</option>
+                <option value="surface">📐 Au pied carré</option>
+              </select>
+              <input value={newEmp.pin} onChange={e => setNewEmp(p => ({ ...p, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                 placeholder="PIN (4 chiffres)" maxLength={4} type="password"
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-400" />
               <div className="flex gap-2">
