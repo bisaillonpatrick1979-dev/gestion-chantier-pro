@@ -18,6 +18,9 @@ export interface DocumentTax {
   enabled: boolean
 }
 
+// Alias pour compatibilité avec useDocumentStore
+export type TaxLine = DocumentTax
+
 export interface DocumentClient {
   name: string
   email: string
