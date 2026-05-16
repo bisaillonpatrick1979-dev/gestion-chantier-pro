@@ -1,51 +1,92 @@
 'use client';
 
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { useProjectStore, calcProjectStats, PayMode, Project } from '@/store/useProjectStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
+import { useThemeStore } from '@/store/useThemeStore';
 
-function BottomNav() {
-  const pathname = usePathname();
-  const links = [
-    { href: '/',          icon: '🏠', label: 'Dashboard' },
-    { href: '/projects',  icon: '🏗️', label: 'Projets' },
-    { href: '/documents', icon: '🧾', label: 'Docs' },
-    { href: '/clients',   icon: '👥', label: 'Clients' },
-    { href: '/settings',  icon: '⚙️', label: 'Réglages' },
-  ];
+// ── Gravure décorative ────────────────────────────────────────────────────────
+function DecoGravure({ style }: { style?: React.CSSProperties }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-md border-t border-white/10 flex justify-around items-center h-16 px-1">
-      {links.map(({ href, icon, label }) => (
-        <a key={href} href={href}
-          className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all min-w-[3rem] ${
-            pathname === href ? 'text-orange-400' : 'text-gray-500 hover:text-gray-300'
-          }`}>
-          <span className="text-xl leading-none">{icon}</span>
-          <span className="text-[10px] font-medium">{label}</span>
-        </a>
-      ))}
-    </nav>
-  );
+    <svg
+      viewBox="0 0 200 40"
+      fill="none"
+      style={{ width: '100%', opacity: 0.18, pointerEvents: 'none', ...style }}
+    >
+      <line x1="0" y1="20" x2="60" y2="20" stroke="var(--primary,#D4AF37)" strokeWidth="0.8"/>
+      <polygon points="65,20 72,14 79,20 72,26" stroke="var(--primary,#D4AF37)" strokeWidth="0.8" fill="none"/>
+      <line x1="84" y1="20" x2="116" y2="20" stroke="var(--primary,#D4AF37)" strokeWidth="0.8"/>
+      <circle cx="100" cy="20" r="5" stroke="var(--primary,#D4AF37)" strokeWidth="0.8" fill="none"/>
+      <circle cx="100" cy="20" r="2" fill="var(--primary,#D4AF37)" opacity="0.5"/>
+      <line x1="121" y1="20" x2="135" y2="20" stroke="var(--primary,#D4AF37)" strokeWidth="0.8"/>
+      <polygon points="140,20 147,14 154,20 147,26" stroke="var(--primary,#D4AF37)" strokeWidth="0.8" fill="none"/>
+      <line x1="141" y1="20" x2="200" y2="20" stroke="var(--primary,#D4AF37)" strokeWidth="0.8"/>
+    </svg>
+  )
 }
 
+function DecoCorners() {
+  return (
+    <>
+      <div style={{ position:'absolute', top:8, left:8, width:16, height:16,
+        borderTop:'1.5px solid var(--primary,#D4AF37)', borderLeft:'1.5px solid var(--primary,#D4AF37)',
+        opacity:0.5, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:8, right:8, width:16, height:16,
+        borderTop:'1.5px solid var(--primary,#D4AF37)', borderRight:'1.5px solid var(--primary,#D4AF37)',
+        opacity:0.5, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:8, left:8, width:16, height:16,
+        borderBottom:'1.5px solid var(--primary,#D4AF37)', borderLeft:'1.5px solid var(--primary,#D4AF37)',
+        opacity:0.5, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:8, right:8, width:16, height:16,
+        borderBottom:'1.5px solid var(--primary,#D4AF37)', borderRight:'1.5px solid var(--primary,#D4AF37)',
+        opacity:0.5, pointerEvents:'none' }} />
+    </>
+  )
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n: number) => `$${n.toFixed(2)}`;
 
 const PAY_MODE_LABELS: Record<PayMode, { fr: string; icon: string }> = {
-  hourly: { fr: "À l'heure",    icon: '⏱️' },
-  job:    { fr: 'À la job',      icon: '💰' },
-  sqft:   { fr: 'Au pied carré', icon: '📐' },
+  hourly: { fr: "À l'heure",     icon: '⏱️' },
+  job:    { fr: 'À la job',       icon: '💰' },
+  sqft:   { fr: 'Au pied carré',  icon: '📐' },
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  open:     'bg-green-500/20 text-green-300 border-green-500/30',
-  closed:   'bg-gray-500/20 text-gray-300 border-gray-500/30',
-  invoiced: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-};
+// ── Styles dynamiques ─────────────────────────────────────────────────────────
+const pageStyle: React.CSSProperties = {
+  minHeight: '100vh',
+  background: 'var(--bg, #0a0a0a)',
+  color: 'var(--text, #fff)',
+  paddingBottom: '80px',
+}
 
+const cardStyle: React.CSSProperties = {
+  background: 'var(--card, #1a1a1a)',
+  border: '1px solid var(--border, #2a2a2a)',
+  borderRadius: '16px',
+  padding: '16px',
+  position: 'relative',
+  overflow: 'hidden',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--surface, #111)',
+  border: '1px solid var(--border, #333)',
+  borderRadius: '10px',
+  padding: '10px 12px',
+  color: 'var(--text, #fff)',
+  fontSize: '14px',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+// ── Modal Carte Projet ────────────────────────────────────────────────────────
 function JobCardModal({ project, onClose }: { project: Project; onClose: () => void }) {
   const { addExpense, removeExpense, closeProject, updateProject } = useProjectStore();
+  const { theme } = useThemeStore();
   const employeeStore = useEmployeeStore();
   const allEmployees = (employeeStore as unknown as Record<string, unknown>).employees as Array<{
     id: string; name: string; hourlyRate?: number; role?: string;
@@ -55,11 +96,19 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
   const [expAmt, setExpAmt] = useState('');
   const [tab, setTab] = useState<'overview' | 'employees' | 'expenses' | 'logs'>('overview');
   const stats = calcProjectStats(project);
-  const marginColor = stats.marginPercent >= 40 ? 'text-green-400' : stats.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400';
+  const marginColor = stats.marginPercent >= 40
+    ? theme.colors.success
+    : stats.marginPercent >= 20
+    ? theme.colors.warning
+    : theme.colors.danger;
 
   const handleAddExpense = () => {
     if (!expDesc || !expAmt) return;
-    addExpense(project.id, { description: expDesc, amount: parseFloat(expAmt), date: new Date().toISOString().slice(0, 10) });
+    addExpense(project.id, {
+      description: expDesc,
+      amount: parseFloat(expAmt),
+      date: new Date().toISOString().slice(0, 10),
+    });
     setExpDesc(''); setExpAmt('');
   };
 
@@ -71,125 +120,163 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
     updateProject(project.id, { assignedEmployeeIds: updated });
   };
 
+  const tabs = [
+    { id: 'overview'  as const, label: '📊 Vue'      },
+    { id: 'employees' as const, label: '👷 Équipe'   },
+    { id: 'expenses'  as const, label: '💸 Dépenses' },
+    { id: 'logs'      as const, label: '🕐 Logs'     },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
-      style={{ paddingBottom: '64px' }}>
-      <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 flex flex-col"
-        style={{ maxHeight: 'calc(100dvh - 64px)' }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      paddingBottom: '64px',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: '520px',
+        background: 'var(--surface, #111)',
+        borderRadius: '24px 24px 0 0',
+        border: '1px solid var(--border)',
+        borderBottom: 'none',
+        display: 'flex', flexDirection: 'column',
+        maxHeight: 'calc(100dvh - 64px)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Ligne déco en haut */}
+        <div style={{ height: '2px', background: `linear-gradient(90deg, transparent, var(--primary), transparent)` }} />
 
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
-          <div className="flex items-start justify-between mb-1">
-            <div className="flex-1 pr-3">
-              <h2 className="font-black text-white text-lg leading-tight">{project.name}</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{project.address}, {project.city}</p>
-              <p className="text-xs text-orange-400 mt-0.5">
+        <div style={{ padding: '20px 20px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+            <div style={{ flex: 1, paddingRight: '12px' }}>
+              <h2 style={{ fontWeight: 900, fontSize: '18px', color: 'var(--text)', margin: 0 }}>{project.name}</h2>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{project.address}, {project.city}</p>
+              <p style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>
                 {PAY_MODE_LABELS[project.payMode].icon} {PAY_MODE_LABELS[project.payMode].fr}
                 {project.payMode === 'hourly' && project.hourlyRate && ` · $${project.hourlyRate}/h`}
                 {project.payMode === 'job' && project.jobAmount && ` · ${fmt(project.jobAmount)}`}
                 {project.payMode === 'sqft' && project.sqftRate && ` · $${project.sqftRate}/pi²`}
               </p>
             </div>
-            <button onClick={onClose} className="text-gray-400 text-2xl hover:text-white">✕</button>
+            <button onClick={onClose} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '50%', width: '32px', height: '32px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
-          <div className="flex gap-1 bg-white/5 rounded-xl p-1 mt-3">
-            {([
-              { id: 'overview'  as const, label: '📊 Vue' },
-              { id: 'employees' as const, label: '👷 Équipe' },
-              { id: 'expenses'  as const, label: '💸 Dépenses' },
-              { id: 'logs'      as const, label: '🕐 Logs' },
-            ]).map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                  tab === t.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
-                }`}>{t.label}</button>
+
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--card)', borderRadius: '10px', padding: '4px', marginTop: '12px' }}>
+            {tabs.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                flex: 1, borderRadius: '8px', padding: '8px 4px',
+                fontSize: '11px', fontWeight: 700, cursor: 'pointer', border: 'none',
+                background: tab === t.id ? 'var(--primary)' : 'transparent',
+                color: tab === t.id ? '#000' : 'var(--text-muted)',
+                transition: 'all 0.2s',
+              }}>{t.label}</button>
             ))}
           </div>
         </div>
 
         {/* Contenu scrollable */}
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div style={{ overflowY: 'auto', flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
             <>
               {project.clientAmount !== undefined && (
-                <div className="rounded-2xl bg-orange-500/10 border border-orange-500/30 p-4">
-                  <p className="text-xs text-orange-400 font-bold uppercase tracking-widest mb-1">💼 Montant client (admin)</p>
-                  <p className="text-3xl font-black text-white">{fmt(project.clientAmount)}</p>
+                <div style={{ ...cardStyle, border: `1px solid ${theme.colors.primary}44`, background: `${theme.colors.primary}11` }}>
+                  <DecoCorners />
+                  <p style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    💼 Montant client
+                  </p>
+                  <p style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text)' }}>{fmt(project.clientAmount)}</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <p className="text-xs text-gray-400 mb-1">👷 Main d'œuvre</p>
-                  <p className="text-xl font-black text-white">{fmt(stats.totalLaborCost)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{stats.totalHours.toFixed(1)}h total</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={cardStyle}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>👷 Main d'œuvre</p>
+                  <p style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text)' }}>{fmt(stats.totalLaborCost)}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-weak)', marginTop: '4px' }}>{stats.totalHours.toFixed(1)}h total</p>
                 </div>
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <p className="text-xs text-gray-400 mb-1">💸 Dépenses</p>
-                  <p className="text-xl font-black text-white">{fmt(stats.totalExpenses)}</p>
-                  <p className="text-xs text-gray-500 mt-1">{project.expenses.length} entrée(s)</p>
+                <div style={cardStyle}>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>💸 Dépenses</p>
+                  <p style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text)' }}>{fmt(stats.totalExpenses)}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-weak)', marginTop: '4px' }}>{project.expenses.length} entrée(s)</p>
                 </div>
               </div>
+
               {stats.clientRevenue > 0 && (
-                <div className={`rounded-2xl border p-4 ${
-                  stats.marginPercent >= 40 ? 'bg-green-500/10 border-green-500/30' :
-                  stats.marginPercent >= 20 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-red-500/10 border-red-500/30'
-                }`}>
-                  <div className="flex items-center justify-between">
+                <div style={{ ...cardStyle, border: `1px solid ${marginColor}44`, background: `${marginColor}11` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p className="text-xs text-gray-400 mb-1">📈 Marge nette</p>
-                      <p className={`text-3xl font-black ${marginColor}`}>{fmt(stats.margin)}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>📈 Marge nette</p>
+                      <p style={{ fontSize: '28px', fontWeight: 900, color: marginColor }}>{fmt(stats.margin)}</p>
                     </div>
-                    <div className={`text-4xl font-black ${marginColor}`}>{stats.marginPercent.toFixed(0)}%</div>
+                    <p style={{ fontSize: '36px', fontWeight: 900, color: marginColor }}>{stats.marginPercent.toFixed(0)}%</p>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-white/10 space-y-1 text-sm">
-                    <div className="flex justify-between text-gray-300"><span>Revenue client</span><span>{fmt(stats.clientRevenue)}</span></div>
-                    <div className="flex justify-between text-gray-400"><span>− Main d'œuvre</span><span>−{fmt(stats.totalLaborCost)}</span></div>
-                    <div className="flex justify-between text-gray-400"><span>− Dépenses</span><span>−{fmt(stats.totalExpenses)}</span></div>
-                    <div className={`flex justify-between font-black border-t border-white/10 pt-1 mt-1 ${marginColor}`}><span>= MARGE</span><span>{fmt(stats.margin)}</span></div>
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                    {[
+                      { label: 'Revenue client',  value: fmt(stats.clientRevenue),    color: 'var(--text)'      },
+                      { label: '− Main d\'œuvre', value: `−${fmt(stats.totalLaborCost)}`, color: 'var(--text-muted)' },
+                      { label: '− Dépenses',      value: `−${fmt(stats.totalExpenses)}`,  color: 'var(--text-muted)' },
+                    ].map(row => (
+                      <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: row.color, marginBottom: '4px' }}>
+                        <span>{row.label}</span><span>{row.value}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 900, color: marginColor, borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span>= MARGE</span><span>{fmt(stats.margin)}</span>
+                    </div>
                   </div>
                 </div>
               )}
+
+              {/* Gravure déco dans l'espace vide */}
+              <DecoGravure />
+
               {project.status === 'open' && (
-                <button onClick={() => { closeProject(project.id); onClose(); }}
-                  className="w-full rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-300 font-bold py-3.5 text-sm hover:bg-blue-500/30 transition">
+                <button onClick={() => { closeProject(project.id); onClose(); }} style={{
+                  width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                  border: '1px solid var(--info)', background: `${theme.colors.info}18`,
+                  color: 'var(--info)', fontWeight: 700, fontSize: '14px',
+                }}>
                   🔒 Fermer le projet → Générer facture
                 </button>
               )}
             </>
           )}
 
-          {/* ── ÉQUIPE — ajouter/retirer employés en temps réel ── */}
+          {/* ── ÉQUIPE ── */}
           {tab === 'employees' && (
-            <div className="space-y-4">
-
-              {/* Gérer l'équipe */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-3">
-                  ✏️ Gérer l'équipe du projet
+            <>
+              <div style={cardStyle}>
+                <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--primary)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>
+                  ✏️ Gérer l'équipe
                 </p>
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {allEmployees.length === 0 && (
-                    <p className="text-gray-500 text-sm text-center py-3">Aucun employé dans le système.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '12px 0' }}>Aucun employé.</p>
                   )}
                   {allEmployees.map(emp => {
                     const assigned = (project.assignedEmployeeIds ?? []).includes(emp.id);
                     return (
-                      <button key={emp.id} onClick={() => toggleAssignEmployee(emp.id)}
-                        className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
-                          assigned ? 'border-orange-400 bg-orange-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'
-                        }`}>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{assigned ? '✅' : '⬜'}</span>
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-white">{emp.name}</p>
-                            <p className="text-xs text-gray-400">${emp.hourlyRate ?? 0}/h · {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}</p>
+                      <button key={emp.id} onClick={() => toggleAssignEmployee(emp.id)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                        border: assigned ? '1px solid var(--primary)' : '1px solid var(--border)',
+                        background: assigned ? 'var(--primary)18' : 'var(--card)',
+                        transition: 'all 0.2s',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '16px' }}>{assigned ? '✅' : '⬜'}</span>
+                          <div style={{ textAlign: 'left' }}>
+                            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{emp.name}</p>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>${emp.hourlyRate ?? 0}/h · {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}</p>
                           </div>
                         </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                          assigned ? 'bg-orange-500/30 text-orange-300' : 'text-gray-500'
-                        }`}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px', background: assigned ? 'var(--primary)30' : 'transparent', color: assigned ? 'var(--primary)' : 'var(--text-muted)' }}>
                           {assigned ? 'Assigné' : 'Ajouter'}
                         </span>
                       </button>
@@ -198,98 +285,119 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
                 </div>
               </div>
 
-              {/* Stats par employé */}
               {Object.values(stats.byEmployee).length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">📊 Heures enregistrées</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>📊 Heures enregistrées</p>
                   {Object.values(stats.byEmployee).map(emp => (
-                    <div key={emp.employeeId} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                      <div className="flex items-center justify-between mb-3">
+                    <div key={emp.employeeId} style={cardStyle}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <div>
-                          <p className="font-bold text-white">{emp.employeeName}</p>
-                          <p className="text-xs text-gray-400">${emp.hourlyRate}/h · {emp.sessions} session(s)</p>
+                          <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: '14px' }}>{emp.employeeName}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>${emp.hourlyRate}/h · {emp.sessions} session(s)</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-black text-orange-400">{fmt(emp.totalPay)}</p>
-                          {emp.totalHours > 0 && <p className="text-xs text-gray-400">{emp.totalHours.toFixed(2)}h</p>}
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: '18px', fontWeight: 900, color: 'var(--primary)' }}>{fmt(emp.totalPay)}</p>
+                          {emp.totalHours > 0 && <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{emp.totalHours.toFixed(2)}h</p>}
                         </div>
                       </div>
-                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-orange-400 rounded-full"
-                          style={{ width: `${Math.min(100, (emp.totalPay / (stats.totalLaborCost || 1)) * 100)}%` }} />
+                      <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: 'var(--primary)', borderRadius: '2px', width: `${Math.min(100, (emp.totalPay / (stats.totalLaborCost || 1)) * 100)}%` }} />
                       </div>
                     </div>
                   ))}
-                  <div className="rounded-2xl bg-orange-500/10 border border-orange-500/30 p-4 flex justify-between items-center">
-                    <span className="text-sm font-bold text-orange-300">Total main d'œuvre</span>
-                    <span className="text-xl font-black text-orange-400">{fmt(stats.totalLaborCost)}</span>
+                  <div style={{ ...cardStyle, border: '1px solid var(--primary)44', background: 'var(--primary)11', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>Total main d'œuvre</span>
+                    <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary)' }}>{fmt(stats.totalLaborCost)}</span>
                   </div>
                 </div>
               )}
 
               {Object.values(stats.byEmployee).length === 0 && (
-                <p className="text-center text-gray-500 text-sm py-4">Aucune heure enregistrée pour ce projet.</p>
+                <>
+                  <DecoGravure />
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '16px 0' }}>Aucune heure enregistrée.</p>
+                </>
               )}
-            </div>
+            </>
           )}
 
           {/* ── DÉPENSES ── */}
           {tab === 'expenses' && (
-            <div className="space-y-3">
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">➕ Ajouter une dépense</p>
-                <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Description (gaz, matériaux...)"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none mb-2" />
-                <div className="flex gap-2">
-                  <input type="number" value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="Montant $"
-                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-                  <button onClick={handleAddExpense}
-                    className="rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-bold text-white transition">➕</button>
+            <>
+              <div style={cardStyle}>
+                <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>
+                  ➕ Ajouter une dépense
+                </p>
+                <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Description (gaz, matériaux...)" style={{ ...inputStyle, marginBottom: '8px' }} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="number" value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="Montant $" style={{ ...inputStyle, flex: 1 }} />
+                  <button onClick={handleAddExpense} style={{ background: 'var(--primary)', border: 'none', borderRadius: '10px', padding: '10px 16px', color: '#000', fontWeight: 800, cursor: 'pointer', fontSize: '16px' }}>➕</button>
                 </div>
               </div>
+
+              {project.expenses.length === 0 && (
+                <>
+                  <DecoGravure />
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '12px 0' }}>Aucune dépense.</p>
+                </>
+              )}
+
               {project.expenses.map(exp => (
-                <div key={exp.id} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+                <div key={exp.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p className="text-sm text-white font-medium">{exp.description}</p>
-                    <p className="text-xs text-gray-500">{exp.date}</p>
+                    <p style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 600 }}>{exp.description}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{exp.date}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-red-400">{fmt(exp.amount)}</span>
-                    <button onClick={() => removeExpense(project.id, exp.id)} className="text-gray-600 hover:text-red-400 text-lg">✕</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--danger)' }}>{fmt(exp.amount)}</span>
+                    <button onClick={() => removeExpense(project.id, exp.id)} style={{ background: 'none', border: 'none', color: 'var(--text-weak)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
                   </div>
                 </div>
               ))}
-              {project.expenses.length === 0 && <p className="text-center text-gray-500 text-sm py-4">Aucune dépense.</p>}
+
               {project.expenses.length > 0 && (
-                <div className="rounded-2xl bg-red-500/10 border border-red-500/30 p-4 flex justify-between items-center">
-                  <span className="text-sm font-bold text-red-300">Total dépenses</span>
-                  <span className="text-xl font-black text-red-400">{fmt(stats.totalExpenses)}</span>
+                <div style={{ ...cardStyle, border: '1px solid var(--danger)44', background: 'var(--danger)11', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--danger)' }}>Total dépenses</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--danger)' }}>{fmt(stats.totalExpenses)}</span>
                 </div>
               )}
-            </div>
+            </>
           )}
 
           {/* ── LOGS ── */}
           {tab === 'logs' && (
-            <div className="space-y-2">
-              {project.workLogs.length === 0 && <p className="text-center text-gray-500 text-sm py-6">Aucun log de travail.</p>}
+            <>
+              {project.workLogs.length === 0 && (
+                <>
+                  <DecoGravure />
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '24px 0' }}>Aucun log de travail.</p>
+                </>
+              )}
               {[...project.workLogs].reverse().map((log, idx) => (
-                <div key={idx} className={`rounded-2xl border p-4 ${!log.punchOut ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/10'}`}>
-                  <div className="flex justify-between items-start">
+                <div key={idx} style={{
+                  ...cardStyle,
+                  border: !log.punchOut ? '1px solid var(--success)44' : '1px solid var(--border)',
+                  background: !log.punchOut ? 'var(--success)11' : 'var(--card)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <p className="font-bold text-white text-sm">{log.employeeName}</p>
-                      <p className="text-xs text-gray-400">{log.date} · ${log.hourlyRate}/h</p>
+                      <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: '14px' }}>{log.employeeName}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.date} · ${log.hourlyRate}/h</p>
                     </div>
-                    <div className="text-right">
-                      {log.punchOut
-                        ? <><p className="text-sm font-bold text-orange-400">{log.hoursWorked?.toFixed(2)}h</p><p className="text-xs text-gray-400">{fmt((log.hoursWorked ?? 0) * log.hourlyRate)}</p></>
-                        : <span className="text-xs text-green-400 font-bold">🟢 En cours</span>
-                      }
+                    <div style={{ textAlign: 'right' }}>
+                      {log.punchOut ? (
+                        <>
+                          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>{log.hoursWorked?.toFixed(2)}h</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{fmt((log.hoursWorked ?? 0) * log.hourlyRate)}</p>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 700 }}>🟢 En cours</span>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -297,6 +405,7 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
   );
 }
 
+// ── Modal Nouveau Projet ──────────────────────────────────────────────────────
 function NewProjectModal({ onClose }: { onClose: () => void }) {
   const { addProject } = useProjectStore();
   const { clients } = useClientStore();
@@ -336,107 +445,123 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
-      style={{ paddingBottom: '64px' }}>
-      <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 flex flex-col"
-        style={{ maxHeight: 'calc(100dvh - 64px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: '64px' }}>
+      <div style={{ width: '100%', maxWidth: '520px', background: 'var(--surface)', borderRadius: '24px 24px 0 0', border: '1px solid var(--border)', borderBottom: 'none', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 64px)', overflow: 'hidden' }}>
 
-        <div className="px-5 pt-5 pb-3 border-b border-white/10 flex items-center justify-between shrink-0">
-          <h2 className="font-black text-white text-xl">🏗️ Nouveau projet</h2>
-          <button onClick={onClose} className="text-gray-400 text-2xl hover:text-white">✕</button>
+        <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent, var(--primary), transparent)', flexShrink: 0 }} />
+
+        <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <h2 style={{ fontWeight: 900, fontSize: '18px', color: 'var(--text)', margin: 0 }}>🏗️ Nouveau projet</h2>
+          <button onClick={onClose} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '50%', width: '32px', height: '32px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div style={{ overflowY: 'auto', flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {[
+            { label: 'Nom du projet *', key: 'name', placeholder: 'Ex: Toiture — 123 Main St', type: 'text' },
+            { label: 'Adresse du chantier *', key: 'address', placeholder: '123 Main St', type: 'text' },
+            { label: 'Ville', key: 'city', placeholder: 'Calgary', type: 'text' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>{f.label}</label>
+              <input
+                type={f.type}
+                value={(form as Record<string, string>)[f.key]}
+                onChange={e => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Nom du projet *</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex: Toiture — 123 Main St"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Client</label>
-            <select value={form.clientId} onChange={e => set('clientId', e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-gray-800 px-3 py-2.5 text-sm text-white focus:border-orange-400 focus:outline-none">
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Client</label>
+            <select value={form.clientId} onChange={e => set('clientId', e.target.value)} style={{ ...inputStyle }}>
               <option value="">— Choisir client —</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
+
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Adresse du chantier *</label>
-            <input value={form.address} onChange={e => set('address', e.target.value)} placeholder="123 Main St"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Ville</label>
-            <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Calgary"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-2">Mode de paiement des employés</label>
-            <div className="grid grid-cols-3 gap-2">
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Mode de paiement des employés</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
               {(Object.entries(PAY_MODE_LABELS) as [PayMode, { fr: string; icon: string }][]).map(([mode, l]) => (
-                <button key={mode} onClick={() => set('payMode', mode)}
-                  className={`rounded-xl border py-3 text-xs font-bold transition-all ${
-                    form.payMode === mode ? 'border-orange-400 bg-orange-500/20 text-orange-300' : 'border-white/10 bg-white/5 text-gray-400'
-                  }`}>
-                  <span className="block text-lg mb-1">{l.icon}</span>{l.fr}
+                <button key={mode} onClick={() => set('payMode', mode)} style={{
+                  padding: '12px 6px', borderRadius: '10px', cursor: 'pointer',
+                  border: form.payMode === mode ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: form.payMode === mode ? 'var(--primary)22' : 'var(--card)',
+                  color: form.payMode === mode ? 'var(--primary)' : 'var(--text-muted)',
+                  fontSize: '11px', fontWeight: 700, transition: 'all 0.2s',
+                }}>
+                  <div style={{ fontSize: '18px', marginBottom: '4px' }}>{l.icon}</div>
+                  {l.fr}
                 </button>
               ))}
             </div>
           </div>
+
           {form.payMode === 'hourly' && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Taux horaire par défaut ($/h)</label>
-              <input type="number" value={form.hourlyRate} onChange={e => set('hourlyRate', e.target.value)} placeholder="45"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Taux horaire ($/h)</label>
+              <input type="number" value={form.hourlyRate} onChange={e => set('hourlyRate', e.target.value)} placeholder="45" style={inputStyle} />
             </div>
           )}
           {form.payMode === 'job' && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Montant total à la job ($)</label>
-              <input type="number" value={form.jobAmount} onChange={e => set('jobAmount', e.target.value)} placeholder="1500"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Montant total à la job ($)</label>
+              <input type="number" value={form.jobAmount} onChange={e => set('jobAmount', e.target.value)} placeholder="1500" style={inputStyle} />
             </div>
           )}
           {form.payMode === 'sqft' && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Taux pi² ($/pi²)</label>
-              <input type="number" value={form.sqftRate} onChange={e => set('sqftRate', e.target.value)} placeholder="2.25"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Taux pi² ($/pi²)</label>
+              <input type="number" value={form.sqftRate} onChange={e => set('sqftRate', e.target.value)} placeholder="2.25" style={inputStyle} />
             </div>
           )}
-          <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-3">
-            <label className="block text-xs text-orange-400 font-bold mb-1">💼 Montant client (admin seulement)</label>
-            <input type="number" value={form.clientAmount} onChange={e => set('clientAmount', e.target.value)} placeholder="Ex: 3500"
-              className="w-full rounded-xl border border-orange-500/30 bg-black/20 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none" />
+
+          <div style={{ background: 'var(--primary)11', border: '1px solid var(--primary)33', borderRadius: '10px', padding: '14px' }}>
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--primary)', fontWeight: 800, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              💼 Montant client (admin seulement)
+            </label>
+            <input type="number" value={form.clientAmount} onChange={e => set('clientAmount', e.target.value)} placeholder="Ex: 3500" style={{ ...inputStyle, border: '1px solid var(--primary)44' }} />
           </div>
+
           <div>
-            <label className="block text-xs text-gray-400 mb-2">Employés assignés</label>
-            <div className="space-y-2">
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Employés assignés</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {employees.map(emp => (
-                <button key={emp.id} onClick={() => toggleEmployee(emp.id)}
-                  className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
-                    form.assignedEmployeeIds.includes(emp.id) ? 'border-orange-400 bg-orange-500/20' : 'border-white/10 bg-white/5'
-                  }`}>
-                  <span className="text-sm font-medium text-white">{emp.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">${emp.hourlyRate ?? 0}/h</span>
-                    {form.assignedEmployeeIds.includes(emp.id) && <span className="text-orange-400">✓</span>}
+                <button key={emp.id} onClick={() => toggleEmployee(emp.id)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                  border: form.assignedEmployeeIds.includes(emp.id) ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: form.assignedEmployeeIds.includes(emp.id) ? 'var(--primary)18' : 'var(--card)',
+                  transition: 'all 0.2s',
+                }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{emp.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>${emp.hourlyRate ?? 0}/h</span>
+                    {form.assignedEmployeeIds.includes(emp.id) && <span style={{ color: 'var(--primary)' }}>✓</span>}
                   </div>
                 </button>
               ))}
             </div>
           </div>
+
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Notes</label>
-            <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-              rows={3} placeholder="Instructions, matériaux requis..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none resize-none" />
+            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Notes</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Instructions, matériaux requis..." style={{ ...inputStyle, resize: 'vertical' as const }} />
           </div>
         </div>
 
-        <div className="px-5 py-4 shrink-0 border-t border-white/10 bg-gray-900">
-          <button onClick={handleSubmit} disabled={!form.name || !form.address}
-            className="w-full rounded-2xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-black py-4 text-base transition-all">
+        <div style={{ padding: '16px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
+          <button onClick={handleSubmit} disabled={!form.name || !form.address} style={{
+            width: '100%', padding: '16px', borderRadius: '14px', cursor: 'pointer',
+            border: 'none', fontWeight: 900, fontSize: '15px',
+            background: !form.name || !form.address ? 'var(--border)' : 'var(--primary)',
+            color: !form.name || !form.address ? 'var(--text-muted)' : '#000',
+            opacity: !form.name || !form.address ? 0.5 : 1,
+            transition: 'all 0.2s',
+          }}>
             🏗️ Créer le projet
           </button>
         </div>
@@ -445,89 +570,159 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Page principale ───────────────────────────────────────────────────────────
 export default function ProjectsPage() {
   const { projects, getOpenProjects } = useProjectStore();
   const [showNew, setShowNew] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open');
+
   const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter);
 
+  const filters = [
+    { id: 'open'   as const, label: '🟢 Ouverts' },
+    { id: 'closed' as const, label: '🔒 Fermés'  },
+    { id: 'all'    as const, label: '📋 Tous'     },
+  ];
+
+  const statusLabel: Record<string, string> = {
+    open: 'Ouvert', closed: 'Fermé', invoiced: 'Facturé',
+  };
+
+  const statusColor: Record<string, string> = {
+    open:     'var(--success)',
+    closed:   'var(--text-muted)',
+    invoiced: 'var(--info)',
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
-      <div className="sticky top-0 z-40 bg-gray-950/95 backdrop-blur border-b border-white/10 px-4 py-4">
-        <div className="flex items-center justify-between">
+    <div style={pageStyle}>
+      <style>{`
+        @keyframes projectFadeIn {
+          from { opacity:0; transform:translateY(8px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        .project-card { animation: projectFadeIn 0.3s ease both; }
+        .project-card:active { transform: scale(0.98); transition: transform 0.15s; }
+      `}</style>
+
+      {/* Header sticky */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 40,
+        background: 'var(--bg)',
+        borderBottom: '1px solid var(--border)',
+        padding: '16px 16px 12px',
+      }}>
+        {/* Gravure déco en haut */}
+        <DecoGravure style={{ marginBottom: '8px' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div>
-            <h1 className="text-xl font-black">🏗️ Projets</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{getOpenProjects().length} projet(s) ouvert(s)</p>
+            <h1 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary)', margin: 0 }}>🏗️ Projets</h1>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {getOpenProjects().length} projet(s) ouvert(s)
+            </p>
           </div>
-          <button onClick={() => setShowNew(true)}
-            className="rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2.5 text-sm font-bold text-white transition-all">
-            ＋ Nouveau
+          <button onClick={() => setShowNew(true)} style={{
+            background: 'var(--primary)', border: 'none', borderRadius: '10px',
+            padding: '10px 16px', color: '#000', fontWeight: 800,
+            fontSize: '13px', cursor: 'pointer',
+          }}>
+            + Nouveau
           </button>
         </div>
-        <div className="flex gap-1 bg-white/5 rounded-xl p-1 mt-3">
-          {([
-            { id: 'open'   as const, label: '🟢 Ouverts' },
-            { id: 'closed' as const, label: '🔒 Fermés' },
-            { id: 'all'    as const, label: '📋 Tous' },
-          ]).map(f => (
-            <button key={f.id} onClick={() => setFilter(f.id)}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                filter === f.id ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
-              }`}>{f.label}</button>
+
+        {/* Filtres */}
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--card)', borderRadius: '10px', padding: '4px' }}>
+          {filters.map(f => (
+            <button key={f.id} onClick={() => setFilter(f.id)} style={{
+              flex: 1, padding: '8px 4px', borderRadius: '8px',
+              fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: 'none',
+              background: filter === f.id ? 'var(--primary)' : 'transparent',
+              color: filter === f.id ? '#000' : 'var(--text-muted)',
+              transition: 'all 0.2s',
+            }}>{f.label}</button>
           ))}
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-3">
+      {/* Liste des projets */}
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
         {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">🏗️</p>
-            <p className="text-gray-400 font-semibold">Aucun projet</p>
-            <p className="text-gray-600 text-sm mt-1">{filter === 'open' ? 'Créez votre premier projet ci-dessus.' : 'Rien à afficher.'}</p>
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            {/* Gravure dans l'espace vide */}
+            <DecoGravure style={{ marginBottom: '24px' }} />
+            <p style={{ fontSize: '48px', marginBottom: '8px' }}>🏗️</p>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '15px' }}>Aucun projet</p>
+            <p style={{ color: 'var(--text-weak)', fontSize: '13px', marginTop: '4px' }}>
+              {filter === 'open' ? 'Créez votre premier projet ci-dessus.' : 'Rien à afficher.'}
+            </p>
+            <DecoGravure style={{ marginTop: '24px' }} />
           </div>
         )}
-        {filtered.map(project => {
+
+        {filtered.map((project, idx) => {
           const stats = calcProjectStats(project);
           return (
-            <button key={project.id} onClick={() => setSelectedProject(project)}
-              className="w-full text-left rounded-2xl bg-white/5 border border-white/10 hover:border-orange-400/40 transition-all p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 pr-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-black text-white text-base">{project.name}</span>
+            <button
+              key={project.id}
+              className="project-card"
+              onClick={() => setSelectedProject(project)}
+              style={{
+                ...cardStyle,
+                textAlign: 'left',
+                cursor: 'pointer',
+                width: '100%',
+                animationDelay: `${idx * 0.05}s`,
+                transition: 'border-color 0.2s',
+              }}
+            >
+              <DecoCorners />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ flex: 1, paddingRight: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 900, fontSize: '15px', color: 'var(--text)' }}>{project.name}</span>
                     {stats.activeLog && (
-                      <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full animate-pulse">🟢 En cours</span>
+                      <span style={{
+                        fontSize: '10px', padding: '2px 8px', borderRadius: '20px',
+                        background: 'var(--success)22', color: 'var(--success)',
+                        border: '1px solid var(--success)44', fontWeight: 700,
+                      }}>🟢 En cours</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{project.address}, {project.city}</p>
-                  {project.clientName && <p className="text-xs text-orange-400 mt-0.5">👤 {project.clientName}</p>}
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{project.address}, {project.city}</p>
+                  {project.clientName && <p style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>👤 {project.clientName}</p>}
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ${STATUS_COLORS[project.status]}`}>
-                  {project.status === 'open' ? 'Ouvert' : project.status === 'closed' ? 'Fermé' : 'Facturé'}
+                <span style={{
+                  fontSize: '11px', padding: '4px 10px', borderRadius: '20px',
+                  background: `${statusColor[project.status]}22`,
+                  color: statusColor[project.status],
+                  border: `1px solid ${statusColor[project.status]}44`,
+                  fontWeight: 700, flexShrink: 0,
+                }}>
+                  {statusLabel[project.status] ?? project.status}
                 </span>
               </div>
-              <div className="flex gap-3 mt-3 pt-3 border-t border-white/10">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs">{PAY_MODE_LABELS[project.payMode].icon}</span>
-                  <span className="text-xs text-gray-400">{PAY_MODE_LABELS[project.payMode].fr}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500">👷</span>
-                  <span className="text-xs text-gray-400">{project.assignedEmployeeIds.length} employé(s)</span>
-                </div>
+
+              {/* Stats bar */}
+              <div style={{ display: 'flex', gap: '14px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {PAY_MODE_LABELS[project.payMode].icon} {PAY_MODE_LABELS[project.payMode].fr}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  👷 {project.assignedEmployeeIds.length} emp.
+                </span>
                 {stats.totalHours > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500">⏱️</span>
-                    <span className="text-xs text-gray-400">{stats.totalHours.toFixed(1)}h</span>
-                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    ⏱️ {stats.totalHours.toFixed(1)}h
+                  </span>
                 )}
                 {stats.margin !== 0 && (
-                  <div className="ml-auto">
-                    <span className={`text-xs font-bold ${stats.marginPercent >= 40 ? 'text-green-400' : stats.marginPercent >= 20 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {stats.marginPercent.toFixed(0)}% marge
-                    </span>
-                  </div>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 800, color: stats.marginPercent >= 40 ? 'var(--success)' : stats.marginPercent >= 20 ? 'var(--warning)' : 'var(--danger)' }}>
+                    {stats.marginPercent.toFixed(0)}% marge
+                  </span>
                 )}
               </div>
             </button>
@@ -542,7 +737,6 @@ export default function ProjectsPage() {
           onClose={() => setSelectedProject(null)}
         />
       )}
-      <BottomNav />
     </div>
   );
 }
