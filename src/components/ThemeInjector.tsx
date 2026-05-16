@@ -1,7 +1,7 @@
 'use client'
 // src/components/ThemeInjector.tsx
-// Injecte le CSS global du thème actif dans le <head>
-// À placer dans le layout principal
+// Injecte le globalCSS du thème actif dans <head>
+// S'exécute côté client uniquement
 
 import { useEffect } from 'react'
 import { useThemeStore } from '@/store/useThemeStore'
@@ -10,28 +10,26 @@ export default function ThemeInjector() {
   const { theme } = useThemeStore()
 
   useEffect(() => {
-    // Supprimer l'ancien style injecté
-    const old = document.getElementById('theme-global-css')
-    if (old) old.remove()
+    const STYLE_ID = 'gcp-theme-global-css'
 
-    // Injecter le nouveau CSS si le thème en a
+    // Supprime l'ancien style si présent
+    const existing = document.getElementById(STYLE_ID)
+    if (existing) existing.remove()
+
+    // Injecte le nouveau CSS du thème
     if (theme.globalCSS) {
       const style = document.createElement('style')
-      style.id = 'theme-global-css'
+      style.id = STYLE_ID
       style.textContent = theme.globalCSS
       document.head.appendChild(style)
     }
 
-    // Appliquer la couleur de fond au body
-    document.body.style.background = theme.colors.background
-    document.body.style.color = theme.colors.text
-
+    // Nettoyage au démontage
     return () => {
-      const el = document.getElementById('theme-global-css')
+      const el = document.getElementById(STYLE_ID)
       if (el) el.remove()
     }
   }, [theme])
 
   return null
 }
-
