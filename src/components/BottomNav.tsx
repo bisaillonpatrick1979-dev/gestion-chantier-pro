@@ -1,177 +1,284 @@
-'use client'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useThemeStore } from '@/store/useThemeStore'
-import { useLangStore } from '@/store/useLangStore'
-import { useEmployeeStore } from '@/store/useEmployeeStore'
+"use client";
 
-const IconDashboard = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <line x1="12" y1="22" x2="2"  y2="6"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.45"/>
-      <line x1="12" y1="22" x2="5"  y2="4"  stroke={c} strokeWidth="0.9" strokeLinecap="round" opacity="0.55"/>
-      <line x1="12" y1="22" x2="8"  y2="3"  stroke={c} strokeWidth="1.1" strokeLinecap="round" opacity="0.70"/>
-      <line x1="12" y1="22" x2="10" y2="3"  stroke={c} strokeWidth="1.3" strokeLinecap="round" opacity="0.85"/>
-      <line x1="12" y1="22" x2="12" y2="3"  stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
-      <line x1="12" y1="22" x2="14" y2="3"  stroke={c} strokeWidth="1.3" strokeLinecap="round" opacity="0.85"/>
-      <line x1="12" y1="22" x2="16" y2="3"  stroke={c} strokeWidth="1.1" strokeLinecap="round" opacity="0.70"/>
-      <line x1="12" y1="22" x2="19" y2="4"  stroke={c} strokeWidth="0.9" strokeLinecap="round" opacity="0.55"/>
-      <line x1="12" y1="22" x2="22" y2="6"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.45"/>
-      <path d="M4 20 Q12 13 20 20" stroke={c} strokeWidth="1" fill="none" opacity="0.55"/>
-      <circle cx="12" cy="22" r="1.5" fill={c}/>
-    </svg>
-  )
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
+
+interface NavItem {
+  href: string;
+  label: string;
+  labelEn: string;
+  icon: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-const IconProjets = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconDashboard({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <polygon points="12,2 20,8 20,9 12,4 4,9 4,8" stroke={c} strokeWidth="1.2" fill="none"/>
-      <rect x="4" y="9" width="16" height="13" stroke={c} strokeWidth="1.2" fill={active ? 'rgba(214,178,94,0.10)' : 'none'}/>
-      <rect x="6"  y="12" width="3" height="4" stroke={c} strokeWidth="0.9" fill={active ? 'rgba(214,178,94,0.25)' : 'none'}/>
-      <rect x="10" y="12" width="3" height="4" stroke={c} strokeWidth="0.9" fill={active ? 'rgba(214,178,94,0.25)' : 'none'}/>
-      <rect x="15" y="12" width="3" height="4" stroke={c} strokeWidth="0.9" fill={active ? 'rgba(214,178,94,0.25)' : 'none'}/>
-      <rect x="10" y="18" width="4" height="4" stroke={c} strokeWidth="0.9" fill="none"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
     </svg>
-  )
+  );
 }
 
-const IconDocuments = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconCalendar({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <path d="M5 3H15L19 7V21H5V3Z" stroke={c} strokeWidth="1.3" fill={active ? 'rgba(214,178,94,0.08)' : 'none'}/>
-      <path d="M15 3L15 7H19" stroke={c} strokeWidth="1.3"/>
-      <line x1="8" y1="11" x2="16" y2="11" stroke={c} strokeWidth="1" opacity="0.8"/>
-      <line x1="8" y1="14" x2="16" y2="14" stroke={c} strokeWidth="1" opacity="0.6"/>
-      <line x1="8" y1="17" x2="13" y2="17" stroke={c} strokeWidth="1" opacity="0.4"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
-  )
+  );
 }
 
-const IconCompta = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconStats({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.3" fill={active ? 'rgba(214,178,94,0.08)' : 'none'}/>
-      <line x1="12" y1="6" x2="12" y2="18" stroke={c} strokeWidth="1.3"/>
-      <path d="M15 8.5C14 7.5 10 7.5 10 10C10 12.5 14 12 14 14.5C14 17 10 17 9 16" stroke={c} strokeWidth="1.3" fill="none" strokeLinecap="round"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+      <line x1="2" y1="20" x2="22" y2="20" />
     </svg>
-  )
+  );
 }
 
-const IconReglages = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconDollar({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <circle cx="12" cy="12" r="3.5" stroke={c} strokeWidth="1.4" fill={active ? 'rgba(214,178,94,0.20)' : 'none'}/>
-      <circle cx="12" cy="12" r="7" stroke={c} strokeWidth="0.7" strokeDasharray="2 2" fill="none" opacity="0.5"/>
-      <line x1="12" y1="4.5" x2="12" y2="8.5" stroke={c} strokeWidth="1.5"/>
-      <line x1="12" y1="15.5" x2="12" y2="19.5" stroke={c} strokeWidth="1.5"/>
-      <line x1="4.5" y1="12" x2="8.5" y2="12" stroke={c} strokeWidth="1.5"/>
-      <line x1="15.5" y1="12" x2="19.5" y2="12" stroke={c} strokeWidth="1.5"/>
-      <circle cx="12" cy="4" r="1.2" fill={c}/>
-      <circle cx="12" cy="20" r="1.2" fill={c}/>
-      <circle cx="4" cy="12" r="1.2" fill={c}/>
-      <circle cx="20" cy="12" r="1.2" fill={c}/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
-  )
+  );
 }
 
-const IconStats = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconClients({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <polyline points="3,18 8,12 13,15 20,6" stroke={c} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="3"  cy="18" r="1.5" fill={c}/>
-      <circle cx="8"  cy="12" r="1.5" fill={c}/>
-      <circle cx="13" cy="15" r="1.5" fill={c}/>
-      <circle cx="20" cy="6"  r="1.5" fill={c}/>
-      <line x1="3" y1="21" x2="21" y2="21" stroke={c} strokeWidth="1" opacity="0.5"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
-  )
+  );
 }
 
-const IconPaye = ({ active }: { active: boolean }) => {
-  const c = active ? '#D6B25E' : 'rgba(214,178,94,0.40)'
-  const glow = active ? 'drop-shadow(0 0 6px rgba(214,178,94,0.80))' : 'none'
+function IconDocuments({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: glow }}>
-      <circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.4" fill={active ? 'rgba(214,178,94,0.12)' : 'none'}/>
-      <circle cx="12" cy="12" r="6.5" stroke={c} strokeWidth="0.8" fill="none" opacity="0.5"/>
-      <line x1="12" y1="7" x2="12" y2="17" stroke={c} strokeWidth="1.2"/>
-      <path d="M14.5 9C13.5 8 10 8 10 10.5C10 13 14 12.5 14 15C14 17 10.5 17 9.5 16" stroke={c} strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <line x1="10" y1="9" x2="8" y2="9" />
     </svg>
-  )
+  );
+}
+
+function IconAccounting({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  );
+}
+
+function IconSettings({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function IconCatalogue({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+function IconPayroll({ active }: { active: boolean }) {
+  const color = active ? "#D4AF37" : "#888";
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
 }
 
 export default function BottomNav() {
-  const pathname = usePathname()
-  const { theme, themeId } = useThemeStore()
-  const { lang } = useLangStore()
-  const { currentEmployeeId, employees } = useEmployeeStore()
+  const pathname = usePathname();
+  const { currentEmployee } = useEmployeeStore();
 
-  const t = (fr: string, en: string) => lang === 'fr' ? fr : en
-  const isDeco = themeId === 'deco'
+  const isAdmin = currentEmployee?.role === "admin";
+  const lang = "fr"; // Remplace par ton store de langue si disponible
 
-  const currentEmployee = employees.find(e => e.id === currentEmployeeId)
-  const isAdmin    = currentEmployee?.role === 'admin'
-  const isLoggedIn = !!currentEmployeeId
+  const allNavItems: NavItem[] = [
+    {
+      href: "/dashboard",
+      label: "Accueil",
+      labelEn: "Home",
+      icon: null,
+      adminOnly: false,
+    },
+    {
+      href: "/calendar",
+      label: "Calendrier",
+      labelEn: "Calendar",
+      icon: null,
+      adminOnly: false,
+    },
+    {
+      href: "/stats",
+      label: "Stats",
+      labelEn: "Stats",
+      icon: null,
+      adminOnly: false,
+    },
+    {
+      href: "/payroll",
+      label: "Paye",
+      labelEn: "Payroll",
+      icon: null,
+      adminOnly: false,
+    },
+    {
+      href: "/clients",
+      label: "Clients",
+      labelEn: "Clients",
+      icon: null,
+      adminOnly: true,
+    },
+    {
+      href: "/documents",
+      label: "Docs",
+      labelEn: "Docs",
+      icon: null,
+      adminOnly: true,
+    },
+    {
+      href: "/accounting",
+      label: "Compta",
+      labelEn: "Accounting",
+      icon: null,
+      adminOnly: true,
+    },
+    {
+      href: "/catalogue",
+      label: "Catalogue",
+      labelEn: "Catalogue",
+      icon: null,
+      adminOnly: true,
+    },
+    {
+      href: "/settings",
+      label: "Reglages",
+      labelEn: "Settings",
+      icon: null,
+      adminOnly: true,
+    },
+  ];
 
-  const adminTabs = [
-    { href: '/',             emoji: '🏠', decoIcon: (a: boolean) => <IconDashboard active={a} />, label: t('Dashboard', 'Dashboard')  },
-    { href: '/projects',     emoji: '🏗️', decoIcon: (a: boolean) => <IconProjets   active={a} />, label: t('Projets',   'Projects')   },
-    { href: '/documents',    emoji: '🧾', decoIcon: (a: boolean) => <IconDocuments active={a} />, label: t('Documents', 'Documents')  },
-    { href: '/comptabilite', emoji: '📊', decoIcon: (a: boolean) => <IconCompta    active={a} />, label: t('Compta',    'Accounting') },
-    { href: '/settings',     emoji: '⚙️', decoIcon: (a: boolean) => <IconReglages  active={a} />, label: t('Réglages',  'Settings')   },
-  ]
+  const iconMap: Record<string, (active: boolean) => React.ReactNode> = {
+    "/dashboard": (active) => <IconDashboard active={active} />,
+    "/calendar": (active) => <IconCalendar active={active} />,
+    "/stats": (active) => <IconStats active={active} />,
+    "/payroll": (active) => <IconPayroll active={active} />,
+    "/clients": (active) => <IconClients active={active} />,
+    "/documents": (active) => <IconDocuments active={active} />,
+    "/accounting": (active) => <IconAccounting active={active} />,
+    "/catalogue": (active) => <IconCatalogue active={active} />,
+    "/settings": (active) => <IconSettings active={active} />,
+  };
 
-  const employeeTabs = [
-    { href: '/',      emoji: '🏠', decoIcon: (a: boolean) => <IconDashboard active={a} />, label: t('Dashboard', 'Dashboard') },
-    { href: '/stats', emoji: '📈', decoIcon: (a: boolean) => <IconStats     active={a} />, label: t('Stats',     'Stats')     },
-    { href: '/paye',  emoji: '💵', decoIcon: (a: boolean) => <IconPaye      active={a} />, label: t('Ma paye',   'My pay')    },
-  ]
+  const visibleItems = allNavItems.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
-  const tabs = isAdmin ? adminTabs : employeeTabs
-
-  const navBg     = isDeco ? 'rgba(5,5,5,0.98)'  : 'rgba(10,5,0,0.95)'
-  const navBorder = isDeco ? '1px solid rgba(214,178,94,0.25)' : `1px solid ${theme.colors.border}`
-
-  if (!isLoggedIn) {
-    return (
-      <nav style={{ position:'fixed', bottom:0, left:0, right:0, height:64, zIndex:50,
-        background:navBg, backdropFilter:'blur(12px)', borderTop:navBorder,
-        display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {isDeco && <div style={{ position:'absolute', top:0, left:0, right:0, height:1,
-          background:'linear-gradient(90deg,transparent,rgba(214,178,94,0.55),transparent)' }} />}
-        <p style={{ color: isDeco ? 'rgba(214,178,94,0.50)' : theme.colors.textMuted, fontSize:12 }}>
-          🔒 {t('Connectez-vous pour accéder', 'Login to access')}
-        </p>
-      </nav>
-    )
-  }
-
-  if (isDeco) {
-    return (
-      <nav style={{ position:'fixed', bottom:0, left:0, right:0, height:64, zIndex:50,
-        background:navBg, backdropFilter:'blur(12px)', borderTop:navBorder,
-        display:'flex', alignItems:'center', justifyContent:'space-around' }}>
-        <div style={{ position:'absolute', top:0, left:0, right:0, height:1,
-          background:'linear-gradient(90deg,transparent,rgba(214,178,94,0.60),transparent)', pointerEvents:'none' }} />
-        {tabs.map(({ href, decoIcon, label }) => {
-          const active = pathname === href || (href !== '/' && pathname.startsWith(href))
+  return (
+    <nav
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        backgroundColor: "var(--nav-bg, #1a1a1a)",
+        borderTop: "1px solid var(--nav-border, #2a2a2a)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-around",
+          alignItems: "center",
+          height: "60px",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}
+      >
+        {visibleItems.map((item) => {
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const iconRenderer = iconMap[item.href];
           return (
-            <Link key={href} href={href} style={{ display:'flex', flexDirection:'column', alignItems:'center',
-              gap:3, textDecoration:'none', padding:'8px 0', flex:1 }}>
-              <div style={{ transform: active ? 'scale(1.15) translateY(-1px)' : 'scale(1)', transition:'transform 0.2s ease' }}>
-                {decoIcon(active)}
-              </div>
-              <span style={{ fontSize:9, fontWeight: active ? 800 : 600, letterSpacing:'0.08em',
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "2px",
+                minWidth: "52px",
+                padding: "6px 4px",
+                textDecoration: "none",
+                opacity: isActive ? 1 : 0.6,
+                transition: "opacity 0.2s",
+              }}
+            >
+              {iconRenderer ? iconRenderer(isActive) : null}
+              <span
+                style={{
+                  fontSize: "9px",
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? "#D4AF37" : "#888",
+                  letterSpacing: "0.03em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {lang === "fr" ? item.label : item.labelEn}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
