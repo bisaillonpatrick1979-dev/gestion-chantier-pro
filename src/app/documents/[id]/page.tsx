@@ -6,8 +6,6 @@ import { useCompanyStore } from "@/store/useCompanyStore";
 import { useClientStore } from "@/store/useClientStore";
 import { useEmployeeStore } from "@/store/useEmployeeStore";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type DocType = "invoice" | "quote" | "contract";
 type DocStatus = "draft" | "sent" | "paid" | "cancelled";
 
@@ -49,8 +47,6 @@ interface DocumentData {
   updatedAt: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat("fr-CA", {
     style: "currency",
@@ -77,8 +73,6 @@ function newLineItem(): LineItem {
     total: 0,
   };
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
   background: "var(--card-bg, #1e1e1e)",
@@ -121,8 +115,6 @@ const btnGold: React.CSSProperties = {
   flex: 1,
 };
 
-// ─── Field component ──────────────────────────────────────────────────────────
-
 function Field({
   label,
   value,
@@ -147,16 +139,11 @@ function Field({
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         placeholder={placeholder}
         readOnly={readOnly}
-        style={{
-          ...inputStyle,
-          opacity: readOnly ? 0.6 : 1,
-        }}
+        style={{ ...inputStyle, opacity: readOnly ? 0.6 : 1 }}
       />
     </div>
   );
 }
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function DocumentPage() {
   const params = useParams();
@@ -164,12 +151,11 @@ export default function DocumentPage() {
   const docId = params.id as string;
   const isNew = docId === "new";
 
-  const { company, getNextInvoiceNumber, getNextQuoteNumber, getNextContractNumber } =
-    useCompanyStore();
+  const { company } = useCompanyStore();
   const { clients } = useClientStore();
-  const { currentEmployee } = useEmployeeStore();
+  const { employees, currentEmployeeId } = useEmployeeStore();
+  const currentEmployee = employees.find((e) => e.id === currentEmployeeId) ?? null;
 
-  const [docType, setDocType] = useState<DocType>("invoice");
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"info" | "items" | "totals" | "notes">("info");
@@ -177,10 +163,7 @@ export default function DocumentPage() {
   const [isDrawing, setIsDrawing] = useState(false);
 
   const defaultDate = today();
-  const defaultDueDate = addDays(
-    defaultDate,
-    company.defaultPaymentTermsDays || 14
-  );
+  const defaultDueDate = addDays(defaultDate, company.defaultPaymentTermsDays || 14);
 
   const [doc, setDoc] = useState<DocumentData>({
     id: isNew ? Math.random().toString(36).slice(2) : docId,
@@ -212,18 +195,20 @@ export default function DocumentPage() {
     updatedAt: new Date().toISOString(),
   });
 
-  // Auto-generate number on type change
   useEffect(() => {
-    if (isNew && !doc.number) {
+    if (isNew) {
       let num = "";
-      if (doc.type === "invoice") num = `${company.invoicePrefix}-${String(company.nextInvoiceNumber).padStart(3, "0")}`;
-      else if (doc.type === "quote") num = `${company.quotePrefix}-${String(company.nextQuoteNumber).padStart(3, "0")}`;
-      else num = `${company.contractPrefix}-${String(company.nextContractNumber).padStart(3, "0")}`;
+      if (doc.type === "invoice") {
+        num = `${company.invoicePrefix}-${String(company.nextInvoiceNumber).padStart(3, "0")}`;
+      } else if (doc.type === "quote") {
+        num = `${company.quotePrefix}-${String(company.nextQuoteNumber).padStart(3, "0")}`;
+      } else {
+        num = `${company.contractPrefix}-${String(company.nextContractNumber).padStart(3, "0")}`;
+      }
       setDoc((d) => ({ ...d, number: num }));
     }
   }, [doc.type, isNew]);
 
-  // Recalculate totals
   useEffect(() => {
     const subtotal = doc.lineItems.reduce((s, item) => s + item.total, 0);
     const discountAmount = (subtotal * doc.discountPercent) / 100;
@@ -232,16 +217,7 @@ export default function DocumentPage() {
     const total = afterDiscount + gstAmount;
     const depositAmount = (total * doc.depositPercent) / 100;
     const balanceDue = total - depositAmount;
-
-    setDoc((d) => ({
-      ...d,
-      subtotal,
-      discountAmount,
-      gstAmount,
-      total,
-      depositAmount,
-      balanceDue,
-    }));
+    setDoc((d) => ({ ...d, subtotal, discountAmount, gstAmount, total, depositAmount, balanceDue }));
   }, [doc.lineItems, doc.discountPercent, doc.gstRate, doc.depositPercent]);
 
   function updateLineItem(id: string, field: keyof LineItem, value: string | number) {
@@ -263,10 +239,7 @@ export default function DocumentPage() {
   }
 
   function removeLineItem(id: string) {
-    setDoc((d) => ({
-      ...d,
-      lineItems: d.lineItems.filter((item) => item.id !== id),
-    }));
+    setDoc((d) => ({ ...d, lineItems: d.lineItems.filter((item) => item.id !== id) }));
   }
 
   function selectClient(clientId: string) {
@@ -284,13 +257,6 @@ export default function DocumentPage() {
   }
 
   function saveDocument() {
-    // Incrémenter le numéro séquentiel
-    if (isNew) {
-      if (doc.type === "invoice") getNextInvoiceNumber();
-      else if (doc.type === "quote") getNextQuoteNumber();
-      else getNextContractNumber();
-    }
-    // TODO: Sauvegarder dans le store documents
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -299,9 +265,9 @@ export default function DocumentPage() {
   }
 
   const typeLabels: Record<DocType, string> = {
-    invoice: "📄 Facture",
-    quote: "📝 Devis",
-    contract: "📋 Contrat",
+    invoice: "Facture",
+    quote: "Devis",
+    contract: "Contrat",
   };
 
   const statusColors: Record<DocStatus, string> = {
@@ -319,92 +285,30 @@ export default function DocumentPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg, #111)",
-        color: "var(--text, #fff)",
-        paddingBottom: "100px",
-      }}
-    >
+    <div style={{ minHeight: "100vh", background: "var(--bg, #111)", color: "var(--text, #fff)", paddingBottom: "100px" }}>
+
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "16px",
-          borderBottom: "1px solid #222",
-        }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={{
-            background: "none",
-            border: "1px solid #333",
-            borderRadius: "8px",
-            color: "#aaa",
-            padding: "8px 12px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          ← Retour
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", borderBottom: "1px solid #222" }}>
+        <button onClick={() => router.back()} style={{ background: "none", border: "1px solid #333", borderRadius: "8px", color: "#aaa", padding: "8px 12px", cursor: "pointer", fontSize: "14px" }}>
+          Retour
         </button>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "#D4AF37" }}>
             {isNew ? "Nouveau Document" : doc.number}
           </h1>
-          <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-            {company.name}
-          </div>
+          <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>{company.name}</div>
         </div>
-        <span
-          style={{
-            padding: "4px 10px",
-            borderRadius: "20px",
-            fontSize: "11px",
-            fontWeight: 700,
-            background: statusColors[doc.status] + "22",
-            color: statusColors[doc.status],
-            border: `1px solid ${statusColors[doc.status]}44`,
-          }}
-        >
+        <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, background: statusColors[doc.status] + "22", color: statusColors[doc.status], border: `1px solid ${statusColors[doc.status]}44` }}>
           {statusLabels[doc.status]}
         </span>
       </div>
 
-      {/* Doc type selector (new only) */}
+      {/* Type selector */}
       {isNew && (
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            padding: "12px 16px",
-            borderBottom: "1px solid #222",
-          }}
-        >
+        <div style={{ display: "flex", gap: "8px", padding: "12px 16px", borderBottom: "1px solid #222" }}>
           {(["invoice", "quote", "contract"] as DocType[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => {
-                setDoc((d) => ({ ...d, type: t, number: "" }));
-              }}
-              style={{
-                flex: 1,
-                padding: "10px 4px",
-                borderRadius: "10px",
-                border: doc.type === t ? "none" : "1px solid #333",
-                background:
-                  doc.type === t
-                    ? "linear-gradient(135deg,#D4AF37,#B8963E)"
-                    : "transparent",
-                color: doc.type === t ? "#000" : "#aaa",
-                fontWeight: doc.type === t ? 700 : 400,
-                fontSize: "12px",
-                cursor: "pointer",
-              }}
-            >
+            <button key={t} onClick={() => setDoc((d) => ({ ...d, type: t, number: "" }))}
+              style={{ flex: 1, padding: "10px 4px", borderRadius: "10px", border: doc.type === t ? "none" : "1px solid #333", background: doc.type === t ? "linear-gradient(135deg,#D4AF37,#B8963E)" : "transparent", color: doc.type === t ? "#000" : "#aaa", fontWeight: doc.type === t ? 700 : 400, fontSize: "13px", cursor: "pointer" }}>
               {typeLabels[t]}
             </button>
           ))}
@@ -412,638 +316,36 @@ export default function DocumentPage() {
       )}
 
       {/* Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0",
-          borderBottom: "1px solid #222",
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}
-      >
+      <div style={{ display: "flex", borderBottom: "1px solid #222" }}>
         {[
-          { id: "info", label: "📋 Info" },
-          { id: "items", label: "📦 Articles" },
-          { id: "totals", label: "💰 Totaux" },
-          { id: "notes", label: "📝 Notes" },
+          { id: "info", label: "Info" },
+          { id: "items", label: "Articles" },
+          { id: "totals", label: "Totaux" },
+          { id: "notes", label: "Notes" },
         ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            style={{
-              flex: 1,
-              padding: "12px 8px",
-              border: "none",
-              borderBottom:
-                activeTab === tab.id ? "2px solid #D4AF37" : "2px solid transparent",
-              background: "none",
-              color: activeTab === tab.id ? "#D4AF37" : "#666",
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              fontSize: "13px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            style={{ flex: 1, padding: "12px 8px", border: "none", borderBottom: activeTab === tab.id ? "2px solid #D4AF37" : "2px solid transparent", background: "none", color: activeTab === tab.id ? "#D4AF37" : "#666", fontWeight: activeTab === tab.id ? 700 : 400, fontSize: "13px", cursor: "pointer" }}>
             {tab.label}
           </button>
         ))}
       </div>
 
       <div style={{ padding: "16px" }}>
-        {/* ── INFO TAB ── */}
+
+        {/* INFO */}
         {activeTab === "info" && (
           <>
-            {/* Company info card (read-only, auto from settings) */}
-            <div
-              style={{
-                ...card,
-                border: "1px solid #D4AF3733",
-                background: "#1a1400",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "#D4AF37",
-                  letterSpacing: "0.1em",
-                  marginBottom: "12px",
-                  textTransform: "uppercase",
-                }}
-              >
-                ✨ De (Auto — Réglages)
+            <div style={{ ...card, border: "1px solid #D4AF3733", background: "#1a1400" }}>
+              <div style={{ fontSize: "11px", color: "#D4AF37", letterSpacing: "0.1em", marginBottom: "12px", textTransform: "uppercase" }}>
+                De (Auto — Réglages)
               </div>
-              <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "4px" }}>
-                {company.name}
-              </div>
-              {company.tagline && (
-                <div style={{ fontSize: "12px", color: "#D4AF37", marginBottom: "8px" }}>
-                  {company.tagline}
-                </div>
-              )}
+              <div style={{ fontWeight: 700, fontSize: "16px", marginBottom: "4px" }}>{company.name}</div>
+              {company.tagline && <div style={{ fontSize: "12px", color: "#D4AF37", marginBottom: "8px" }}>{company.tagline}</div>}
               <div style={{ fontSize: "13px", color: "#aaa", lineHeight: "1.6" }}>
                 {[
                   company.address,
-                  company.city && company.province
-                    ? `${company.city}, ${company.province} ${company.postalCode}`
-                    : company.city || company.province,
+                  company.city && company.province ? `${company.city}, ${company.province} ${company.postalCode}` : "",
                   company.phone,
                   company.email,
                   company.gstNumber && `GST: ${company.gstNumber}`,
-                  company.wcbNumber && `WCB: ${company.wcbNumber}`,
-                ]
-                  .filter(Boolean)
-                  .map((line, i) => (
-                    <div key={i}>{line}</div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Document number & dates */}
-            <div style={card}>
-              <Field
-                label="Numéro de document"
-                value={doc.number}
-                onChange={(v) => setDoc((d) => ({ ...d, number: v }))}
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <Field
-                  label="Date"
-                  value={doc.date}
-                  onChange={(v) => setDoc((d) => ({ ...d, date: v }))}
-                  type="date"
-                />
-                <Field
-                  label="Échéance"
-                  value={doc.dueDate}
-                  onChange={(v) => setDoc((d) => ({ ...d, dueDate: v }))}
-                  type="date"
-                />
-              </div>
-            </div>
-
-            {/* Client */}
-            <div style={card}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "12px",
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>👥 Client</span>
-                <button
-                  onClick={() => setShowClientPicker(true)}
-                  style={{
-                    background: "#1a2e1a",
-                    border: "1px solid #3a5a20",
-                    color: "#86efac",
-                    borderRadius: "8px",
-                    padding: "6px 12px",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                  }}
-                >
-                  👥 Choisir client
-                </button>
-              </div>
-              <Field
-                label="Nom"
-                value={doc.clientName}
-                onChange={(v) => setDoc((d) => ({ ...d, clientName: v }))}
-                placeholder="Nom du client"
-              />
-              <Field
-                label="Courriel"
-                value={doc.clientEmail}
-                onChange={(v) => setDoc((d) => ({ ...d, clientEmail: v }))}
-                type="email"
-              />
-              <Field
-                label="Téléphone"
-                value={doc.clientPhone}
-                onChange={(v) => setDoc((d) => ({ ...d, clientPhone: v }))}
-                type="tel"
-              />
-              <Field
-                label="Adresse"
-                value={doc.clientAddress}
-                onChange={(v) => setDoc((d) => ({ ...d, clientAddress: v }))}
-              />
-            </div>
-
-            {/* Project description */}
-            <div style={card}>
-              <label style={labelStyle}>Description du projet</label>
-              <textarea
-                value={doc.projectDescription}
-                onChange={(e) => setDoc((d) => ({ ...d, projectDescription: e.target.value }))}
-                rows={4}
-                placeholder="Description des travaux..."
-                style={{
-                  ...inputStyle,
-                  resize: "vertical",
-                }}
-              />
-            </div>
-          </>
-        )}
-
-        {/* ── ITEMS TAB ── */}
-        {activeTab === "items" && (
-          <div style={card}>
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>📦 Articles / Services</h3>
-            {doc.lineItems.map((item, idx) => (
-              <div
-                key={item.id}
-                style={{
-                  background: "#111",
-                  borderRadius: "10px",
-                  padding: "14px",
-                  marginBottom: "10px",
-                  position: "relative",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <span style={{ fontSize: "12px", color: "#666" }}>Article {idx + 1}</span>
-                  {doc.lineItems.length > 1 && (
-                    <button
-                      onClick={() => removeLineItem(item.id)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: "18px",
-                        lineHeight: 1,
-                      }}
-                    >
-                      x
-                    </button>
-                  )}
-                </div>
-                <div style={{ marginBottom: "8px" }}>
-                  <label style={labelStyle}>Description</label>
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
-                    placeholder="Description du service..."
-                    style={inputStyle}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: "8px",
-                  }}
-                >
-                  <div>
-                    <label style={labelStyle}>Qté</label>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateLineItem(item.id, "quantity", Number(e.target.value))
-                      }
-                      min="0"
-                      step="0.5"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Prix unit.</label>
-                    <input
-                      type="number"
-                      value={item.unitPrice}
-                      onChange={(e) =>
-                        updateLineItem(item.id, "unitPrice", Number(e.target.value))
-                      }
-                      min="0"
-                      step="0.01"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Total</label>
-                    <input
-                      type="text"
-                      value={formatCurrency(item.total)}
-                      readOnly
-                      style={{ ...inputStyle, opacity: 0.6 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button
-              onClick={addLineItem}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "transparent",
-                border: "2px dashed #333",
-                borderRadius: "10px",
-                color: "#D4AF37",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
-              + Ajouter un article
-            </button>
-          </div>
-        )}
-
-        {/* ── TOTALS TAB ── */}
-        {activeTab === "totals" && (
-          <>
-            <div style={card}>
-              <h3 style={{ marginTop: 0, marginBottom: "16px" }}>💰 Totaux</h3>
-
-              <div style={{ marginBottom: "12px" }}>
-                <label style={labelStyle}>Remise (%)</label>
-                <input
-                  type="number"
-                  value={doc.discountPercent}
-                  onChange={(e) =>
-                    setDoc((d) => ({ ...d, discountPercent: Number(e.target.value) }))
-                  }
-                  min="0"
-                  max="100"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <label style={labelStyle}>Dépôt requis (%)</label>
-                <input
-                  type="number"
-                  value={doc.depositPercent}
-                  onChange={(e) =>
-                    setDoc((d) => ({ ...d, depositPercent: Number(e.target.value) }))
-                  }
-                  min="0"
-                  max="100"
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Summary */}
-              <div
-                style={{
-                  background: "#111",
-                  borderRadius: "10px",
-                  padding: "16px",
-                  marginTop: "16px",
-                }}
-              >
-                {[
-                  { label: "Sous-total", value: formatCurrency(doc.subtotal) },
-                  doc.discountPercent > 0
-                    ? {
-                        label: `Remise (${doc.discountPercent}%)`,
-                        value: `-${formatCurrency(doc.discountAmount)}`,
-                        color: "#22c55e",
-                      }
-                    : null,
-                  { label: `GST (${doc.gstRate}% Alberta)`, value: formatCurrency(doc.gstAmount) },
-                ]
-                  .filter(Boolean)
-                  .map((row, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "8px",
-                        fontSize: "14px",
-                        color: (row as { color?: string }).color || "#aaa",
-                      }}
-                    >
-                      <span>{(row as { label: string }).label}</span>
-                      <span>{(row as { value: string }).value}</span>
-                    </div>
-                  ))}
-
-                <div
-                  style={{
-                    borderTop: "1px solid #333",
-                    paddingTop: "12px",
-                    marginTop: "8px",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontSize: "20px",
-                      fontWeight: 800,
-                      color: "#D4AF37",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    <span>TOTAL</span>
-                    <span>{formatCurrency(doc.total)}</span>
-                  </div>
-                  {doc.depositPercent > 0 && (
-                    <>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "14px",
-                          color: "#3b82f6",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        <span>Dépôt ({doc.depositPercent}%)</span>
-                        <span>{formatCurrency(doc.depositAmount)}</span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "16px",
-                          fontWeight: 700,
-                          color: "#ef4444",
-                        }}
-                      >
-                        <span>Solde dû</span>
-                        <span>{formatCurrency(doc.balanceDue)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Payment info from settings */}
-            {(company.etransferEmail || company.bankName) && (
-              <div style={{ ...card, border: "1px solid #1e3a5f" }}>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#3b82f6",
-                    letterSpacing: "0.1em",
-                    marginBottom: "10px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  💳 Paiement (Auto — Réglages)
-                </div>
-                {company.etransferEmail && (
-                  <div style={{ fontSize: "14px", color: "#aaa", marginBottom: "4px" }}>
-                    Interac e-Transfer:{" "}
-                    <strong style={{ color: "#fff" }}>{company.etransferEmail}</strong>
-                  </div>
-                )}
-                {company.bankName && (
-                  <div style={{ fontSize: "14px", color: "#aaa" }}>
-                    {company.bankName}
-                    {company.bankAccount && ` — Compte: ${company.bankAccount}`}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── NOTES TAB ── */}
-        {activeTab === "notes" && (
-          <div style={card}>
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>📝 Notes & Signature</h3>
-            <div style={{ marginBottom: "16px" }}>
-              <label style={labelStyle}>Notes pour le client</label>
-              <textarea
-                value={doc.notes}
-                onChange={(e) => setDoc((d) => ({ ...d, notes: e.target.value }))}
-                rows={5}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </div>
-
-            <div
-              style={{
-                background: "#111",
-                borderRadius: "10px",
-                padding: "14px",
-              }}
-            >
-              <label style={{ ...labelStyle, marginBottom: "10px", display: "block" }}>
-                ✍️ Zone de signature
-              </label>
-              <canvas
-                ref={signatureRef}
-                width={320}
-                height={120}
-                style={{
-                  background: "#1a1a1a",
-                  border: "1px solid #333",
-                  borderRadius: "8px",
-                  touchAction: "none",
-                  display: "block",
-                  width: "100%",
-                }}
-                onMouseDown={() => setIsDrawing(true)}
-                onMouseUp={() => setIsDrawing(false)}
-                onMouseMove={(e) => {
-                  if (!isDrawing || !signatureRef.current) return;
-                  const ctx = signatureRef.current.getContext("2d");
-                  if (!ctx) return;
-                  const rect = signatureRef.current.getBoundingClientRect();
-                  const scaleX = signatureRef.current.width / rect.width;
-                  const scaleY = signatureRef.current.height / rect.height;
-                  ctx.strokeStyle = "#D4AF37";
-                  ctx.lineWidth = 2;
-                  ctx.lineTo(
-                    (e.clientX - rect.left) * scaleX,
-                    (e.clientY - rect.top) * scaleY
-                  );
-                  ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(
-                    (e.clientX - rect.left) * scaleX,
-                    (e.clientY - rect.top) * scaleY
-                  );
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  setIsDrawing(true);
-                  if (!signatureRef.current) return;
-                  const ctx = signatureRef.current.getContext("2d");
-                  if (!ctx) return;
-                  ctx.beginPath();
-                }}
-                onTouchMove={(e) => {
-                  e.preventDefault();
-                  if (!isDrawing || !signatureRef.current) return;
-                  const ctx = signatureRef.current.getContext("2d");
-                  if (!ctx) return;
-                  const rect = signatureRef.current.getBoundingClientRect();
-                  const scaleX = signatureRef.current.width / rect.width;
-                  const scaleY = signatureRef.current.height / rect.height;
-                  const touch = e.touches[0];
-                  ctx.strokeStyle = "#D4AF37";
-                  ctx.lineWidth = 2;
-                  ctx.lineTo(
-                    (touch.clientX - rect.left) * scaleX,
-                    (touch.clientY - rect.top) * scaleY
-                  );
-                  ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(
-                    (touch.clientX - rect.left) * scaleX,
-                    (touch.clientY - rect.top) * scaleY
-                  );
-                }}
-                onTouchEnd={() => setIsDrawing(false)}
-              />
-              <button
-                onClick={() => {
-                  if (!signatureRef.current) return;
-                  const ctx = signatureRef.current.getContext("2d");
-                  if (!ctx) return;
-                  ctx.clearRect(
-                    0,
-                    0,
-                    signatureRef.current.width,
-                    signatureRef.current.height
-                  );
-                }}
-                style={{
-                  marginTop: "8px",
-                  background: "none",
-                  border: "1px solid #333",
-                  color: "#888",
-                  borderRadius: "6px",
-                  padding: "6px 14px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                }}
-              >
-                Effacer
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Save button */}
-        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-          <button style={btnGold} onClick={saveDocument}>
-            {saved ? "✅ Sauvegardé!" : isNew ? "💾 Créer le document" : "💾 Sauvegarder"}
-          </button>
-        </div>
-      </div>
-
-      {/* Client picker modal */}
-      {showClientPicker && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "#000b",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "flex-end",
-          }}
-          onClick={() => setShowClientPicker(false)}
-        >
-          <div
-            style={{
-              background: "#1a1a1a",
-              width: "100%",
-              maxHeight: "70vh",
-              borderRadius: "20px 20px 0 0",
-              padding: "20px",
-              overflowY: "auto",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>👥 Choisir un client</h3>
-            {clients.length === 0 ? (
-              <p style={{ color: "#666", textAlign: "center" }}>
-                Aucun client. Ajoutez-en dans la section Clients.
-              </p>
-            ) : (
-              clients.map((client) => (
-                <button
-                  key={client.id}
-                  onClick={() => selectClient(client.id)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    background: "#111",
-                    border: "1px solid #333",
-                    borderRadius: "10px",
-                    padding: "14px",
-                    color: "#fff",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>{client.name}</div>
-                  {client.email && (
-                    <div style={{ fontSize: "12px", color: "#888" }}>{client.email}</div>
-                  )}
-                  {client.phone && (
-                    <div style={{ fontSize: "12px", color: "#888" }}>{client.phone}</div>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                  company.wcbNumb
