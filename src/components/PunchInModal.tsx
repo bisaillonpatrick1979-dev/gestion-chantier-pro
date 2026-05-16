@@ -1,23 +1,66 @@
-'use client';
+'use client'
 
-// src/components/PunchInModal.tsx
-// Ce composant remplace le simple punch in/out existant
-// Il gère : sélection projet, mode paiement, matériaux au punch out
-
-import { useState } from 'react';
-import { useProjectStore, MaterialEntry, PayMode } from '@/store/useProjectStore';
+import { useState } from 'react'
+import { useProjectStore, MaterialEntry, PayMode } from '@/store/useProjectStore'
 
 interface Props {
-  employeeId: string;
-  employeeName: string;
-  employeeHourlyRate: number;
-  mode: 'in' | 'out';
-  onComplete: () => void;
-  onCancel: () => void;
+  employeeId: string
+  employeeName: string
+  employeeHourlyRate: number
+  mode: 'in' | 'out'
+  onComplete: () => void
+  onCancel: () => void
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10);
-const fmt = (n: number) => `$${n.toFixed(2)}`;
+const uid = () => Math.random().toString(36).slice(2, 10)
+const fmt = (n: number) => `$${n.toFixed(2)}`
+
+// ── Styles de base ────────────────────────────────────────────────────────────
+const overlay: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 100,
+  background: 'rgba(0,0,0,0.88)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '16px 16px 80px 16px', // 80px = espace pour BottomNav
+}
+
+const modal: React.CSSProperties = {
+  width: '100%',
+  maxWidth: '480px',
+  background: 'var(--surface, #111)',
+  border: '1px solid var(--border, #222)',
+  borderRadius: '20px',
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: 'calc(100dvh - 100px)',
+  overflow: 'hidden',
+  position: 'relative',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--card, #1a1a1a)',
+  border: '1px solid var(--border, #333)',
+  borderRadius: '10px',
+  padding: '12px 14px',
+  color: 'var(--text, #fff)',
+  fontSize: '15px',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '10px',
+  fontWeight: 800,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase',
+  color: 'var(--text-muted, #888)',
+  marginBottom: '8px',
+}
 
 export default function PunchInModal({
   employeeId,
@@ -27,123 +70,134 @@ export default function PunchInModal({
   onComplete,
   onCancel,
 }: Props) {
-  const { getProjectsForEmployee, getActiveLogForEmployee, punchIn, punchOut } = useProjectStore();
+  const { getProjectsForEmployee, getActiveLogForEmployee, punchIn, punchOut } = useProjectStore()
 
-  // ── PUNCH IN state ────────────────────────────────────────────────────────
-  const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [customRate, setCustomRate] = useState(employeeHourlyRate.toString());
-  const [jobPayAmount, setJobPayAmount] = useState('');
-
-  // ── PUNCH OUT state — matériaux ───────────────────────────────────────────
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [customRate, setCustomRate] = useState(employeeHourlyRate.toString())
+  const [jobPayAmount, setJobPayAmount] = useState('')
   const [materials, setMaterials] = useState<MaterialEntry[]>([
     { id: uid(), material: '', sqft: 0, ratePerSqft: 0 },
-  ]);
+  ])
 
-  const availableProjects = getProjectsForEmployee(employeeId);
-  const activeEntry = getActiveLogForEmployee(employeeId);
+  const availableProjects = getProjectsForEmployee(employeeId)
+  const activeEntry = getActiveLogForEmployee(employeeId)
+  const selectedProject = availableProjects.find(p => p.id === selectedProjectId) ?? activeEntry?.project
+  const payMode: PayMode = selectedProject?.payMode ?? 'hourly'
 
-  const selectedProject = availableProjects.find((p) => p.id === selectedProjectId)
-    ?? activeEntry?.project;
-
-  const payMode: PayMode = selectedProject?.payMode ?? 'hourly';
-
-  // ── Matériaux helpers ─────────────────────────────────────────────────────
   const updateMaterial = (idx: number, field: keyof MaterialEntry, value: string | number) => {
-    setMaterials((prev) => {
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], [field]: value };
-      return updated;
-    });
-  };
+    setMaterials(prev => {
+      const updated = [...prev]
+      updated[idx] = { ...updated[idx], [field]: value }
+      return updated
+    })
+  }
 
   const addMaterial = () =>
-    setMaterials((prev) => [...prev, { id: uid(), material: '', sqft: 0, ratePerSqft: 0 }]);
+    setMaterials(prev => [...prev, { id: uid(), material: '', sqft: 0, ratePerSqft: 0 }])
 
   const removeMaterial = (idx: number) =>
-    setMaterials((prev) => prev.filter((_, i) => i !== idx));
+    setMaterials(prev => prev.filter((_, i) => i !== idx))
 
-  const totalMaterialRevenue = materials.reduce(
-    (sum, m) => sum + m.sqft * m.ratePerSqft, 0
-  );
+  const totalMaterialRevenue = materials.reduce((sum, m) => sum + m.sqft * m.ratePerSqft, 0)
 
-  // ── PUNCH IN ──────────────────────────────────────────────────────────────
   const handlePunchIn = () => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId) return
     punchIn(selectedProjectId, {
       employeeId,
       employeeName,
       hourlyRate: parseFloat(customRate) || employeeHourlyRate,
       punchIn: new Date().toISOString(),
       date: new Date().toISOString().slice(0, 10),
-      ...(payMode === 'job' && jobPayAmount
-        ? { jobPay: parseFloat(jobPayAmount) }
-        : {}),
-    });
-    onComplete();
-  };
+      ...(payMode === 'job' && jobPayAmount ? { jobPay: parseFloat(jobPayAmount) } : {}),
+    })
+    onComplete()
+  }
 
-  // ── PUNCH OUT ─────────────────────────────────────────────────────────────
   const handlePunchOut = () => {
-    if (!activeEntry) return;
+    if (!activeEntry) return
     punchOut(activeEntry.project.id, employeeId, {
       materials: payMode === 'sqft'
-        ? materials.filter((m) => m.material && m.sqft > 0)
+        ? materials.filter(m => m.material && m.sqft > 0)
         : undefined,
-    });
-    onComplete();
-  };
+    })
+    onComplete()
+  }
 
-  // ── RENDER PUNCH IN ───────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // PUNCH IN
+  // ════════════════════════════════════════════════════════════════════════════
   if (mode === 'in') {
     return (
-      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center">
-        <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 pb-8">
+      <div style={overlay} onClick={onCancel}>
+        <div style={modal} onClick={e => e.stopPropagation()}>
+
+          {/* Barre déco */}
+          <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, var(--success, #22c55e), transparent)', flexShrink: 0 }} />
+
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 border-b border-white/10">
-            <div className="flex items-center justify-between">
+          <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h2 className="font-black text-white text-xl">⏱️ Punch In</h2>
-                <p className="text-sm text-gray-400 mt-0.5">{employeeName}</p>
+                <h2 style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)', margin: 0 }}>
+                  ⏱️ Punch In
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{employeeName}</p>
               </div>
-              <button onClick={onCancel} className="text-gray-400 text-2xl hover:text-white">✕</button>
+              <button onClick={onCancel} style={{
+                background: 'var(--card)', border: '1px solid var(--border)',
+                borderRadius: '50%', width: '36px', height: '36px',
+                color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>✕</button>
             </div>
           </div>
 
-          <div className="px-5 pt-5 space-y-4">
+          {/* Corps scrollable */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
             {/* Sélection projet */}
             <div>
-              <label className="block text-xs font-bold text-orange-400 uppercase tracking-widest mb-2">
+              <label style={{ ...labelStyle, color: 'var(--primary, #D4AF37)' }}>
                 🏗️ Sur quel projet travailles-tu ?
               </label>
               {availableProjects.length === 0 ? (
-                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4 text-center">
-                  <p className="text-yellow-300 text-sm font-semibold">
+                <div style={{
+                  background: 'var(--warning, #f59e0b)18',
+                  border: '1px solid var(--warning, #f59e0b)44',
+                  borderRadius: '12px', padding: '16px', textAlign: 'center',
+                }}>
+                  <p style={{ color: 'var(--warning, #f59e0b)', fontWeight: 700, fontSize: '14px' }}>
                     Aucun projet assigné
                   </p>
-                  <p className="text-gray-400 text-xs mt-1">
+                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '4px' }}>
                     L'admin doit t'assigner à un projet.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {availableProjects.map((p) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {availableProjects.map(p => (
                     <button
                       key={p.id}
                       onClick={() => setSelectedProjectId(p.id)}
-                      className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
-                        selectedProjectId === p.id
-                          ? 'border-orange-400 bg-orange-500/20'
-                          : 'border-white/10 bg-white/5 hover:border-white/30'
-                      }`}
+                      style={{
+                        textAlign: 'left', padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                        border: selectedProjectId === p.id
+                          ? '1px solid var(--primary)'
+                          : '1px solid var(--border)',
+                        background: selectedProjectId === p.id
+                          ? 'var(--primary)18'
+                          : 'var(--card)',
+                        transition: 'all 0.2s',
+                      }}
                     >
-                      <p className="font-bold text-white text-sm">{p.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: '14px' }}>{p.name}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                         📍 {p.address}, {p.city}
                       </p>
-                      <p className="text-xs text-orange-400 mt-0.5">
-                        {p.payMode === 'hourly' && `⏱️ À l'heure`}
-                        {p.payMode === 'job' && `💰 À la job`}
-                        {p.payMode === 'sqft' && `📐 Au pied carré`}
+                      <p style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>
+                        {p.payMode === 'hourly' && "⏱️ À l'heure"}
+                        {p.payMode === 'job' && '💰 À la job'}
+                        {p.payMode === 'sqft' && '📐 Au pied carré'}
                       </p>
                     </button>
                   ))}
@@ -151,182 +205,222 @@ export default function PunchInModal({
               )}
             </div>
 
-            {/* Taux selon le mode */}
+            {/* Taux horaire */}
             {selectedProjectId && payMode === 'hourly' && (
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                  💵 Ton taux horaire ($/h)
-                </label>
+                <label style={labelStyle}>💵 Ton taux horaire ($/h)</label>
                 <input
                   type="number"
                   value={customRate}
-                  onChange={(e) => setCustomRate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xl font-bold text-white focus:border-orange-400 focus:outline-none"
+                  onChange={e => setCustomRate(e.target.value)}
+                  style={{ ...inputStyle, fontSize: '24px', fontWeight: 900 }}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Taux par défaut : ${employeeHourlyRate}/h
                 </p>
               </div>
             )}
 
+            {/* À la job */}
             {selectedProjectId && payMode === 'job' && (
-              <div className="rounded-xl bg-green-500/10 border border-green-500/30 p-4">
-                <label className="block text-xs font-bold text-green-400 uppercase tracking-widest mb-2">
+              <div style={{
+                background: 'var(--success)18', border: '1px solid var(--success)44',
+                borderRadius: '12px', padding: '16px',
+              }}>
+                <label style={{ ...labelStyle, color: 'var(--success)' }}>
                   💰 Ta paye pour cette job ($)
                 </label>
                 <input
                   type="number"
                   value={jobPayAmount}
-                  onChange={(e) => setJobPayAmount(e.target.value)}
+                  onChange={e => setJobPayAmount(e.target.value)}
                   placeholder="Ex: 350"
-                  className="w-full rounded-xl border border-green-500/30 bg-black/20 px-4 py-3 text-xl font-bold text-white focus:border-green-400 focus:outline-none"
+                  style={{ ...inputStyle, fontSize: '24px', fontWeight: 900, border: '1px solid var(--success)44' }}
                 />
                 {selectedProject?.jobAmount && (
-                  <p className="text-xs text-green-400 mt-1">
+                  <p style={{ fontSize: '11px', color: 'var(--success)', marginTop: '6px' }}>
                     💡 Montant total job : {fmt(selectedProject.jobAmount)}
                   </p>
                 )}
               </div>
             )}
 
+            {/* Pied carré */}
             {selectedProjectId && payMode === 'sqft' && (
-              <div className="rounded-xl bg-blue-500/10 border border-blue-500/30 p-3">
-                <p className="text-xs text-blue-400 font-semibold">
+              <div style={{
+                background: 'var(--info)18', border: '1px solid var(--info)44',
+                borderRadius: '12px', padding: '14px',
+              }}>
+                <p style={{ fontSize: '12px', color: 'var(--info)', fontWeight: 600, marginBottom: '10px' }}>
                   📐 Mode pied carré — tu entreras les matériaux au punch out.
                 </p>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-3">
-                  ⏱️ Ton taux horaire ($/h) pour ce projet
-                </label>
+                <label style={labelStyle}>⏱️ Ton taux horaire ($/h)</label>
                 <input
                   type="number"
                   value={customRate}
-                  onChange={(e) => setCustomRate(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-lg font-bold text-white focus:border-orange-400 focus:outline-none"
+                  onChange={e => setCustomRate(e.target.value)}
+                  style={{ ...inputStyle, fontSize: '20px', fontWeight: 900 }}
                 />
               </div>
             )}
+          </div>
 
-            {/* Bouton Punch In */}
+          {/* Bouton Punch In */}
+          <div style={{ padding: '16px 20px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
             <button
               onClick={handlePunchIn}
               disabled={!selectedProjectId || availableProjects.length === 0}
-              className="w-full rounded-2xl bg-green-500 hover:bg-green-600 disabled:opacity-40 text-white font-black py-5 text-xl transition-all mt-2"
+              style={{
+                width: '100%', padding: '18px', borderRadius: '14px', cursor: 'pointer',
+                border: 'none', fontWeight: 900, fontSize: '18px', letterSpacing: '2px',
+                background: !selectedProjectId ? 'var(--border)' : 'var(--success, #22c55e)',
+                color: !selectedProjectId ? 'var(--text-muted)' : '#000',
+                opacity: !selectedProjectId ? 0.5 : 1,
+                transition: 'all 0.2s',
+              }}
             >
               🟢 PUNCH IN
             </button>
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  // ── RENDER PUNCH OUT ──────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // PUNCH OUT
+  // ════════════════════════════════════════════════════════════════════════════
   if (!activeEntry) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-gray-900 rounded-2xl border border-white/10 p-6 text-center max-w-sm w-full">
-          <p className="text-gray-400">Aucun punch in actif trouvé.</p>
-          <button onClick={onCancel} className="mt-4 text-orange-400 underline text-sm">Fermer</button>
+      <div style={overlay} onClick={onCancel}>
+        <div style={{ ...modal, padding: '24px', alignItems: 'center', justifyContent: 'center', gap: '16px' }} onClick={e => e.stopPropagation()}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center' }}>
+            Aucun punch in actif trouvé.
+          </p>
+          <button onClick={onCancel} style={{
+            background: 'none', border: 'none', color: 'var(--primary)',
+            cursor: 'pointer', fontSize: '14px', textDecoration: 'underline',
+          }}>Fermer</button>
         </div>
       </div>
-    );
+    )
   }
 
-  const punchInTime = new Date(activeEntry.log.punchIn);
-  const now = new Date();
-  const hoursElapsed = (now.getTime() - punchInTime.getTime()) / (1000 * 60 * 60);
+  const punchInTime = new Date(activeEntry.log.punchIn)
+  const hoursElapsed = (Date.now() - punchInTime.getTime()) / (1000 * 60 * 60)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center">
-      <div className="w-full max-w-lg bg-gray-900 rounded-t-3xl border-t border-white/10 pb-8 max-h-[92vh] flex flex-col">
+    <div style={overlay} onClick={onCancel}>
+      <div style={modal} onClick={e => e.stopPropagation()}>
+
+        {/* Barre déco */}
+        <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, var(--danger, #ef4444), transparent)', flexShrink: 0 }} />
+
         {/* Header */}
-        <div className="px-5 pt-5 pb-4 border-b border-white/10 shrink-0">
-          <div className="flex items-center justify-between">
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 className="font-black text-white text-xl">🔴 Punch Out</h2>
-              <p className="text-sm text-gray-400 mt-0.5">{employeeName}</p>
+              <h2 style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)', margin: 0 }}>
+                🔴 Punch Out
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{employeeName}</p>
             </div>
-            <button onClick={onCancel} className="text-gray-400 text-2xl hover:text-white">✕</button>
+            <button onClick={onCancel} style={{
+              background: 'var(--card)', border: '1px solid var(--border)',
+              borderRadius: '50%', width: '36px', height: '36px',
+              color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>✕</button>
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 pt-5 space-y-4">
-          {/* Projet actif */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-            <p className="text-xs text-gray-400 mb-1">Projet en cours</p>
-            <p className="font-black text-white">{activeEntry.project.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+        {/* Corps scrollable */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* Projet actif + temps */}
+          <div style={{
+            background: 'var(--card)', border: '1px solid var(--border)',
+            borderRadius: '14px', padding: '16px',
+          }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Projet en cours
+            </p>
+            <p style={{ fontWeight: 900, color: 'var(--text)', fontSize: '16px' }}>{activeEntry.project.name}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               📍 {activeEntry.project.address}
             </p>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-gray-400">Temps écoulé</span>
-              <span className="text-2xl font-black text-orange-400">
-                {hoursElapsed.toFixed(2)}h
-              </span>
-            </div>
-            {payMode === 'hourly' && (
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-gray-400">Montant</span>
-                <span className="text-lg font-bold text-green-400">
-                  {fmt(hoursElapsed * activeEntry.log.hourlyRate)}
+
+            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Temps écoulé</span>
+                <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--primary)' }}>
+                  {hoursElapsed.toFixed(2)}h
                 </span>
               </div>
-            )}
+              {payMode === 'hourly' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Montant</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--success)' }}>
+                    {fmt(hoursElapsed * activeEntry.log.hourlyRate)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Matériaux — mode pi² seulement */}
+          {/* Matériaux — mode pi² */}
           {payMode === 'sqft' && (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-                  📐 Matériaux installés aujourd'hui
-                </label>
-              </div>
-
-              <div className="space-y-3">
+              <label style={{ ...labelStyle, color: 'var(--info)' }}>
+                📐 Matériaux installés aujourd'hui
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {materials.map((mat, idx) => (
-                  <div key={mat.id} className="rounded-xl bg-white/5 border border-white/10 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-gray-400 font-bold">Matériau #{idx + 1}</span>
+                  <div key={mat.id} style={{
+                    background: 'var(--card)', border: '1px solid var(--border)',
+                    borderRadius: '12px', padding: '14px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        Matériau #{idx + 1}
+                      </span>
                       {materials.length > 1 && (
-                        <button
-                          onClick={() => removeMaterial(idx)}
-                          className="text-red-400 hover:text-red-300 text-sm"
-                        >
-                          ✕
-                        </button>
+                        <button onClick={() => removeMaterial(idx)} style={{
+                          background: 'none', border: 'none', color: 'var(--danger)',
+                          cursor: 'pointer', fontSize: '16px',
+                        }}>✕</button>
                       )}
                     </div>
                     <input
                       value={mat.material}
-                      onChange={(e) => updateMaterial(idx, 'material', e.target.value)}
-                      placeholder="Ex: Siding vinyl, Soffit, Bardeau..."
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none mb-2"
+                      onChange={e => updateMaterial(idx, 'material', e.target.value)}
+                      placeholder="Ex: Siding vinyl, Soffit..."
+                      style={{ ...inputStyle, marginBottom: '8px' }}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Pi² installés</label>
+                        <label style={{ ...labelStyle, fontSize: '9px' }}>Pi² installés</label>
                         <input
                           type="number"
                           value={mat.sqft || ''}
-                          onChange={(e) => updateMaterial(idx, 'sqft', parseFloat(e.target.value) || 0)}
+                          onChange={e => updateMaterial(idx, 'sqft', parseFloat(e.target.value) || 0)}
                           placeholder="300"
-                          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none"
+                          style={inputStyle}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">$/pi²</label>
+                        <label style={{ ...labelStyle, fontSize: '9px' }}>$/pi²</label>
                         <input
                           type="number"
                           value={mat.ratePerSqft || ''}
-                          onChange={(e) => updateMaterial(idx, 'ratePerSqft', parseFloat(e.target.value) || 0)}
+                          onChange={e => updateMaterial(idx, 'ratePerSqft', parseFloat(e.target.value) || 0)}
                           placeholder="2.25"
-                          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-orange-400 focus:outline-none"
+                          style={inputStyle}
                         />
                       </div>
                     </div>
                     {mat.sqft > 0 && mat.ratePerSqft > 0 && (
-                      <p className="text-right text-xs text-orange-400 font-bold mt-1">
+                      <p style={{ textAlign: 'right', fontSize: '13px', color: 'var(--primary)', fontWeight: 700, marginTop: '6px' }}>
                         = {fmt(mat.sqft * mat.ratePerSqft)}
                       </p>
                     )}
@@ -336,15 +430,24 @@ export default function PunchInModal({
 
               <button
                 onClick={addMaterial}
-                className="w-full rounded-xl border border-dashed border-blue-500/40 bg-blue-500/5 py-3 text-blue-400 text-sm font-bold hover:bg-blue-500/10 transition mt-2"
+                style={{
+                  width: '100%', marginTop: '8px', padding: '12px',
+                  borderRadius: '10px', cursor: 'pointer',
+                  border: '1px dashed var(--info)', background: 'var(--info)08',
+                  color: 'var(--info)', fontSize: '13px', fontWeight: 700,
+                }}
               >
                 ➕ Ajouter un matériau
               </button>
 
               {totalMaterialRevenue > 0 && (
-                <div className="rounded-xl bg-blue-500/10 border border-blue-500/30 p-3 flex justify-between items-center mt-2">
-                  <span className="text-sm text-blue-300 font-bold">Total revenue pi²</span>
-                  <span className="text-xl font-black text-blue-400">{fmt(totalMaterialRevenue)}</span>
+                <div style={{
+                  marginTop: '8px', padding: '12px 14px', borderRadius: '10px',
+                  background: 'var(--info)18', border: '1px solid var(--info)44',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--info)' }}>Total revenue pi²</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--info)' }}>{fmt(totalMaterialRevenue)}</span>
                 </div>
               )}
             </div>
@@ -352,21 +455,28 @@ export default function PunchInModal({
 
           {/* Résumé forfait */}
           {payMode === 'job' && (
-            <div className="rounded-xl bg-green-500/10 border border-green-500/30 p-4">
-              <p className="text-xs text-green-400 font-bold mb-2">💰 Résumé job</p>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-300">Paye job</span>
-                <span className="font-bold text-white">{fmt(activeEntry.log.jobPay ?? 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-gray-300">Temps travaillé</span>
-                <span className="font-bold text-white">{hoursElapsed.toFixed(2)}h</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1 border-t border-white/10 pt-2">
-                <span className="text-gray-300">Taux effectif</span>
-                <span className={`font-black ${
-                  (activeEntry.log.jobPay ?? 0) / hoursElapsed >= 30 ? 'text-green-400' : 'text-red-400'
-                }`}>
+            <div style={{
+              background: 'var(--success)18', border: '1px solid var(--success)44',
+              borderRadius: '12px', padding: '16px',
+            }}>
+              <p style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 800, letterSpacing: '1px', marginBottom: '10px' }}>
+                💰 RÉSUMÉ JOB
+              </p>
+              {[
+                { label: 'Paye job', value: fmt(activeEntry.log.jobPay ?? 0) },
+                { label: 'Temps travaillé', value: `${hoursElapsed.toFixed(2)}h` },
+              ].map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text)', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                  <span style={{ fontWeight: 700 }}>{row.value}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', marginTop: '4px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Taux effectif</span>
+                <span style={{
+                  fontSize: '16px', fontWeight: 900,
+                  color: (activeEntry.log.jobPay ?? 0) / hoursElapsed >= 30 ? 'var(--success)' : 'var(--danger)',
+                }}>
                   {fmt((activeEntry.log.jobPay ?? 0) / hoursElapsed)}/h
                 </span>
               </div>
@@ -375,15 +485,21 @@ export default function PunchInModal({
         </div>
 
         {/* Bouton Punch Out */}
-        <div className="px-5 pb-2 pt-3 shrink-0">
+        <div style={{ padding: '16px 20px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
           <button
             onClick={handlePunchOut}
-            className="w-full rounded-2xl bg-red-500 hover:bg-red-600 text-white font-black py-5 text-xl transition-all"
+            style={{
+              width: '100%', padding: '18px', borderRadius: '14px', cursor: 'pointer',
+              border: 'none', fontWeight: 900, fontSize: '18px', letterSpacing: '2px',
+              background: 'var(--danger, #ef4444)',
+              color: '#fff',
+              transition: 'all 0.2s',
+            }}
           >
             🔴 PUNCH OUT
           </button>
         </div>
       </div>
     </div>
-  );
+  )
 }
