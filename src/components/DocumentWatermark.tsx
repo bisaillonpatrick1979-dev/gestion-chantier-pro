@@ -1,7 +1,7 @@
 "use client";
 
 interface DocumentWatermarkProps {
-  type: "FACTURE" | "DEVIS" | "CONTRAT";
+  type: "FACTURE" | "DEVIS" | "CONTRAT" | "BON DE COMMANDE";
   logoUrl?: string;
   companyName?: string;
   opacity?: number;
@@ -49,11 +49,7 @@ export default function DocumentWatermark({
           <img
             src={logoUrl}
             alt=""
-            style={{
-              width: "72px",
-              height: "72px",
-              objectFit: "contain",
-            }}
+            style={{ width: "72px", height: "72px", objectFit: "contain" }}
           />
         )}
 
@@ -76,10 +72,10 @@ export default function DocumentWatermark({
         {/* Type de document */}
         <div
           style={{
-            fontSize: "15px",
+            fontSize: "14px",
             fontWeight: 800,
             color: "var(--text)",
-            letterSpacing: "6px",
+            letterSpacing: "5px",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
           }}
