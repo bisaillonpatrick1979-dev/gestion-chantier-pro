@@ -1,11 +1,14 @@
+// src/store/useCompanyStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface CompanyInfo {
   // Identité
   name: string;
-  tagline: string;
   ownerName: string;
+  tagline: string;
+  logoUrl: string;
+
   // Coordonnées
   address: string;
   city: string;
@@ -14,44 +17,47 @@ export interface CompanyInfo {
   phone: string;
   email: string;
   website: string;
-  // Numéros légaux
-  gstNumber: string;   // GST/HST Alberta 5%
-  wcbNumber: string;   // WCB Alberta
+
+  // Légal Alberta
+  gstNumber: string;
+  wcbNumber: string;
   businessNumber: string;
+
   // Paiement
+  etransferEmail: string;
   bankName: string;
   bankTransit: string;
   bankAccount: string;
-  etransferEmail: string;
+
   // Facturation
   defaultDepositPercent: number;
   defaultPaymentTermsDays: number;
   defaultNotes: string;
-  // Branding
-  logoUrl: string;
-  primaryColor: string;
-  // Numéros séquentiels
+
+  // Numérotation documents
+  invoicePrefix: string;
+  quotePrefix: string;
+  contractPrefix: string;
   nextInvoiceNumber: number;
   nextQuoteNumber: number;
   nextContractNumber: number;
-  invoicePrefix: string;   // ex: "FAC" ou "INV"
-  quotePrefix: string;     // ex: "DEV" ou "QUO"
-  contractPrefix: string;  // ex: "CTR" ou "CON"
 }
 
-interface CompanyState {
+interface CompanyStore {
   company: CompanyInfo;
   updateCompany: (data: Partial<CompanyInfo>) => void;
+  resetNumbering: () => void;
   getNextInvoiceNumber: () => string;
   getNextQuoteNumber: () => string;
   getNextContractNumber: () => string;
-  resetNumbering: () => void;
 }
 
 const defaultCompany: CompanyInfo = {
   name: "Hailite Xteriors",
-  tagline: "Qualité & Précision",
   ownerName: "Patrick Bisaillon",
+  tagline: "Exteriors done right.",
+  logoUrl: "",
+
   address: "",
   city: "",
   province: "AB",
@@ -59,32 +65,29 @@ const defaultCompany: CompanyInfo = {
   phone: "",
   email: "",
   website: "",
+
   gstNumber: "",
   wcbNumber: "",
   businessNumber: "",
+
+  etransferEmail: "",
   bankName: "",
   bankTransit: "",
   bankAccount: "",
-  etransferEmail: "",
+
   defaultDepositPercent: 30,
-  defaultPaymentTermsDays: 14,
-  defaultNotes:
-    "Merci pour votre confiance. Paiement dû dans les délais convenus.",
-  logoUrl: "",
-  primaryColor: "#D4AF37",
-  nextInvoiceNumber: 1,
-  nextQuoteNumber: 1,
-  nextContractNumber: 1,
+  defaultPaymentTermsDays: 30,
+  defaultNotes: "",
+
   invoicePrefix: "FAC",
   quotePrefix: "DEV",
   contractPrefix: "CTR",
+  nextInvoiceNumber: 1001,
+  nextQuoteNumber: 1001,
+  nextContractNumber: 1001,
 };
 
-function padNumber(n: number, digits = 3): string {
-  return String(n).padStart(digits, "0");
-}
-
-export const useCompanyStore = create<CompanyState>()(
+export const useCompanyStore = create<CompanyStore>()(
   persist(
     (set, get) => ({
       company: defaultCompany,
@@ -94,9 +97,19 @@ export const useCompanyStore = create<CompanyState>()(
           company: { ...state.company, ...data },
         })),
 
+      resetNumbering: () =>
+        set((state) => ({
+          company: {
+            ...state.company,
+            nextInvoiceNumber: 1,
+            nextQuoteNumber: 1,
+            nextContractNumber: 1,
+          },
+        })),
+
       getNextInvoiceNumber: () => {
         const { company } = get();
-        const num = `${company.invoicePrefix}-${padNumber(company.nextInvoiceNumber)}`;
+        const num = `${company.invoicePrefix}-${String(company.nextInvoiceNumber).padStart(3, "0")}`;
         set((state) => ({
           company: {
             ...state.company,
@@ -108,7 +121,7 @@ export const useCompanyStore = create<CompanyState>()(
 
       getNextQuoteNumber: () => {
         const { company } = get();
-        const num = `${company.quotePrefix}-${padNumber(company.nextQuoteNumber)}`;
+        const num = `${company.quotePrefix}-${String(company.nextQuoteNumber).padStart(3, "0")}`;
         set((state) => ({
           company: {
             ...state.company,
@@ -120,7 +133,7 @@ export const useCompanyStore = create<CompanyState>()(
 
       getNextContractNumber: () => {
         const { company } = get();
-        const num = `${company.contractPrefix}-${padNumber(company.nextContractNumber)}`;
+        const num = `${company.contractPrefix}-${String(company.nextContractNumber).padStart(3, "0")}`;
         set((state) => ({
           company: {
             ...state.company,
@@ -129,19 +142,7 @@ export const useCompanyStore = create<CompanyState>()(
         }));
         return num;
       },
-
-      resetNumbering: () =>
-        set((state) => ({
-          company: {
-            ...state.company,
-            nextInvoiceNumber: 1,
-            nextQuoteNumber: 1,
-            nextContractNumber: 1,
-          },
-        })),
     }),
-    {
-      name: "company-store-v1",
-    }
+    { name: "company-store-v1" }
   )
 );
