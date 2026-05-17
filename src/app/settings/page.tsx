@@ -43,14 +43,14 @@ export default function SettingsPage() {
     ? 'aventure-card-glow'
     : ''
 
-  const { employees, addEmployee, updateEmployee, removeEmployee, resetAdminPin } = useEmployeeStore()
+  // ✅ FIX: deleteEmployee (pas deleteEmployee), pas de resetAdminPin
+  const { employees, addEmployee, updateEmployee, deleteEmployee } = useEmployeeStore()
   const { company, setCompany } = useCompanyStore()
   const { enabled: voiceEnabled, volume: voiceVolume, setEnabled: setVoiceEnabled, setVolume: setVoiceVolume } = useVoiceReminderStore()
 
   const TABS = lang === 'fr' ? TABS_FR : TABS_EN
   const [activeTab, setActiveTab] = useState(0)
 
-  // Employee form
   const [newName, setNewName] = useState('')
   const [newPin, setNewPin] = useState('')
   const [newRole, setNewRole] = useState<'admin' | 'employee'>('employee')
@@ -61,7 +61,6 @@ export default function SettingsPage() {
   const [showResetPin, setShowResetPin] = useState(false)
   const [resetPinVal, setResetPinVal] = useState('')
 
-  // Logo upload
   const logoRef = useRef<HTMLInputElement>(null)
 
   const handleAddEmployee = () => {
@@ -116,7 +115,6 @@ export default function SettingsPage() {
       {isDeco && <DecoBackground />}
 
       <div className="max-w-lg mx-auto">
-        {/* Header */}
         <div className="text-center mb-6">
           {isDeco ? (
             <DecoTitle>{t('Réglages', 'Settings')}</DecoTitle>
@@ -134,22 +132,15 @@ export default function SettingsPage() {
           <p className="text-white/50 text-sm mt-1">Hailite Xteriors</p>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           {TABS.map((tab, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveTab(i)}
+            <button key={i} onClick={() => setActiveTab(i)}
               className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap
                 ${activeTab === i
-                  ? isDeco
-                    ? 'bg-[#D6B25E] text-[#0d0a00] shadow-lg shadow-[#D6B25E]/30'
-                    : isQuantum
-                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
+                  ? isDeco ? 'bg-[#D6B25E] text-[#0d0a00] shadow-lg shadow-[#D6B25E]/30'
+                    : isQuantum ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
                     : 'bg-white/20 text-white shadow-lg'
-                  : 'bg-white/5 text-white/50 hover:bg-white/10'
-                }`}
-            >
+                  : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
               {tab}
             </button>
           ))}
@@ -161,11 +152,8 @@ export default function SettingsPage() {
             ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
               : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
               : 'bg-white/5 border border-white/10'}`}>
-
             {isDeco && <DecoCorners />}
             {sectionTitle(t('Informations compagnie', 'Company Information'))}
-
-            {/* Logo */}
             <div>
               <label className={labelClass}>{t('Logo compagnie', 'Company Logo')}</label>
               <div className="flex items-center gap-4">
@@ -173,21 +161,16 @@ export default function SettingsPage() {
                   <img src={company.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-white/20" />
                 ) : (
                   <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center text-2xl
-                    ${isDeco ? 'border-[#D6B25E]/30' : 'border-white/20'}`}>
-                    🏗️
-                  </div>
+                    ${isDeco ? 'border-[#D6B25E]/30' : 'border-white/20'}`}>🏗️</div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => logoRef.current?.click()}
+                  <button onClick={() => logoRef.current?.click()}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all
-                      ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E] hover:bg-[#D6B25E]/30'
-                        : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                      ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E] hover:bg-[#D6B25E]/30' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                     {t('📁 Choisir image', '📁 Choose image')}
                   </button>
                   {company.logoUrl && (
-                    <button
-                      onClick={() => setCompany({ logoUrl: '' })}
+                    <button onClick={() => setCompany({ logoUrl: '' })}
                       className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30">
                       {t('🗑️ Supprimer', '🗑️ Remove')}
                     </button>
@@ -196,84 +179,59 @@ export default function SettingsPage() {
                 <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelClass}>{t('Nom compagnie', 'Company Name')}</label>
-                <input className={inputClass} value={company.name}
-                  onChange={e => setCompany({ name: e.target.value })}
-                  placeholder="Hailite Xteriors" />
+                <input className={inputClass} value={company.name} onChange={e => setCompany({ name: e.target.value })} placeholder="Hailite Xteriors" />
               </div>
               <div className="col-span-2">
                 <label className={labelClass}>{t('Nom propriétaire', "Owner's Name")}</label>
-                <input className={inputClass} value={company.ownerName}
-                  onChange={e => setCompany({ ownerName: e.target.value })}
-                  placeholder="Patrick Bisaillon" />
+                <input className={inputClass} value={company.ownerName} onChange={e => setCompany({ ownerName: e.target.value })} placeholder="Patrick Bisaillon" />
               </div>
               <div className="col-span-2">
                 <label className={labelClass}>{t('Adresse', 'Address')}</label>
-                <input className={inputClass} value={company.address}
-                  onChange={e => setCompany({ address: e.target.value })}
-                  placeholder="123 Main St" />
+                <input className={inputClass} value={company.address} onChange={e => setCompany({ address: e.target.value })} placeholder="123 Main St" />
               </div>
               <div>
                 <label className={labelClass}>{t('Ville', 'City')}</label>
-                <input className={inputClass} value={company.city}
-                  onChange={e => setCompany({ city: e.target.value })}
-                  placeholder="Calgary" />
+                <input className={inputClass} value={company.city} onChange={e => setCompany({ city: e.target.value })} placeholder="Calgary" />
               </div>
               <div>
                 <label className={labelClass}>{t('Province', 'Province')}</label>
-                <input className={inputClass} value={company.province}
-                  onChange={e => setCompany({ province: e.target.value })}
-                  placeholder="AB" />
+                <input className={inputClass} value={company.province} onChange={e => setCompany({ province: e.target.value })} placeholder="AB" />
               </div>
               <div>
                 <label className={labelClass}>{t('Code postal', 'Postal Code')}</label>
-                <input className={inputClass} value={company.postalCode}
-                  onChange={e => setCompany({ postalCode: e.target.value })}
-                  placeholder="T2X 1A1" />
+                <input className={inputClass} value={company.postalCode} onChange={e => setCompany({ postalCode: e.target.value })} placeholder="T2X 1A1" />
               </div>
               <div>
                 <label className={labelClass}>{t('Pays', 'Country')}</label>
-                <select className={inputClass} value={company.country}
-                  onChange={e => setCompany({ country: e.target.value })}>
+                <select className={inputClass} value={company.country} onChange={e => setCompany({ country: e.target.value })}>
                   <option value="CA">🇨🇦 Canada</option>
                   <option value="US">🇺🇸 États-Unis / USA</option>
                 </select>
               </div>
               <div>
                 <label className={labelClass}>{t('Téléphone', 'Phone')}</label>
-                <input className={inputClass} value={company.phone}
-                  onChange={e => setCompany({ phone: e.target.value })}
-                  placeholder="403-555-1234" />
+                <input className={inputClass} value={company.phone} onChange={e => setCompany({ phone: e.target.value })} placeholder="403-555-1234" />
               </div>
               <div>
                 <label className={labelClass}>{t('Courriel', 'Email')}</label>
-                <input className={inputClass} value={company.email}
-                  onChange={e => setCompany({ email: e.target.value })}
-                  placeholder="info@hailite.ca" />
+                <input className={inputClass} value={company.email} onChange={e => setCompany({ email: e.target.value })} placeholder="info@hailite.ca" />
               </div>
               <div className="col-span-2">
                 <label className={labelClass}>{t('Site web', 'Website')}</label>
-                <input className={inputClass} value={company.website}
-                  onChange={e => setCompany({ website: e.target.value })}
-                  placeholder="www.hailite.ca" />
+                <input className={inputClass} value={company.website} onChange={e => setCompany({ website: e.target.value })} placeholder="www.hailite.ca" />
               </div>
               <div>
                 <label className={labelClass}>{t('N° TPS/GST', 'GST Number')}</label>
-                <input className={inputClass} value={company.gstNumber}
-                  onChange={e => setCompany({ gstNumber: e.target.value })}
-                  placeholder="123456789 RT0001" />
+                <input className={inputClass} value={company.gstNumber} onChange={e => setCompany({ gstNumber: e.target.value })} placeholder="123456789 RT0001" />
               </div>
               <div>
                 <label className={labelClass}>{t('N° WCB', 'WCB Number')}</label>
-                <input className={inputClass} value={company.wcbNumber}
-                  onChange={e => setCompany({ wcbNumber: e.target.value })}
-                  placeholder="WCB-XXXXXX" />
+                <input className={inputClass} value={company.wcbNumber} onChange={e => setCompany({ wcbNumber: e.target.value })} placeholder="WCB-XXXXXX" />
               </div>
             </div>
-
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
@@ -281,7 +239,6 @@ export default function SettingsPage() {
         {/* ─── TAB 1 : EMPLOYÉS ─── */}
         {activeTab === 1 && (
           <div className="space-y-4">
-            {/* Liste employés */}
             {employees.map(emp => (
               <div key={emp.id} className={`rounded-2xl p-4 ${cardClass}
                 ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
@@ -290,22 +247,16 @@ export default function SettingsPage() {
                 {isDeco && <DecoCorners />}
                 {editingId === emp.id ? (
                   <div className="space-y-3">
-                    <input className={inputClass} value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      placeholder={t('Nom', 'Name')} />
-                    <input className={inputClass} value={editRate}
-                      onChange={e => setEditRate(e.target.value)}
-                      type="number" placeholder={t('Taux horaire', 'Hourly Rate')} />
+                    <input className={inputClass} value={editName} onChange={e => setEditName(e.target.value)} placeholder={t('Nom', 'Name')} />
+                    <input className={inputClass} value={editRate} onChange={e => setEditRate(e.target.value)} type="number" placeholder={t('Taux horaire', 'Hourly Rate')} />
                     <div className="flex gap-2">
                       <button onClick={() => {
                         updateEmployee(emp.id, { name: editName, hourlyRate: parseFloat(editRate) || 0 })
                         setEditingId(null)
-                      }} className={`flex-1 py-2 rounded-xl text-xs font-bold
-                        ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>
+                      }} className={`flex-1 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>
                         ✅ {t('Sauvegarder', 'Save')}
                       </button>
-                      <button onClick={() => setEditingId(null)}
-                        className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">
+                      <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">
                         ✕ {t('Annuler', 'Cancel')}
                       </button>
                     </div>
@@ -327,18 +278,12 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => {
-                        setEditingId(emp.id)
-                        setEditName(emp.name)
-                        setEditRate(String(emp.hourlyRate || ''))
-                      }} className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">
-                        ✏️
-                      </button>
+                      <button onClick={() => { setEditingId(emp.id); setEditName(emp.name); setEditRate(String(emp.hourlyRate || '')) }}
+                        className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">✏️</button>
                       {emp.role !== 'admin' && (
-                        <button onClick={() => removeEmployee(emp.id)}
-                          className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 text-sm flex items-center justify-center">
-                          🗑️
-                        </button>
+                        // ✅ FIX: deleteEmployee
+                        <button onClick={() => deleteEmployee(emp.id)}
+                          className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 text-sm flex items-center justify-center">🗑️</button>
                       )}
                     </div>
                   </div>
@@ -346,21 +291,16 @@ export default function SettingsPage() {
               </div>
             ))}
 
-            {/* Ajouter employé */}
             <div className={`rounded-2xl p-5 space-y-3 ${cardClass}
               ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
                 : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
                 : 'bg-white/5 border border-white/10'}`}>
               {isDeco && <DecoCorners />}
               {sectionTitle(t('➕ Ajouter employé', '➕ Add Employee'))}
-              <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder={t('Prénom Nom', 'First Last')} />
-              <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value)}
-                type="password" placeholder={t('PIN (4+ chiffres)', 'PIN (4+ digits)')} />
-              <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)}
-                type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
-              <select className={inputClass} value={newRole}
-                onChange={e => setNewRole(e.target.value as 'admin' | 'employee')}>
+              <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('Prénom Nom', 'First Last')} />
+              <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value)} type="password" placeholder={t('PIN (4+ chiffres)', 'PIN (4+ digits)')} />
+              <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)} type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
+              <select className={inputClass} value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'employee')}>
                 <option value="employee">👷 {t('Employé', 'Employee')}</option>
                 <option value="admin">👑 Admin</option>
               </select>
@@ -373,7 +313,7 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Reset PIN admin */}
+            {/* ✅ FIX: Reset PIN via updateEmployee */}
             <div className={`rounded-2xl p-5 space-y-3 ${cardClass}
               ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
                 : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
@@ -382,22 +322,19 @@ export default function SettingsPage() {
               {sectionTitle(t('🔐 Reset PIN Admin', '🔐 Reset Admin PIN'))}
               {showResetPin ? (
                 <div className="space-y-3">
-                  <input className={inputClass} value={resetPinVal}
-                    onChange={e => setResetPinVal(e.target.value)}
+                  <input className={inputClass} value={resetPinVal} onChange={e => setResetPinVal(e.target.value)}
                     type="password" placeholder={t('Nouveau PIN admin', 'New admin PIN')} />
                   <div className="flex gap-2">
                     <button onClick={() => {
                       const admin = employees.find(e => e.role === 'admin')
                       if (admin && resetPinVal.length >= 4) {
-                        resetAdminPin(resetPinVal)
+                        updateEmployee(admin.id, { pin: resetPinVal })
                         setShowResetPin(false); setResetPinVal('')
                       }
-                    }} className={`flex-1 py-2 rounded-xl text-xs font-bold
-                      ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>
+                    }} className={`flex-1 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>
                       ✅ {t('Confirmer', 'Confirm')}
                     </button>
-                    <button onClick={() => setShowResetPin(false)}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">
+                    <button onClick={() => setShowResetPin(false)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">
                       ✕ {t('Annuler', 'Cancel')}
                     </button>
                   </div>
@@ -424,10 +361,8 @@ export default function SettingsPage() {
               {THEMES.map(th => (
                 <button key={th.id} onClick={() => setTheme(th.id as any)}
                   className={`p-4 rounded-2xl flex flex-col items-center gap-2 font-bold text-sm transition-all
-                    ${themeId === th.id
-                      ? 'ring-2 ring-white/60 scale-105 shadow-xl'
-                      : 'hover:scale-102 opacity-80'
-                    } bg-gradient-to-br ${th.colors} text-white`}>
+                    ${themeId === th.id ? 'ring-2 ring-white/60 scale-105 shadow-xl' : 'hover:scale-102 opacity-80'}
+                    bg-gradient-to-br ${th.colors} text-white`}>
                   <span className="text-2xl">{th.label.split(' ')[0]}</span>
                   <span>{th.label.split(' ').slice(1).join(' ')}</span>
                   {themeId === th.id && <span className="text-xs">✅ {t('Actif', 'Active')}</span>}
@@ -457,8 +392,7 @@ export default function SettingsPage() {
                       ? isDeco ? 'bg-[#D6B25E] text-[#0d0a00] ring-2 ring-[#D6B25E]/50 scale-105'
                         : isQuantum ? 'bg-violet-600 text-white ring-2 ring-violet-400/50 scale-105'
                         : 'bg-white/20 text-white ring-2 ring-white/30 scale-105'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10'
-                    }`}>
+                      : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
                   <span className="text-4xl">{l.flag}</span>
                   <span className="text-sm">{l.label}</span>
                   {lang === l.code && <span className="text-xs">✅ {t('Actif', 'Active')}</span>}
@@ -479,33 +413,23 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelClass}>{t('Courriel Virement (e-Transfer)', 'E-Transfer Email')}</label>
-                <input className={inputClass} value={company.etransferEmail}
-                  onChange={e => setCompany({ etransferEmail: e.target.value })}
-                  placeholder="paiement@hailite.ca" />
+                <input className={inputClass} value={company.etransferEmail} onChange={e => setCompany({ etransferEmail: e.target.value })} placeholder="paiement@hailite.ca" />
               </div>
               <div className="col-span-2">
                 <label className={labelClass}>{t('Nom de la banque', 'Bank Name')}</label>
-                <input className={inputClass} value={company.bankName}
-                  onChange={e => setCompany({ bankName: e.target.value })}
-                  placeholder="TD Bank" />
+                <input className={inputClass} value={company.bankName} onChange={e => setCompany({ bankName: e.target.value })} placeholder="TD Bank" />
               </div>
               <div>
                 <label className={labelClass}>{t('Transit', 'Transit')}</label>
-                <input className={inputClass} value={company.bankTransit}
-                  onChange={e => setCompany({ bankTransit: e.target.value })}
-                  placeholder="00000" />
+                <input className={inputClass} value={company.bankTransit} onChange={e => setCompany({ bankTransit: e.target.value })} placeholder="00000" />
               </div>
               <div>
                 <label className={labelClass}>{t('Institution', 'Institution')}</label>
-                <input className={inputClass} value={company.bankInstitution}
-                  onChange={e => setCompany({ bankInstitution: e.target.value })}
-                  placeholder="004" />
+                <input className={inputClass} value={company.bankInstitution} onChange={e => setCompany({ bankInstitution: e.target.value })} placeholder="004" />
               </div>
               <div className="col-span-2">
                 <label className={labelClass}>{t('N° de compte', 'Account Number')}</label>
-                <input className={inputClass} value={company.bankAccount}
-                  onChange={e => setCompany({ bankAccount: e.target.value })}
-                  placeholder="1234567" />
+                <input className={inputClass} value={company.bankAccount} onChange={e => setCompany({ bankAccount: e.target.value })} placeholder="1234567" />
               </div>
             </div>
             {isDeco && <DecoDiamondRow />}
@@ -520,8 +444,6 @@ export default function SettingsPage() {
               : 'bg-white/5 border border-white/10'}`}>
             {isDeco && <DecoCorners />}
             {sectionTitle(t('🔔 Rappels vocaux Punch Out', '🔔 Voice Punch Out Reminders'))}
-
-            {/* Toggle ON/OFF */}
             <div className="flex items-center justify-between">
               <div>
                 <div className={`font-semibold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
@@ -531,57 +453,37 @@ export default function SettingsPage() {
                   {t('Rappels vocaux progressifs', 'Progressive voice reminders')}
                 </div>
               </div>
-              <button
-                onClick={() => setVoiceEnabled(!voiceEnabled)}
+              <button onClick={() => setVoiceEnabled(!voiceEnabled)}
                 className={`relative w-14 h-7 rounded-full transition-all duration-300
-                  ${voiceEnabled
-                    ? isDeco ? 'bg-[#D6B25E]' : isQuantum ? 'bg-violet-500' : 'bg-emerald-500'
-                    : 'bg-white/20'}`}>
-                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300
-                  ${voiceEnabled ? 'left-8' : 'left-1'}`} />
+                  ${voiceEnabled ? isDeco ? 'bg-[#D6B25E]' : isQuantum ? 'bg-violet-500' : 'bg-emerald-500' : 'bg-white/20'}`}>
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 ${voiceEnabled ? 'left-8' : 'left-1'}`} />
               </button>
             </div>
-
-            {/* Volume */}
             {voiceEnabled && (
               <div className="space-y-2">
-                <label className={labelClass}>
-                  {t('Volume', 'Volume')} : {Math.round(voiceVolume * 100)}%
-                </label>
-                <input
-                  type="range" min="0" max="1" step="0.05"
-                  value={voiceVolume}
-                  onChange={e => setVoiceVolume(parseFloat(e.target.value))}
-                  className="w-full accent-violet-500"
-                />
+                <label className={labelClass}>{t('Volume', 'Volume')} : {Math.round(voiceVolume * 100)}%</label>
+                <input type="range" min="0" max="1" step="0.05" value={voiceVolume}
+                  onChange={e => setVoiceVolume(parseFloat(e.target.value))} className="w-full accent-violet-500" />
                 <div className="text-white/40 text-xs">
-                  {t('Rappels à 4h, 8h, 9h, puis toutes les 15 min à 10h+',
-                     'Reminders at 4h, 8h, 9h, then every 15 min at 10h+')}
+                  {t('Rappels à 4h, 8h, 9h, puis toutes les 15 min à 10h+', 'Reminders at 4h, 8h, 9h, then every 15 min at 10h+')}
                 </div>
               </div>
             )}
-
-            {/* Test */}
             {voiceEnabled && (
-              <button
-                onClick={() => {
-                  const utterance = new SpeechSynthesisUtterance(
-                    lang === 'fr'
-                      ? 'Test de rappel vocal — Pense à pointer ta sortie!'
-                      : 'Voice reminder test — Don\'t forget to punch out!'
-                  )
-                  utterance.volume = voiceVolume
-                  utterance.lang = lang === 'fr' ? 'fr-CA' : 'en-CA'
-                  speechSynthesis.speak(utterance)
-                }}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all
-                  ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E] hover:bg-[#D6B25E]/30'
-                    : isQuantum ? 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30'
-                    : 'bg-white/10 text-white hover:bg-white/20'}`}>
+              <button onClick={() => {
+                const utterance = new SpeechSynthesisUtterance(
+                  lang === 'fr' ? 'Test de rappel vocal — Pense à pointer ta sortie!' : "Voice reminder test — Don't forget to punch out!"
+                )
+                utterance.volume = voiceVolume
+                utterance.lang = lang === 'fr' ? 'fr-CA' : 'en-CA'
+                speechSynthesis.speak(utterance)
+              }} className={`w-full py-3 rounded-xl font-bold text-sm transition-all
+                ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E] hover:bg-[#D6B25E]/30'
+                  : isQuantum ? 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30'
+                  : 'bg-white/10 text-white hover:bg-white/20'}`}>
                 🔊 {t('Tester le rappel vocal', 'Test Voice Reminder')}
               </button>
             )}
-
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
@@ -594,11 +496,9 @@ export default function SettingsPage() {
               : 'bg-white/5 border border-white/10'}`}>
             {isDeco && <DecoCorners />}
             {sectionTitle(t('📋 Conditions par défaut', '📋 Default Terms'))}
-
             <div>
               <label className={labelClass}>{t('Délai de paiement', 'Payment Terms')}</label>
-              <select className={inputClass} value={company.defaultPaymentTerms}
-                onChange={e => setCompany({ defaultPaymentTerms: e.target.value })}>
+              <select className={inputClass} value={company.defaultPaymentTerms} onChange={e => setCompany({ defaultPaymentTerms: e.target.value })}>
                 <option value="Due on receipt">{t('Dû à réception', 'Due on Receipt')}</option>
                 <option value="Net 15">Net 15</option>
                 <option value="Net 30">Net 30</option>
@@ -606,20 +506,13 @@ export default function SettingsPage() {
                 <option value="Net 60">Net 60</option>
               </select>
             </div>
-
             <div>
               <label className={labelClass}>{t('Notes par défaut sur documents', 'Default Notes on Documents')}</label>
-              <textarea
-                className={`${inputClass} min-h-[100px] resize-none`}
-                value={company.defaultNotes}
-                onChange={e => setCompany({ defaultNotes: e.target.value })}
-                placeholder={t(
-                  'Merci pour votre confiance. Intérêts de 2% par mois sur les comptes en souffrance.',
-                  'Thank you for your business. 2% monthly interest on overdue accounts.'
-                )}
-              />
+              <textarea className={`${inputClass} min-h-[100px] resize-none`}
+                value={company.defaultNotes} onChange={e => setCompany({ defaultNotes: e.target.value })}
+                placeholder={t('Merci pour votre confiance. Intérêts de 2% par mois sur les comptes en souffrance.',
+                  'Thank you for your business. 2% monthly interest on overdue accounts.')} />
             </div>
-
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
@@ -632,48 +525,35 @@ export default function SettingsPage() {
               : 'bg-white/5 border border-white/10'}`}>
             {isDeco && <DecoCorners />}
             {sectionTitle(t('⚙️ Options avancées', '⚙️ Advanced Options'))}
-
-            <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20'
-              : 'bg-white/5 border border-white/10'}`}>
+            <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20' : 'bg-white/5 border border-white/10'}`}>
               <div className={`font-semibold mb-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
                 {t('🗑️ Vider le cache local', '🗑️ Clear Local Cache')}
               </div>
               <div className="text-white/50 text-xs mb-3">
                 {t('Efface toutes les données enregistrées localement. Action irréversible.',
-                   'Clears all locally stored data. This action cannot be undone.')}
+                  'Clears all locally stored data. This action cannot be undone.')}
               </div>
-              <button
-                onClick={() => {
-                  if (confirm(t('Êtes-vous certain? Toutes les données seront perdues.',
-                    'Are you sure? All data will be lost.'))) {
-                    localStorage.clear()
-                    window.location.reload()
-                  }
-                }}
-                className="w-full py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
+              <button onClick={() => {
+                if (confirm(t('Êtes-vous certain? Toutes les données seront perdues.', 'Are you sure? All data will be lost.'))) {
+                  localStorage.clear(); window.location.reload()
+                }
+              }} className="w-full py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">
                 🗑️ {t('Vider le cache', 'Clear Cache')}
               </button>
             </div>
-
-            <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20'
-              : 'bg-white/5 border border-white/10'}`}>
-              <div className={`font-semibold mb-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
-                📱 PWA
-              </div>
+            <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20' : 'bg-white/5 border border-white/10'}`}>
+              <div className={`font-semibold mb-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>📱 PWA</div>
               <div className="text-white/50 text-xs">
-                {t('Pour installer l\'app sur votre téléphone : Navigateur → Partager → Ajouter à l\'écran d\'accueil',
-                   'To install the app on your phone: Browser → Share → Add to Home Screen')}
+                {t("Pour installer l'app sur votre téléphone : Navigateur → Partager → Ajouter à l'écran d'accueil",
+                  'To install the app on your phone: Browser → Share → Add to Home Screen')}
               </div>
             </div>
-
-            <div className={`p-4 rounded-xl text-center ${isDeco ? 'bg-[#D6B25E]/5 border border-[#D6B25E]/10'
-              : 'bg-white/5 border border-white/10'}`}>
+            <div className={`p-4 rounded-xl text-center ${isDeco ? 'bg-[#D6B25E]/5 border border-[#D6B25E]/10' : 'bg-white/5 border border-white/10'}`}>
               <div className="text-white/30 text-xs">
                 Gestion Chantier Pro — Hailite Xteriors<br />
                 v2.0 • Alberta GST 5% • Made with ❤️
               </div>
             </div>
-
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
