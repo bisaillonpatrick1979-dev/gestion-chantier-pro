@@ -5,7 +5,7 @@ import {
   USA_FEDERAL,
   USA_STATES,
   PAYROLL_YEAR,
-} from './payrollRates'
+} from './payrollrates'
 
 export type PayFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 export type WorkerType = 'contractor' | 'salaried'
