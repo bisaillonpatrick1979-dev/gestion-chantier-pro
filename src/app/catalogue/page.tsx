@@ -45,7 +45,7 @@ const emptyForm = () => ({
   prixFournisseur: '',
   margePercent: '',
   prixClient: '',
-  prixEmploye: '',   // ✅ NOUVEAU
+  prixEmploye: '',
   description: '',
 })
 
@@ -164,12 +164,14 @@ export default function CataloguePage() {
   }
 
   function handleAddToDoc(mat: Material) { setShowAddToDoc(mat); setQty(1) }
+
+  // ✅ FIX CRITIQUE : doc.lines (pas doc.items)
   function handleConfirmAdd() {
     if (!showAddToDoc) return
     const price = showAddToDoc.prixClient ?? showAddToDoc.price ?? 0
     const doc = addDocument('facture')
     addLineItem(doc.id)
-    const item = doc.items[doc.items.length - 1]
+    const item = doc.lines[doc.lines.length - 1]
     updateLineItem(doc.id, item.id, {
       description: lang === 'fr' ? showAddToDoc.name : (showAddToDoc.nameen || showAddToDoc.name),
       quantity: qty, unitPrice: price,
@@ -345,11 +347,9 @@ export default function CataloguePage() {
             </div>
           </div>
 
-          {/* Prix fournisseur + marge + client */}
           <PriceSection fourn={form.prixFournisseur} marge={form.margePercent} client={form.prixClient}
             onFourn={onFournChange} onMarge={onMargeChange} onClient={onClientChange}/>
 
-          {/* ✅ Prix employé */}
           <EmployeePriceField
             value={form.prixEmploye}
             onChange={v => setForm(p => ({ ...p, prixEmploye: v }))}
@@ -476,7 +476,6 @@ export default function CataloguePage() {
                   onFourn={onEditFournChange} onMarge={onEditMargeChange} onClient={onEditClientChange}
                   compact
                 />
-                {/* ✅ Prix employé en édition */}
                 <EmployeePriceField
                   value={editForm.prixEmployeStr || (editForm.prixEmploye != null ? String(editForm.prixEmploye) : '')}
                   onChange={v => setEditForm(p => ({ ...p, prixEmployeStr: v, prixEmploye: parseFloat(v) || undefined }))}
@@ -513,7 +512,6 @@ export default function CataloguePage() {
                           📊 {mat.margePercent}%
                         </span>
                       )}
-                      {/* ✅ Badge prix employé */}
                       {hasEmploye && (
                         <span style={{ background: '#fb923c18', color: '#fb923c', fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', border: '1px solid #fb923c44' }}>
                           👷 {mat.prixEmploye!.toFixed(2)}$/{mat.unit || 'pi²'}
@@ -523,7 +521,6 @@ export default function CataloguePage() {
                     {mat.description && <p style={{ fontSize: '11px', color: theme.colors.textMuted, margin: '4px 0 0' }}>{mat.description}</p>}
                   </div>
 
-                  {/* Colonnes de prix */}
                   {(hasFourn || hasClient || hasEmploye) && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
                       {hasFourn && (
@@ -540,7 +537,6 @@ export default function CataloguePage() {
                           {mat.unit && <div style={{ fontSize: '9px', color: '#f59e0b88' }}>/{mat.unit}</div>}
                         </div>
                       )}
-                      {/* ✅ Boîte prix employé */}
                       {hasEmploye && (
                         <div style={priceBox('#fb923c')}>
                           <div style={{ fontSize: '9px', color: '#fb923c', fontWeight: 800, letterSpacing: '0.8px' }}>👷 EMP.</div>
