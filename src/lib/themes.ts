@@ -1,5 +1,5 @@
 // src/lib/themes.ts
-// 6 thèmes premium — Art Déco Prestige entièrement redesigné
+// 6 thèmes premium — avec effets lumineux animés sur bordures et gravures
 
 export interface Theme {
   id: string
@@ -67,6 +67,103 @@ const quantumGlass: Theme = {
   },
   globalCSS: `
     body{background:linear-gradient(160deg,#050B18 0%,#071226 55%,#0A1630 100%) !important;}
+
+    /* ── ANIMATIONS QUANTUM ──────────────────────── */
+    @keyframes quantumSweep {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  300% 0; }
+    }
+    @keyframes quantumPulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(47,128,255,0.35), 0 0 12px rgba(47,128,255,0.20), inset 0 0 20px rgba(47,128,255,0.04); }
+      50%      { box-shadow: 0 0 0 1px rgba(56,217,255,0.55), 0 0 24px rgba(56,217,255,0.35), inset 0 0 30px rgba(56,217,255,0.08); }
+    }
+    @keyframes quantumNavGlow {
+      0%,100% { filter: drop-shadow(0 0 3px rgba(47,128,255,0.50)); }
+      50%      { filter: drop-shadow(0 0 8px rgba(56,217,255,0.90)); }
+    }
+    @keyframes quantumBorderTravel {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* ── REFLET QUI SE PROMÈNE SUR LES CARDS ─────── */
+    /* Appliqué via pseudo-element sur toutes les cards */
+    [style*="var(--card)"],
+    [style*="background:\"var(--card)\""],
+    div[style*="borderRadius:\"12px\""],
+    div[style*="border-radius: 12px"] {
+      position: relative;
+    }
+
+    /* Toutes les cards Quantum — bordure animée */
+    .quantum-glass,
+    [class*="card"] {
+      background: rgba(10,22,48,0.82);
+      border: 1px solid rgba(60,130,255,0.28);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      animation: quantumPulse 4s ease-in-out infinite;
+    }
+
+    /* ── REFLET LUMINEUX SUR BORDURES ────────────── */
+    /* Card avec effet de lumière qui fait le tour */
+    .quantum-card-glow {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      animation: quantumPulse 4s ease-in-out infinite;
+    }
+    .quantum-card-glow::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      padding: 1px;
+      background: linear-gradient(
+        115deg,
+        transparent 0%,
+        transparent 25%,
+        rgba(56,217,255,0.80) 45%,
+        rgba(47,128,255,0.90) 50%,
+        rgba(56,217,255,0.80) 55%,
+        transparent 75%,
+        transparent 100%
+      );
+      background-size: 300% 300%;
+      animation: quantumBorderTravel 3s linear infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: destination-out;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* ── TEXTE MÉTALLIQUE ────────────────────────── */
+    .metal-text {
+      color: #38D9FF;
+      text-shadow: 0 0 20px rgba(56,217,255,0.5);
+    }
+
+    /* ── ICÔNES NAV ACTIVES — GLOW ANIMÉ ─────────── */
+    .quantum-nav-active {
+      color: #2F80FF !important;
+      animation: quantumNavGlow 2s ease-in-out infinite;
+    }
+
+    /* ── GRAVURES / SÉPARATEURS LUMINEUX ─────────── */
+    .quantum-engraving {
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(47,128,255,0.15) 20%,
+        rgba(56,217,255,0.60) 50%,
+        rgba(47,128,255,0.15) 80%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: quantumSweep 3s linear infinite;
+      height: 1px;
+    }
+
     .metal-text{color:#38D9FF;text-shadow:0 0 20px rgba(56,217,255,0.5);}
     .quantum-glass{background:rgba(10,22,48,0.82);border:1px solid rgba(60,130,255,0.28);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
     .quantum-punch-ring{box-shadow:0 0 0 3px rgba(47,128,255,0.45),0 0 40px rgba(47,128,255,0.35),0 0 100px rgba(47,128,255,0.18);}
@@ -106,10 +203,31 @@ const gamificationXP: Theme = {
   },
   globalCSS: `
     body{background:linear-gradient(160deg,#08051A 0%,#100A2A 60%,#17103A 100%) !important;}
+
+    @keyframes xpSweep {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  300% 0; }
+    }
+    @keyframes xpBorderTravel {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes xpNavGlow {
+      0%,100% { filter: drop-shadow(0 0 4px rgba(168,85,247,0.60)); }
+      50%      { filter: drop-shadow(0 0 10px rgba(34,211,238,1.00)); }
+    }
+    @keyframes xpCardPulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.30), 0 0 15px rgba(168,85,247,0.15); }
+      50%      { box-shadow: 0 0 0 1px rgba(34,211,238,0.50), 0 0 30px rgba(34,211,238,0.25); }
+    }
+
     .metal-text{color:#FACC15;text-shadow:0 0 20px rgba(250,204,21,0.5);}
     .xp-bar{background:linear-gradient(90deg,#A855F7,#22D3EE);border-radius:999px;}
     .xp-punch-glow{box-shadow:0 0 0 4px rgba(168,85,247,0.40),0 0 50px rgba(168,85,247,0.40),0 0 120px rgba(168,85,247,0.20);}
     .xp-badge{background:linear-gradient(135deg,rgba(168,85,247,0.25),rgba(34,211,238,0.15));border:1px solid rgba(168,85,247,0.45);border-radius:999px;}
+    .xp-nav-active { animation: xpNavGlow 2s ease-in-out infinite; }
+    .xp-card-glow  { animation: xpCardPulse 3s ease-in-out infinite; }
   `,
 }
 
@@ -146,10 +264,26 @@ const aventureChantiers: Theme = {
   },
   globalCSS: `
     body{background:#1A1712 !important;}
+
+    @keyframes aventureSweep {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  300% 0; }
+    }
+    @keyframes aventureNavGlow {
+      0%,100% { filter: drop-shadow(0 0 3px rgba(255,159,28,0.50)); }
+      50%      { filter: drop-shadow(0 0 9px rgba(255,209,102,0.90)); }
+    }
+    @keyframes aventureCardPulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(255,159,28,0.25), 0 0 12px rgba(255,159,28,0.10); }
+      50%      { box-shadow: 0 0 0 1px rgba(255,209,102,0.50), 0 0 25px rgba(255,209,102,0.20); }
+    }
+
     .metal-text{color:#FFD166;text-shadow:0 0 16px rgba(255,209,102,0.5);}
     .adventure-card{background:#231D10;border:2px solid rgba(255,159,28,0.35);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,0.50),inset 0 1px 0 rgba(255,159,28,0.15);}
     .adventure-hazard{background:repeating-linear-gradient(-45deg,#FF9F1C 0px,#FF9F1C 10px,#1A1712 10px,#1A1712 20px);height:4px;opacity:0.6;}
     .adventure-punch{background:radial-gradient(circle at 40% 35%,#FFB020,#F97316 55%,#C85000);box-shadow:0 0 0 6px rgba(255,159,28,0.30),0 0 50px rgba(249,115,22,0.40),0 8px 30px rgba(0,0,0,0.60);}
+    .aventure-nav-active { animation: aventureNavGlow 2s ease-in-out infinite; }
+    .aventure-card-glow  { animation: aventureCardPulse 3.5s ease-in-out infinite; }
   `,
 }
 
@@ -185,16 +319,11 @@ const artDecoPrestige: Theme = {
     navInactive: '#6B5830',
   },
   globalCSS: `
-    /* ══════════════════════════════════════════════
-       ART DÉCO PRESTIGE — CSS Complet
-    ══════════════════════════════════════════════ */
-
     body {
       background: #050505 !important;
       color: #F4E8C1 !important;
     }
 
-    /* ── Fond global avec grille subtile ─────────── */
     body::before {
       content: '';
       position: fixed;
@@ -206,7 +335,10 @@ const artDecoPrestige: Theme = {
         repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(214,178,94,0.04) 59px, rgba(214,178,94,0.04) 60px);
     }
 
-    /* ── ANIMATIONS ──────────────────────────────── */
+    /* ══════════════════════════════════════════════
+       ANIMATIONS ART DÉCO
+    ══════════════════════════════════════════════ */
+
     @keyframes decoGoldShimmer {
       0%   { background-position: -200% center; }
       100% { background-position:  200% center; }
@@ -249,6 +381,117 @@ const artDecoPrestige: Theme = {
       50%      { opacity:0.7; transform:scale(0.85); }
     }
 
+    /* ══ REFLET DORÉ QUI FAIT LE TOUR DES CARDS ══
+       Un trait lumineux qui se déplace en continu
+       sur la bordure de chaque card.
+    ══════════════════════════════════════════════ */
+    @keyframes decoBorderSweep {
+      0%   { background-position: 0%   0%;   }
+      25%  { background-position: 100% 0%;   }
+      50%  { background-position: 100% 100%; }
+      75%  { background-position: 0%   100%; }
+      100% { background-position: 0%   0%;   }
+    }
+    @keyframes decoEngraving {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  300% 0; }
+    }
+    @keyframes decoNavGlow {
+      0%,100% {
+        filter: drop-shadow(0 0 4px rgba(214,178,94,0.55))
+                drop-shadow(0 0 2px rgba(214,178,94,0.35));
+        color: #C8A96A;
+      }
+      50% {
+        filter: drop-shadow(0 0 10px rgba(242,210,122,1.00))
+                drop-shadow(0 0 4px rgba(214,178,94,0.80));
+        color: #F2D27A;
+      }
+    }
+    @keyframes decoNavActivePulse {
+      0%,100% {
+        filter: drop-shadow(0 0 6px rgba(214,178,94,0.80))
+                drop-shadow(0 0 3px rgba(242,210,122,0.60));
+        color: #D6B25E;
+      }
+      50% {
+        filter: drop-shadow(0 0 14px rgba(242,210,122,1.00))
+                drop-shadow(0 0 6px rgba(214,178,94,1.00));
+        color: #FFE9A0;
+      }
+    }
+
+    /* ── Bordure animée sur les cards ────────────── */
+    .deco-card-sweep {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .deco-card-sweep::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: conic-gradient(
+        from var(--angle, 0deg),
+        transparent 0deg,
+        transparent 60deg,
+        rgba(242,210,122,0.90) 90deg,
+        rgba(255,233,160,1.00) 100deg,
+        rgba(242,210,122,0.90) 110deg,
+        transparent 140deg,
+        transparent 360deg
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: destination-out;
+      mask-composite: exclude;
+      pointer-events: none;
+      animation: decoCardRotate 4s linear infinite;
+    }
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+    @keyframes decoCardRotate {
+      to { --angle: 360deg; }
+    }
+
+    /* ── Reflet sur gravures / séparateurs ───────── */
+    .deco-engraving {
+      position: relative;
+      overflow: hidden;
+      background: rgba(214,178,94,0.10);
+      height: 1px;
+    }
+    .deco-engraving::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(242,210,122,0.80) 50%,
+        transparent 100%
+      );
+      animation: decoEngraving 2.5s ease-in-out infinite;
+    }
+
+    /* ── Icônes nav inactives — reflet subtil ─────── */
+    .deco-nav-inactive-glow {
+      animation: decoNavGlow 3s ease-in-out infinite;
+    }
+
+    /* ── Icônes nav actives — glow fort ──────────── */
+    .deco-nav-active {
+      color: #D6B25E !important;
+      animation: decoNavActivePulse 2.5s ease-in-out infinite;
+    }
+
     /* ── TEXTE MÉTALLIQUE OR ─────────────────────── */
     .metal-text {
       background: linear-gradient(90deg,
@@ -277,6 +520,17 @@ const artDecoPrestige: Theme = {
       height: 1px;
       background: linear-gradient(90deg, transparent 0%, rgba(214,178,94,0.60) 50%, transparent 100%);
       margin: 6px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .deco-divider::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -40%;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,233,160,0.90), transparent);
+      animation: decoEngraving 3s ease-in-out infinite;
     }
     .deco-divider-thick {
       height: 2px;
@@ -341,7 +595,6 @@ const artDecoPrestige: Theme = {
       overflow: hidden;
       animation: decoFadeUp 0.5s ease;
     }
-    /* Coins du wrapper */
     .deco-punch-wrapper::before,
     .deco-punch-wrapper::after {
       content: '';
@@ -356,7 +609,7 @@ const artDecoPrestige: Theme = {
     .deco-punch-wrapper::before { top:8px; left:8px; border-width:2px 0 0 2px; }
     .deco-punch-wrapper::after  { bottom:8px; right:8px; border-width:0 2px 2px 0; }
 
-    /* ── RAYONS ART DÉCO (derrière le bouton) ────── */
+    /* ── RAYONS ART DÉCO ─────────────────────────── */
     .deco-rays-outer {
       position: absolute;
       top: 50%;
@@ -414,7 +667,7 @@ const artDecoPrestige: Theme = {
       filter: brightness(1.15);
     }
 
-    /* ── BOUTON PUNCH — SORTIE (rouge) ───────────── */
+    /* ── BOUTON PUNCH — SORTIE ───────────────────── */
     .deco-punch-btn-out {
       background: radial-gradient(
         circle at 38% 32%,
@@ -492,11 +745,6 @@ const artDecoPrestige: Theme = {
     }
 
     /* ── NAVIGATION BAS ──────────────────────────── */
-    .deco-nav-active {
-      color: #D6B25E !important;
-      text-shadow: 0 0 14px rgba(214,178,94,0.80) !important;
-      filter: drop-shadow(0 0 6px rgba(214,178,94,0.60));
-    }
     .deco-nav-item {
       transition: all 0.18s ease;
     }
