@@ -43,9 +43,16 @@ export default function SettingsPage() {
   const isAdmin = currentEmployee?.role === "admin";
   const isXP = themeId === "xp";
 
+  // ── Classes animées par thème ──────────────────────────────────────────────
+  const isDeco     = themeId === "deco";
+  const isQuantum  = themeId === "quantum";
+  const isAventure = themeId === "aventure";
+  const cardClass  = isDeco    ? "deco-card-sweep"    :
+                     isQuantum ? "quantum-card-glow"  :
+                     isAventure ? "aventure-card-glow" : "";
+
   const [saved, setSaved] = useState(false);
 
-  // ── Formulaire Employé ───────────────────────────────────────────────────────
   const [showAddEmp, setShowAddEmp] = useState(false);
   const [newEmpName, setNewEmpName] = useState("");
   const [newEmpPin, setNewEmpPin] = useState("");
@@ -54,7 +61,6 @@ export default function SettingsPage() {
   const [newEmpRate, setNewEmpRate] = useState<number>(25);
   const [empError, setEmpError] = useState("");
 
-  // ── Formulaire Client ────────────────────────────────────────────────────────
   const [showAddClient, setShowAddClient] = useState(false);
   const [newCName, setNewCName] = useState("");
   const [newCPhone, setNewCPhone] = useState("");
@@ -65,7 +71,6 @@ export default function SettingsPage() {
   const [newCPostal, setNewCPostal] = useState("");
   const [newCNotes, setNewCNotes] = useState("");
 
-  // ── Formulaire Catalogue ─────────────────────────────────────────────────────
   const [showAddMat, setShowAddMat] = useState(false);
   const [newMatName, setNewMatName] = useState("");
   const [newMatPrice, setNewMatPrice] = useState<number>(0);
@@ -100,7 +105,6 @@ export default function SettingsPage() {
 
   function save() { setSaved(true); setTimeout(() => setSaved(false), 2000); }
 
-  // ── Upload logo ──────────────────────────────────────────────────────────────
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -148,7 +152,7 @@ export default function SettingsPage() {
     setNewMatName(""); setNewMatPrice(0); setNewMatEmoji("📦"); setShowAddMat(false);
   }
 
-  // ── Styles ───────────────────────────────────────────────────────────────────
+  // ── Styles ──────────────────────────────────────────────────────────────────
   const cardStyle: React.CSSProperties = {
     background: "var(--card)", border: "1px solid var(--border)",
     borderRadius: "12px", padding: "20px", marginBottom: "16px",
@@ -215,8 +219,9 @@ export default function SettingsPage() {
     );
   }
 
+  // ThemeSection a accès à cardClass via closure
   const ThemeSection = () => (
-    <div style={cardStyle}>
+    <div className={cardClass} style={cardStyle}>
       <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "6px", color: "var(--text)" }}>
         🎨 Thème de l&apos;application
       </h2>
@@ -259,7 +264,7 @@ export default function SettingsPage() {
         <div style={{ padding: "0 16px" }}>
           {activeSection === "theme" && <ThemeSection/>}
           {activeSection === "pin" && (
-            <div style={cardStyle}>
+            <div className={cardClass} style={cardStyle}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🔒 Changer mon PIN</h2>
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
                 👑 Seul l&apos;admin peut modifier les PINs
@@ -267,7 +272,7 @@ export default function SettingsPage() {
             </div>
           )}
           {activeSection === "paye" && (
-            <div style={cardStyle}>
+            <div className={cardClass} style={cardStyle}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>💰 Ma Paye</h2>
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "20px" }}>
                 <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Taux horaire</div>
@@ -298,36 +303,26 @@ export default function SettingsPage() {
 
         {/* ── COMPANY ── */}
         {activeSection === "company" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🏢 Informations Compagnie</h2>
             <Field label="Nom de la compagnie" value={company.name} onChange={(v) => updateCompany({ name: v })}/>
             <Field label="Slogan" value={company.tagline} onChange={(v) => updateCompany({ tagline: v })}/>
             <Field label="Nom du propriétaire" value={company.ownerName} onChange={(v) => updateCompany({ ownerName: v })}/>
 
-            {/* ── Logo upload ── */}
             <div style={{ marginBottom: "16px", marginTop: "4px" }}>
               <label style={labelStyle}>Logo de la compagnie</label>
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "10px", marginTop: "2px" }}>
                 Apparaît en filigrane sur toutes les factures, devis, contrats et commandes.
               </p>
-
-              {/* Aperçu logo actuel */}
               {company.logoUrl ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px", padding: "12px", background: "var(--surface)", borderRadius: "10px", border: "1px solid var(--border)" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={company.logoUrl}
-                    alt="Logo"
-                    style={{ width: "56px", height: "56px", objectFit: "contain", borderRadius: "8px", background: "#fff" }}
-                  />
+                  <img src={company.logoUrl} alt="Logo" style={{ width: "56px", height: "56px", objectFit: "contain", borderRadius: "8px", background: "#fff" }}/>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", margin: 0 }}>Logo actuel</p>
                     <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "2px 0 0" }}>Visible en filigrane sur les documents</p>
                   </div>
-                  <button
-                    onClick={() => updateCompany({ logoUrl: "" })}
-                    style={{ background: "#7f1d1d22", border: "1px solid #7f1d1d55", color: "#fca5a5", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
-                  >
+                  <button onClick={() => updateCompany({ logoUrl: "" })} style={{ background: "#7f1d1d22", border: "1px solid #7f1d1d55", color: "#fca5a5", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
                     ✕ Retirer
                   </button>
                 </div>
@@ -337,40 +332,21 @@ export default function SettingsPage() {
                   <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>Aucun logo — cliquez pour en ajouter un</p>
                 </div>
               )}
-
-              {/* Bouton upload */}
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                onChange={handleLogoUpload}
-                style={{ display: "none" }}
-              />
-              <button
-                onClick={() => logoInputRef.current?.click()}
-                style={{
-                  width: "100%", padding: "12px", borderRadius: "10px", cursor: "pointer",
-                  border: `1px solid var(--primary)`,
-                  background: "var(--primary)12",
-                  color: "var(--primary)",
-                  fontSize: "14px", fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                }}
-              >
+              <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoUpload} style={{ display: "none" }}/>
+              <button onClick={() => logoInputRef.current?.click()} style={{ width: "100%", padding: "12px", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--primary)", background: "var(--primary)12", color: "var(--primary)", fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                 📁 {company.logoUrl ? "Changer le logo" : "Choisir un logo"}
               </button>
               <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px", textAlign: "center" }}>
                 PNG, JPG, SVG ou WEBP recommandé · Fond transparent idéal
               </p>
             </div>
-
             <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
           </div>
         )}
 
         {/* ── CONTACT ── */}
         {activeSection === "contact" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>📞 Coordonnées</h2>
             <Field label="Adresse" value={company.address} onChange={(v) => updateCompany({ address: v })}/>
             <Field label="Ville" value={company.city} onChange={(v) => updateCompany({ city: v })}/>
@@ -385,7 +361,7 @@ export default function SettingsPage() {
 
         {/* ── LEGAL ── */}
         {activeSection === "legal" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>📋 Légal & Taxes (Alberta)</h2>
             <div style={{ background: "var(--success)18", border: "1px solid var(--success)44", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "13px", color: "var(--success)" }}>
               Alberta = GST 5% seulement (pas de PST/HST). WCB pour assurance employés.
@@ -399,7 +375,7 @@ export default function SettingsPage() {
 
         {/* ── PAYMENT ── */}
         {activeSection === "payment" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>💳 Informations de Paiement</h2>
             <Field label="Courriel Interac e-Transfer" value={company.etransferEmail} onChange={(v) => updateCompany({ etransferEmail: v })} type="email"/>
             <Field label="Nom de la banque" value={company.bankName} onChange={(v) => updateCompany({ bankName: v })}/>
@@ -411,7 +387,7 @@ export default function SettingsPage() {
 
         {/* ── BILLING ── */}
         {activeSection === "billing" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🧾 Paramètres Facturation</h2>
             <Field label="Dépôt requis (%)" value={company.defaultDepositPercent} onChange={(v) => updateCompany({ defaultDepositPercent: Number(v) })} type="number"/>
             <Field label="Délai de paiement (jours)" value={company.defaultPaymentTermsDays} onChange={(v) => updateCompany({ defaultPaymentTermsDays: Number(v) })} type="number"/>
@@ -425,7 +401,7 @@ export default function SettingsPage() {
 
         {/* ── EMPLOYEES ── */}
         {activeSection === "employees" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
                 👷 Employés <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({employees.length})</span>
@@ -436,7 +412,7 @@ export default function SettingsPage() {
             </div>
 
             {showAddEmp && (
-              <div style={{ background: "var(--surface)", border: `2px solid var(--primary)`, borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
                   ➕ Nouvel Employé
                 </p>
@@ -484,7 +460,7 @@ export default function SettingsPage() {
               <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "20px 0" }}>Aucun employé enregistré</p>
             ) : (
               employees.map((emp) => (
-                <div key={emp.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
+                <div key={emp.id} className={cardClass} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{ width: "36px", height: "36px", borderRadius: isXP ? "8px" : "50%", background: emp.color || "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 800, color: "white", boxShadow: `0 0 10px ${emp.color}55` }}>
                       {emp.name[0].toUpperCase()}
@@ -509,7 +485,7 @@ export default function SettingsPage() {
 
         {/* ── CLIENTS ── */}
         {activeSection === "clients" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
                 👥 Clients <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({clients.length})</span>
@@ -520,7 +496,7 @@ export default function SettingsPage() {
             </div>
 
             {showAddClient && (
-              <div style={{ background: "var(--surface)", border: `2px solid var(--primary)`, borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
                   ➕ Nouveau Client
                 </p>
@@ -564,7 +540,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               clients.map((client) => (
-                <div key={client.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
+                <div key={client.id} className={cardClass} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
                   <div>
                     <div style={{ fontWeight: 700, color: "var(--text)", fontSize: "14px" }}>{client.name}</div>
                     <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -585,7 +561,7 @@ export default function SettingsPage() {
 
         {/* ── CATALOGUE ── */}
         {activeSection === "catalogue" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
                 📦 Catalogue <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({materials.length} articles)</span>
@@ -596,7 +572,7 @@ export default function SettingsPage() {
             </div>
 
             {showAddMat && (
-              <div style={{ background: "var(--surface)", border: `2px solid var(--primary)`, borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
                   ➕ Nouveau Matériau
                 </p>
@@ -665,7 +641,7 @@ export default function SettingsPage() {
 
         {/* ── NUMBERING ── */}
         {activeSection === "numbering" && (
-          <div style={cardStyle}>
+          <div className={cardClass} style={cardStyle}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🔢 Numérotation des Documents</h2>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
               <Field label="Préfixe Facture" value={company.invoicePrefix} onChange={(v) => updateCompany({ invoicePrefix: v })} placeholder="FAC"/>
@@ -684,7 +660,7 @@ export default function SettingsPage() {
 
         {/* ── DANGER ── */}
         {activeSection === "danger" && (
-          <div style={{ ...cardStyle, borderColor: "#7f1d1d" }}>
+          <div className={cardClass} style={{ ...cardStyle, borderColor: "#7f1d1d" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "8px", color: "#fca5a5" }}>⚠️ Zone Danger</h2>
             <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>Ces actions sont irréversibles.</p>
             <button style={btnDanger} onClick={() => { if (confirm("Réinitialiser la numérotation? Repart à 001.")) { resetNumbering(); alert("Numérotation réinitialisée."); } }}>
