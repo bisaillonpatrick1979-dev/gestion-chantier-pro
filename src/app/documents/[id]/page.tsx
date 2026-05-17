@@ -347,41 +347,80 @@ export default function DocumentPage() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-          APERÇU PDF — FILIGRANE CENTRÉ + LOGO GRAND
+          APERÇU PDF — FILIGRANE CORRIGÉ
+          ✅ opacity 0.12 (visible mais discret)
+          ✅ mixBlendMode multiply (efface fond blanc du PNG)
+          ✅ logo 220px × 220px (bien visible)
+          ✅ texte agrandi
       ═══════════════════════════════════════════════════════════ */}
       {showPreview&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:200,overflowY:"auto"}} onClick={()=>setShowPreview(false)}>
-          {/* Page blanche avec filigrane */}
           <div
             style={{background:"#fff",color:"#111",margin:"20px auto",maxWidth:"600px",borderRadius:"12px",padding:"32px",position:"relative",overflow:"hidden"}}
             onClick={(e)=>e.stopPropagation()}
           >
-            {/* ── FILIGRANE CENTRÉ SUR LA PAGE ── */}
+            {/* ── FILIGRANE CENTRÉ — LOGO SANS FOND + TEXTE ── */}
             <div style={{
               position:"absolute",
-              top:"50%",left:"50%",
-              transform:"translate(-50%, -50%) rotate(-22deg)",
-              display:"flex",flexDirection:"column",alignItems:"center",gap:"10px",
-              opacity:0.05,
-              pointerEvents:"none",zIndex:0,
-              userSelect:"none",textAlign:"center",
-              width:"100%",
+              top:0, left:0, right:0, bottom:0,
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              pointerEvents:"none",
+              zIndex:0,
+              overflow:"hidden",
             }}>
-              {company.logoUrl&&(
-                <img src={company.logoUrl} alt="" style={{width:"160px",height:"160px",objectFit:"contain"}}/>
-              )}
-              <div style={{fontSize:"42px",fontWeight:900,color:"#000",letterSpacing:"2px",lineHeight:1.1,whiteSpace:"nowrap"}}>
-                {company.name||"HAILITE XTERIORS"}
-              </div>
-              <div style={{fontSize:"28px",fontWeight:800,color:"#000",letterSpacing:"10px",textTransform:"uppercase",whiteSpace:"nowrap"}}>
-                {wm}
+              <div style={{
+                display:"flex",
+                flexDirection:"column",
+                alignItems:"center",
+                gap:"12px",
+                opacity:0.12,
+                transform:"rotate(-22deg)",
+                userSelect:"none",
+                textAlign:"center",
+              }}>
+                {company.logoUrl&&(
+                  <img
+                    src={company.logoUrl}
+                    alt=""
+                    style={{
+                      width:"220px",
+                      height:"220px",
+                      objectFit:"contain",
+                      // mixBlendMode multiply = fond blanc PNG devient transparent
+                      mixBlendMode:"multiply",
+                      display:"block",
+                    }}
+                  />
+                )}
+                <div style={{
+                  fontSize:"48px",
+                  fontWeight:900,
+                  color:"#000",
+                  letterSpacing:"2px",
+                  lineHeight:1.1,
+                  whiteSpace:"nowrap",
+                }}>
+                  {company.name||"HAILITE XTERIORS"}
+                </div>
+                <div style={{
+                  fontSize:"30px",
+                  fontWeight:800,
+                  color:"#000",
+                  letterSpacing:"10px",
+                  textTransform:"uppercase",
+                  whiteSpace:"nowrap",
+                }}>
+                  {wm}
+                </div>
               </div>
             </div>
 
             {/* ── CONTENU AU-DESSUS DU FILIGRANE ── */}
             <div style={{position:"relative",zIndex:1}}>
 
-              {/* En-tête : logo GRAND + infos compagnie / numéro doc */}
+              {/* En-tête */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"24px"}}>
                 <div>
                   {company.logoUrl&&(
