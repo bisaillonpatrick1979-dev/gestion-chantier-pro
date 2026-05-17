@@ -392,7 +392,7 @@ export default function InvoicePage() {
                 {catFiltered.length === 0 ? (
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>Aucun résultat</p>
                 ) : catFiltered.map(mat => (
-                  <button key={mat.id} onClick={() => addFromCatalogue(mat)} style={{
+                  <button key={mat.id} onClick={() => addFromCatalogue({ name: mat.name, price: mat.price ?? 0, unit: mat.unit })} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     width: '100%', background: 'transparent', border: 'none',
                     borderBottom: '1px solid var(--border)', padding: '8px 4px',
