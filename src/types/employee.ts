@@ -1,5 +1,8 @@
-export type EmployeeRole = 'admin' | 'employee'
-export type EmployeeWorkMode = 'heure' | 'forfait' | 'surface'
+export type EmployeeRole        = 'admin' | 'employee'
+export type EmployeeWorkMode    = 'heure' | 'forfait' | 'surface'
+export type EmployeeWorkerType  = 'contractor' | 'salaried'
+export type EmployeeCountry     = 'CA' | 'US'
+export type EmployeePayFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 
 export interface Employee {
   id: string
@@ -12,6 +15,11 @@ export interface Employee {
   active: boolean
   createdAt: string
   invoiceSequence: number
+  // Nouveaux champs — type de travailleur et paie
+  workerType?: EmployeeWorkerType      // 'contractor' | 'salaried'
+  employeeCountry?: EmployeeCountry    // 'CA' | 'US'
+  employeeProvince?: string            // 'AB' | 'BC' | 'TX' | etc.
+  payFrequency?: EmployeePayFrequency  // fréquence de paie
 }
 
 export interface EmployeeSession {
