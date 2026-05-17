@@ -73,7 +73,6 @@ export default function SettingsPage() {
       workMode: 'heure',
       color: '#a855f7',
       active: true,
-      invoiceSequence: 1,
     })
     setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee')
   }
