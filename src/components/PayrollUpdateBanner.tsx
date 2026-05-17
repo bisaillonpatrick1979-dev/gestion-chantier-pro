@@ -1,13 +1,15 @@
 'use client'
 // src/components/PayrollUpdateBanner.tsx
-// Affiche une bannière le 1er janvier pour rappeler de mettre à jour les taux
 
 import { useState, useEffect } from 'react'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useLangStore } from '@/store/useLangStore'
-import { PAYROLL_YEAR, PAYROLL_NEXT_UPDATE } from '@/lib/payrollRates'
 
-const BANNER_DISMISSED_KEY = `payroll-banner-dismissed-${PAYROLL_YEAR}`
+// ⚠️ Mettre à jour ces 2 lignes chaque 1er janvier
+const PAYROLL_YEAR = 2026
+const PAYROLL_NEXT_UPDATE = '2027-01-01'
+
+const BANNER_KEY = `payroll-banner-dismissed-${PAYROLL_YEAR}`
 
 export default function PayrollUpdateBanner() {
   const { themeId } = useThemeStore()
@@ -101,4 +103,3 @@ export default function PayrollUpdateBanner() {
     </div>
   )
 }
-
