@@ -15,8 +15,9 @@ export interface Material {
   prixFournisseur?: number   // 🏭 Mon coût chez le fournisseur
   margePercent?: number      // 📊 % de marge appliquée
   prixClient?: number        // 🏷️ Prix de vente au client
+  prixEmploye?: number       // 👷 Ce que je paie à l'employé pour installer ($/pi²)
   description?: string
-  // Champs legacy – compatibilité documents existants
+  // Champs legacy
   price?: number
   priceMin?: number
   priceMax?: number
@@ -30,7 +31,6 @@ interface CatalogueStore {
   deleteMaterial: (id: string) => void
 }
 
-// Noms seulement — prix et détails à remplir par l'utilisateur
 const defaultMaterials: Material[] = [
   { id: '1',  category: 'toiture',     emoji: '🏠', name: 'Bardeau asphalte 3 tabs'    },
   { id: '2',  category: 'toiture',     emoji: '🏠', name: 'Bardeau architectural'       },
