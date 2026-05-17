@@ -2,11 +2,18 @@
 
 // ─── Composant de gravures Art Déco luxueux ───────────────────────────────────
 // Utilise var(--primary) pour s'adapter à tous les thèmes
+// Les classes deco-separator-svg / deco-flower-svg / deco-ornament-svg
+// sont animées via le globalCSS du thème Déco (ThemeInjector)
 
 // ── 1. Séparateur avec diamant central ────────────────────────────────────────
 export function DecoSeparator({ opacity = 0.3 }: { opacity?: number }) {
   return (
-    <svg viewBox="0 0 320 24" fill="none" style={{ width: '100%', opacity, pointerEvents: 'none', display: 'block' }}>
+    <svg
+      className="deco-separator-svg"
+      viewBox="0 0 320 24"
+      fill="none"
+      style={{ width: '100%', opacity, pointerEvents: 'none', display: 'block' }}
+    >
       <line x1="0" y1="12" x2="110" y2="12" stroke="var(--primary)" strokeWidth="0.8"/>
       <line x1="210" y1="12" x2="320" y2="12" stroke="var(--primary)" strokeWidth="0.8"/>
       <line x1="100" y1="12" x2="108" y2="4" stroke="var(--primary)" strokeWidth="0.8"/>
@@ -34,7 +41,12 @@ export function DecoSeparator({ opacity = 0.3 }: { opacity?: number }) {
 // ── 2. Fleur géométrique centrale ─────────────────────────────────────────────
 export function DecoFlower({ size = 60, opacity = 0.2 }: { size?: number; opacity?: number }) {
   return (
-    <svg viewBox="0 0 100 100" fill="none" style={{ width: size, height: size, opacity, pointerEvents: 'none', display: 'block' }}>
+    <svg
+      className="deco-flower-svg"
+      viewBox="0 0 100 100"
+      fill="none"
+      style={{ width: size, height: size, opacity, pointerEvents: 'none', display: 'block' }}
+    >
       {/* Pétales */}
       <ellipse cx="50" cy="28" rx="6" ry="22" stroke="var(--primary)" strokeWidth="0.8" fill="none"/>
       <ellipse cx="50" cy="28" rx="6" ry="22" stroke="var(--primary)" strokeWidth="0.8" fill="none" transform="rotate(45 50 50)"/>
@@ -64,7 +76,7 @@ export function DecoEmptyPanel({ message, subtext }: { message?: string; subtext
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', opacity: 0.3 }}>
         <DecoFlower size={40} opacity={1}/>
-        <svg viewBox="0 0 60 60" fill="none" style={{ width: 50, height: 50 }}>
+        <svg className="deco-ornament-svg" viewBox="0 0 60 60" fill="none" style={{ width: 50, height: 50 }}>
           <polygon points="30,2 38,22 58,22 42,34 48,54 30,42 12,54 18,34 2,22 22,22" stroke="var(--primary)" strokeWidth="1" fill="none"/>
           <polygon points="30,10 35,24 50,24 39,32 43,46 30,38 17,46 21,32 10,24 25,24" fill="var(--primary)" opacity="0.2"/>
           <circle cx="30" cy="30" r="5" fill="var(--primary)" opacity="0.4"/>
@@ -92,26 +104,10 @@ export function DecoEmptyPanel({ message, subtext }: { message?: string; subtext
 export function DecoCorners({ opacity = 0.5 }: { opacity?: number }) {
   return (
     <>
-      <div style={{
-        position: 'absolute', top: 6, left: 6, width: 18, height: 18,
-        borderTop: '1.5px solid var(--primary)', borderLeft: '1.5px solid var(--primary)',
-        opacity, pointerEvents: 'none',
-      }}/>
-      <div style={{
-        position: 'absolute', top: 6, right: 6, width: 18, height: 18,
-        borderTop: '1.5px solid var(--primary)', borderRight: '1.5px solid var(--primary)',
-        opacity, pointerEvents: 'none',
-      }}/>
-      <div style={{
-        position: 'absolute', bottom: 6, left: 6, width: 18, height: 18,
-        borderBottom: '1.5px solid var(--primary)', borderLeft: '1.5px solid var(--primary)',
-        opacity, pointerEvents: 'none',
-      }}/>
-      <div style={{
-        position: 'absolute', bottom: 6, right: 6, width: 18, height: 18,
-        borderBottom: '1.5px solid var(--primary)', borderRight: '1.5px solid var(--primary)',
-        opacity, pointerEvents: 'none',
-      }}/>
+      <div style={{ position: 'absolute', top: 6, left: 6, width: 18, height: 18, borderTop: '1.5px solid var(--primary)', borderLeft: '1.5px solid var(--primary)', opacity, pointerEvents: 'none' }}/>
+      <div style={{ position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderTop: '1.5px solid var(--primary)', borderRight: '1.5px solid var(--primary)', opacity, pointerEvents: 'none' }}/>
+      <div style={{ position: 'absolute', bottom: 6, left: 6, width: 18, height: 18, borderBottom: '1.5px solid var(--primary)', borderLeft: '1.5px solid var(--primary)', opacity, pointerEvents: 'none' }}/>
+      <div style={{ position: 'absolute', bottom: 6, right: 6, width: 18, height: 18, borderBottom: '1.5px solid var(--primary)', borderRight: '1.5px solid var(--primary)', opacity, pointerEvents: 'none' }}/>
     </>
   )
 }
@@ -122,13 +118,13 @@ export function DecoTitle({ children, opacity = 0.35 }: { children: React.ReactN
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '8px 0' }}>
       <div style={{ flex: 1, height: '1px', background: `linear-gradient(90deg, transparent, var(--primary))`, opacity }}/>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10, opacity }}>
+        <svg className="deco-star-item" viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10, opacity }}>
           <polygon points="6,0 8,4 12,4 9,7 10,11 6,9 2,11 3,7 0,4 4,4" fill="var(--primary)"/>
         </svg>
         <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '3px', color: 'var(--primary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
           {children}
         </span>
-        <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10, opacity }}>
+        <svg className="deco-star-item" viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10, opacity }}>
           <polygon points="6,0 8,4 12,4 9,7 10,11 6,9 2,11 3,7 0,4 4,4" fill="var(--primary)"/>
         </svg>
       </div>
@@ -140,19 +136,13 @@ export function DecoTitle({ children, opacity = 0.35 }: { children: React.ReactN
 // ── 6. Motif de fond répété (pour grandes zones vides) ────────────────────────
 export function DecoBackground({ style }: { style?: React.CSSProperties }) {
   return (
-    <div style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
-      opacity: 0.04, ...style,
-    }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', opacity: 0.04, ...style }}>
       <svg width="100%" height="100%">
         <defs>
           <pattern id="decoPattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-            {/* Diamant */}
             <polygon points="30,5 45,30 30,55 15,30" stroke="var(--primary)" strokeWidth="0.8" fill="none"/>
-            {/* Croix */}
             <line x1="30" y1="0" x2="30" y2="60" stroke="var(--primary)" strokeWidth="0.3"/>
             <line x1="0" y1="30" x2="60" y2="30" stroke="var(--primary)" strokeWidth="0.3"/>
-            {/* Centre */}
             <circle cx="30" cy="30" r="2" fill="var(--primary)"/>
           </pattern>
         </defs>
@@ -165,14 +155,7 @@ export function DecoBackground({ style }: { style?: React.CSSProperties }) {
 // ── 7. Bordure lumineuse animée ────────────────────────────────────────────────
 export function DecoBorderCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{
-      position: 'relative',
-      background: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: '14px',
-      overflow: 'hidden',
-      ...style,
-    }}>
+    <div style={{ position: 'relative', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden', ...style }}>
       <DecoBackground />
       <DecoCorners opacity={0.3}/>
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -187,7 +170,13 @@ export function DecoStarRow({ count = 5 }: { count?: number }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '8px 0', opacity: 0.25 }}>
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} viewBox="0 0 20 20" fill="none" style={{ width: i === Math.floor(count/2) ? 20 : 14, height: i === Math.floor(count/2) ? 20 : 14 }}>
+        <svg
+          key={i}
+          className="deco-star-item"
+          viewBox="0 0 20 20"
+          fill="none"
+          style={{ width: i === Math.floor(count/2) ? 20 : 14, height: i === Math.floor(count/2) ? 20 : 14 }}
+        >
           <polygon
             points="10,1 12.5,7 19,7 14,11 16,18 10,14 4,18 6,11 1,7 7.5,7"
             stroke="var(--primary)"
@@ -204,7 +193,12 @@ export function DecoStarRow({ count = 5 }: { count?: number }) {
 // ── 9. Ornement complet pour grande zone vide ─────────────────────────────────
 export function DecoOrnament({ opacity = 0.18 }: { opacity?: number }) {
   return (
-    <svg viewBox="0 0 320 120" fill="none" style={{ width: '100%', maxWidth: 320, opacity, display: 'block', margin: '0 auto' }}>
+    <svg
+      className="deco-ornament-svg"
+      viewBox="0 0 320 120"
+      fill="none"
+      style={{ width: '100%', maxWidth: 320, opacity, display: 'block', margin: '0 auto' }}
+    >
       {/* Lignes horizontales */}
       <line x1="0" y1="60" x2="90" y2="60" stroke="var(--primary)" strokeWidth="0.8"/>
       <line x1="230" y1="60" x2="320" y2="60" stroke="var(--primary)" strokeWidth="0.8"/>
@@ -259,7 +253,7 @@ export function DecoDiamondRow({ count = 7, opacity = 0.2 }: { count?: number; o
       {Array.from({ length: count }).map((_, i) => {
         const isCenter = i === Math.floor(count / 2)
         return (
-          <svg key={i} viewBox="0 0 16 16" fill="none" style={{ width: isCenter ? 16 : 10, height: isCenter ? 16 : 10 }}>
+          <svg key={i} className="deco-star-item" viewBox="0 0 16 16" fill="none" style={{ width: isCenter ? 16 : 10, height: isCenter ? 16 : 10 }}>
             <polygon
               points="8,0 16,8 8,16 0,8"
               stroke="var(--primary)"
@@ -274,4 +268,3 @@ export function DecoDiamondRow({ count = 7, opacity = 0.2 }: { count?: number; o
     </div>
   )
 }
-
