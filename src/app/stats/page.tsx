@@ -1,6 +1,7 @@
 'use client'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useLangStore } from '@/store/useLangStore'
+import { useThemeStore } from '@/store/useThemeStore'
 import { formatCurrency, formatTimer } from '@/lib/formatters'
 import {
   DecoSeparator,
@@ -16,7 +17,17 @@ import {
 export default function StatsPage() {
   const { employees, currentEmployeeId, dayDetails, activeSessions } = useEmployeeStore()
   const { lang } = useLangStore()
+  const { themeId } = useThemeStore()
   const t = (fr: string, en: string) => lang === 'fr' ? fr : en
+
+  // ── Classes animées par thème ─────────────────────────────────────────────
+  const isDeco    = themeId === 'deco'
+  const isQuantum = themeId === 'quantum'
+  const isAventure = themeId === 'aventure'
+  const isXP      = themeId === 'xp'
+  const cardClass = isDeco    ? 'deco-card-sweep'    :
+                    isQuantum ? 'quantum-card-glow'  :
+                    isAventure ? 'aventure-card-glow' : ''
 
   const currentEmployee = employees.find(e => e.id === currentEmployeeId)
   const now = new Date()
@@ -28,32 +39,35 @@ export default function StatsPage() {
     .map(([, detail]) => detail)
 
   const totalRevenue = monthDetails.reduce((s, d) => s + d.totalRevenue, 0)
-  const totalHours = monthDetails.reduce((s, d) => s + d.totalHours, 0)
-  const totalDays = monthDetails.length
-  const bestDay = monthDetails.reduce((best, d) => d.totalRevenue > (best?.totalRevenue ?? 0) ? d : best, monthDetails[0])
+  const totalHours   = monthDetails.reduce((s, d) => s + d.totalHours, 0)
+  const totalDays    = monthDetails.length
+  const bestDay      = monthDetails.reduce(
+    (best, d) => d.totalRevenue > (best?.totalRevenue ?? 0) ? d : best,
+    monthDetails[0]
+  )
 
   // Données du graphique (30 derniers jours)
   const last30 = Array.from({ length: 30 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (29 - i))
-    const key = `${currentEmployeeId}-${d.toISOString().split('T')[0]}`
+    const key    = `${currentEmployeeId}-${d.toISOString().split('T')[0]}`
     const detail = dayDetails[key]
     return {
-      date: d.getDate(),
+      date:    d.getDate(),
       revenue: detail?.totalRevenue ?? 0,
-      hours: detail?.totalHours ?? 0,
+      hours:   detail?.totalHours   ?? 0,
     }
   })
 
   const maxRevenue = Math.max(...last30.map(d => d.revenue), 1)
 
   const card: React.CSSProperties = {
-    background: 'var(--card)',
-    border: '1px solid var(--border)',
+    background:   'var(--card)',
+    border:       '1px solid var(--border)',
     borderRadius: '12px',
-    padding: '16px',
-    position: 'relative',
-    overflow: 'hidden',
+    padding:      '16px',
+    position:     'relative',
+    overflow:     'hidden',
   }
 
   return (
@@ -69,7 +83,7 @@ export default function StatsPage() {
 
       {/* Employé actif */}
       {currentEmployee && (
-        <div style={{ ...card, border: '1px solid var(--primary)33', background: 'var(--primary)08' }}>
+        <div className={cardClass} style={{ ...card, border: '1px solid var(--primary)33', background: 'var(--primary)08' }}>
           <DecoBackground/>
           <DecoCorners opacity={0.35}/>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
@@ -103,12 +117,12 @@ export default function StatsPage() {
       {/* Stats du mois — 4 cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         {[
-          { emoji: '💰', label: t('Revenue ce mois', 'Revenue this month'), value: formatCurrency(totalRevenue), color: 'var(--primary)' },
-          { emoji: '⏱️', label: t('Heures ce mois', 'Hours this month'),    value: `${totalHours.toFixed(1)}h`,  color: 'var(--info)'    },
-          { emoji: '📅', label: t('Jours travaillés', 'Days worked'),        value: `${totalDays}`,               color: 'var(--success)' },
-          { emoji: '🏆', label: t('Meilleure journée', 'Best day'),          value: formatCurrency(bestDay?.totalRevenue ?? 0), color: '#FFD700' },
+          { emoji: '💰', label: t('Revenue ce mois', 'Revenue this month'), value: formatCurrency(totalRevenue),              color: 'var(--primary)' },
+          { emoji: '⏱️', label: t('Heures ce mois',  'Hours this month'),   value: `${totalHours.toFixed(1)}h`,              color: 'var(--info)'    },
+          { emoji: '📅', label: t('Jours travaillés', 'Days worked'),        value: `${totalDays}`,                           color: 'var(--success)' },
+          { emoji: '🏆', label: t('Meilleure journée','Best day'),           value: formatCurrency(bestDay?.totalRevenue ?? 0), color: '#FFD700'      },
         ].map((stat, i) => (
-          <div key={i} style={card}>
+          <div key={i} className={cardClass} style={card}>
             <DecoBackground/>
             <DecoCorners opacity={0.2}/>
             <div style={{ position: 'relative', zIndex: 1 }}>
@@ -125,7 +139,7 @@ export default function StatsPage() {
       <DecoSeparator opacity={0.2}/>
 
       {/* Graphique revenus 30 jours */}
-      <div style={card}>
+      <div className={cardClass} style={card}>
         <DecoBackground/>
         <DecoCorners opacity={0.25}/>
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -163,7 +177,7 @@ export default function StatsPage() {
       </div>
 
       {/* Historique sessions */}
-      <div style={card}>
+      <div className={cardClass} style={card}>
         <DecoBackground/>
         <DecoCorners opacity={0.25}/>
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -219,4 +233,3 @@ export default function StatsPage() {
     </div>
   )
 }
-
