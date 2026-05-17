@@ -168,7 +168,7 @@ export default function PunchInModal({
     if (!activeSession) return
     const elapsed = activeSession.elapsed
     const hours = elapsed / 3600
-    const rate = ((activeEntry?.log as { hourlyRate?: number })?.log?.hourlyRate
+    const rate = ((activeEntry?.log as { hourlyRate?: number })?.hourlyRate
       ?? parseFloat(customRate)) || employeeHourlyRate
     const chantierName = (activeEntry?.log as { chantier?: string })?.chantier
       || activeEntry?.project?.address || 'Chantier'
