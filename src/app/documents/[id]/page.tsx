@@ -9,7 +9,6 @@ import { useThemeStore } from "@/store/useThemeStore";
 import DocumentWatermark from "@/components/DocumentWatermark";
 import type { Document, DocumentType, DocumentStatus, LineItem } from "@/types/documents";
 
-// ─── Utilitaires ─────────────────────────────────────────────────────────────
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(n ?? 0);
 }
@@ -21,7 +20,6 @@ function safeDocType(t: unknown): DocumentType {
   if (t === "facture" || t === "devis" || t === "contrat") return t; return "facture";
 }
 
-// ─── Field ───────────────────────────────────────────────────────────────────
 function Field({ label, value, onChange, type = "text", placeholder = "", readOnly = false }: {
   label: string; value: string | number; onChange?: (v: string) => void;
   type?: string; placeholder?: string; readOnly?: boolean;
@@ -37,7 +35,6 @@ function Field({ label, value, onChange, type = "text", placeholder = "", readOn
   );
 }
 
-// ─── SignatureCanvas ──────────────────────────────────────────────────────────
 function SignatureCanvas({ label, isXP, onClear, canvasRef }: {
   label: string; isXP: boolean; onClear: () => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -73,7 +70,6 @@ function SignatureCanvas({ label, isXP, onClear, canvasRef }: {
   );
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
 const TYPE_META: Record<DocumentType, { label: string; emoji: string; color: string }> = {
   facture: { label:"Facture",emoji:"📄",color:"#f59e0b" },
   devis:   { label:"Devis",  emoji:"📋",color:"#3b82f6" },
@@ -94,7 +90,6 @@ const TABS_BY_TYPE: Record<DocumentType,{id:string;label:string}[]> = {
   contrat:[{id:"info",label:"📋 Info"},{id:"travaux",label:"🏗️ Travaux"},{id:"clauses",label:"⚖️ Clauses"},{id:"totals",label:"💰 Montant"},{id:"sign",label:"✍️ Signatures"}],
 };
 
-// ─── Page principale ──────────────────────────────────────────────────────────
 export default function DocumentPage() {
   const params=useParams(); const router=useRouter();
   const docId=params.id as string; const isNew=docId==="new";
@@ -346,78 +341,81 @@ export default function DocumentPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          APERÇU PDF — FILIGRANE CORRIGÉ
-          ✅ opacity 0.12 (visible mais discret)
-          ✅ mixBlendMode multiply (efface fond blanc du PNG)
-          ✅ logo 220px × 220px (bien visible)
-          ✅ texte agrandi
-      ═══════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          APERÇU PDF
+          ✅ Filigrane ancré BAS-GAUCHE → monte en diagonale -28deg
+          ✅ Logo 260px, mixBlendMode multiply (fond blanc PNG transparent)
+          ✅ Tableau zébré transparent : rgba(0,0,0,0.04) / transparent
+          ✅ Tous les fonds de blocs en rgba → filigrane visible partout
+      ═══════════════════════════════════════════════════════════════════ */}
       {showPreview&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:200,overflowY:"auto"}} onClick={()=>setShowPreview(false)}>
           <div
-            style={{background:"#fff",color:"#111",margin:"20px auto",maxWidth:"600px",borderRadius:"12px",padding:"32px",position:"relative",overflow:"hidden"}}
             onClick={(e)=>e.stopPropagation()}
+            style={{
+              background:"#fff",
+              color:"#111",
+              margin:"20px auto",
+              maxWidth:"600px",
+              borderRadius:"12px",
+              padding:"32px",
+              position:"relative",
+              overflow:"hidden",
+            }}
           >
-            {/* ── FILIGRANE CENTRÉ — LOGO SANS FOND + TEXTE ── */}
+            {/* ══ FILIGRANE — ancré bas-gauche, monte en diagonale ══ */}
             <div style={{
               position:"absolute",
-              top:0, left:0, right:0, bottom:0,
-              display:"flex",
-              alignItems:"center",
-              justifyContent:"center",
+              bottom:"-20px",
+              left:"-40px",
               pointerEvents:"none",
               zIndex:0,
-              overflow:"hidden",
+              display:"flex",
+              flexDirection:"column",
+              alignItems:"flex-start",
+              gap:"6px",
+              opacity:0.14,
+              transform:"rotate(-28deg)",
+              transformOrigin:"bottom left",
+              userSelect:"none",
             }}>
+              {company.logoUrl&&(
+                <img
+                  src={company.logoUrl}
+                  alt=""
+                  style={{
+                    width:"260px",
+                    height:"260px",
+                    objectFit:"contain",
+                    // Rend le fond blanc du PNG transparent
+                    mixBlendMode:"multiply",
+                    display:"block",
+                  }}
+                />
+              )}
               <div style={{
-                display:"flex",
-                flexDirection:"column",
-                alignItems:"center",
-                gap:"12px",
-                opacity:0.12,
-                transform:"rotate(-22deg)",
-                userSelect:"none",
-                textAlign:"center",
+                fontSize:"56px",
+                fontWeight:900,
+                color:"#000",
+                letterSpacing:"2px",
+                lineHeight:1,
+                whiteSpace:"nowrap",
               }}>
-                {company.logoUrl&&(
-                  <img
-                    src={company.logoUrl}
-                    alt=""
-                    style={{
-                      width:"220px",
-                      height:"220px",
-                      objectFit:"contain",
-                      // mixBlendMode multiply = fond blanc PNG devient transparent
-                      mixBlendMode:"multiply",
-                      display:"block",
-                    }}
-                  />
-                )}
-                <div style={{
-                  fontSize:"48px",
-                  fontWeight:900,
-                  color:"#000",
-                  letterSpacing:"2px",
-                  lineHeight:1.1,
-                  whiteSpace:"nowrap",
-                }}>
-                  {company.name||"HAILITE XTERIORS"}
-                </div>
-                <div style={{
-                  fontSize:"30px",
-                  fontWeight:800,
-                  color:"#000",
-                  letterSpacing:"10px",
-                  textTransform:"uppercase",
-                  whiteSpace:"nowrap",
-                }}>
-                  {wm}
-                </div>
+                {company.name||"HAILITE XTERIORS"}
+              </div>
+              <div style={{
+                fontSize:"34px",
+                fontWeight:800,
+                color:"#000",
+                letterSpacing:"12px",
+                textTransform:"uppercase",
+                whiteSpace:"nowrap",
+              }}>
+                {wm}
               </div>
             </div>
 
-            {/* ── CONTENU AU-DESSUS DU FILIGRANE ── */}
+            {/* ══ CONTENU — zIndex 1, fonds rgba pour laisser passer le filigrane ══ */}
             <div style={{position:"relative",zIndex:1}}>
 
               {/* En-tête */}
@@ -448,8 +446,8 @@ export default function DocumentPage() {
                 </div>
               </div>
 
-              {/* Client */}
-              <div style={{background:"#f8f8f8",borderRadius:"8px",padding:"16px",marginBottom:"24px"}}>
+              {/* Bloc client — fond semi-transparent */}
+              <div style={{background:"rgba(0,0,0,0.04)",borderRadius:"8px",padding:"16px",marginBottom:"24px"}}>
                 <div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>{docType==="contrat"?"Partie cliente":"Facturer à"}</div>
                 <div style={{fontWeight:700}}>{doc.client.name||"—"}</div>
                 {doc.client.email&&<div style={{fontSize:"13px",color:"#555"}}>{doc.client.email}</div>}
@@ -458,33 +456,43 @@ export default function DocumentPage() {
               </div>
 
               {workDesc&&(
-                <div style={{marginBottom:"20px",padding:"14px",background:"#f0fdf4",borderRadius:"8px"}}>
+                <div style={{marginBottom:"20px",padding:"14px",background:"rgba(22,163,74,0.06)",borderRadius:"8px"}}>
                   <div style={{fontSize:"11px",color:"#16a34a",textTransform:"uppercase",marginBottom:"6px"}}>Description des travaux</div>
                   <div style={{fontSize:"13px",color:"#333",whiteSpace:"pre-wrap",lineHeight:"1.6"}}>{workDesc}</div>
                 </div>
               )}
 
+              {/* ══ TABLEAU ZÉBRÉ TRANSPARENT ══
+                  En-tête : fond sombre semi-opaque (lisibilité texte blanc)
+                  Lignes paires  : rgba(0,0,0,0.04) = très légèrement teinté
+                  Lignes impaires: transparent = filigrane pleinement visible
+              */}
               {doc.items.some((i:LineItem)=>i.description)&&(
                 <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"24px"}}>
-                  <thead><tr style={{background:"#111",color:"#fff"}}>
-                    <th style={{padding:"10px 12px",textAlign:"left",fontSize:"12px"}}>Description</th>
-                    <th style={{padding:"10px 12px",textAlign:"center",fontSize:"12px"}}>Qté</th>
-                    <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Prix unit.</th>
-                    <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Total</th>
-                  </tr></thead>
+                  <thead>
+                    <tr style={{background:"rgba(17,17,17,0.82)",color:"#fff"}}>
+                      <th style={{padding:"10px 12px",textAlign:"left",fontSize:"12px"}}>Description</th>
+                      <th style={{padding:"10px 12px",textAlign:"center",fontSize:"12px"}}>Qté</th>
+                      <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Prix unit.</th>
+                      <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Total</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {doc.items.map((item:LineItem,i:number)=>(
-                      <tr key={item.id} style={{background:i%2===0?"#fff":"#f8f8f8"}}>
-                        <td style={{padding:"10px 12px",fontSize:"13px"}}>{item.description||"—"}</td>
-                        <td style={{padding:"10px 12px",textAlign:"center",fontSize:"13px"}}>{item.quantity}</td>
-                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px"}}>{formatCurrency(item.unitPrice)}</td>
-                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",fontWeight:600}}>{formatCurrency(item.total)}</td>
+                      <tr key={item.id} style={{
+                        background: i%2===0 ? "rgba(0,0,0,0.04)" : "transparent",
+                      }}>
+                        <td style={{padding:"10px 12px",fontSize:"13px",color:"#111"}}>{item.description||"—"}</td>
+                        <td style={{padding:"10px 12px",textAlign:"center",fontSize:"13px",color:"#111"}}>{item.quantity}</td>
+                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",color:"#111"}}>{formatCurrency(item.unitPrice)}</td>
+                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",fontWeight:600,color:"#111"}}>{formatCurrency(item.total)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
 
+              {/* Totaux */}
               <div style={{marginLeft:"auto",maxWidth:"260px",marginBottom:"24px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"13px"}}><span style={{color:"#666"}}>Sous-total</span><span>{formatCurrency(doc.subtotal)}</span></div>
                 {doc.taxes.filter((t:{enabled:boolean})=>t.enabled).map((tax:{id:string;name:string;rate:number})=>(
@@ -497,15 +505,17 @@ export default function DocumentPage() {
                 </>)}
               </div>
 
-              {docType==="contrat"&&clauses&&<div style={{marginBottom:"20px",padding:"14px",background:"#f8f8f8",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"8px"}}>Clauses & Conditions</div><div style={{fontSize:"12px",color:"#444",whiteSpace:"pre-wrap",lineHeight:"1.7"}}>{clauses}</div></div>}
-              {doc.notes&&<div style={{marginBottom:"16px",padding:"14px",background:"#f8f8f8",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>Notes</div><div style={{fontSize:"13px",color:"#444"}}>{doc.notes}</div></div>}
-              {(company.etransferEmail||company.bankName)&&<div style={{marginBottom:"20px",padding:"14px",background:"#f0f9ff",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#3b82f6",textTransform:"uppercase",marginBottom:"6px"}}>Paiement</div>{company.etransferEmail&&<div style={{fontSize:"13px"}}>Interac: <strong>{company.etransferEmail}</strong></div>}{company.bankName&&<div style={{fontSize:"13px"}}>{company.bankName}{company.bankAccount&&" — "+company.bankAccount}</div>}</div>}
+              {docType==="contrat"&&clauses&&<div style={{marginBottom:"20px",padding:"14px",background:"rgba(0,0,0,0.03)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"8px"}}>Clauses & Conditions</div><div style={{fontSize:"12px",color:"#444",whiteSpace:"pre-wrap",lineHeight:"1.7"}}>{clauses}</div></div>}
+              {doc.notes&&<div style={{marginBottom:"16px",padding:"14px",background:"rgba(0,0,0,0.03)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>Notes</div><div style={{fontSize:"13px",color:"#444"}}>{doc.notes}</div></div>}
+              {(company.etransferEmail||company.bankName)&&<div style={{marginBottom:"20px",padding:"14px",background:"rgba(59,130,246,0.06)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#3b82f6",textTransform:"uppercase",marginBottom:"6px"}}>Paiement</div>{company.etransferEmail&&<div style={{fontSize:"13px"}}>Interac: <strong>{company.etransferEmail}</strong></div>}{company.bankName&&<div style={{fontSize:"13px"}}>{company.bankName}{company.bankAccount&&" — "+company.bankAccount}</div>}</div>}
 
+              {/* Signatures */}
               <div style={{display:"grid",gridTemplateColumns:docType==="contrat"?"1fr 1fr":"1fr",gap:"16px",marginTop:"24px"}}>
-                {docType==="contrat"&&<div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"#f8f8f8",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Contracteur — {company.name}</div></div>}
-                <div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"#f8f8f8",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Client — {doc.client.name||"—"}</div></div>
+                {docType==="contrat"&&<div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Contracteur — {company.name}</div></div>}
+                <div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Client — {doc.client.name||"—"}</div></div>
               </div>
 
+              {/* Boutons */}
               <div style={{marginTop:"24px",display:"flex",gap:"10px"}}>
                 <button onClick={()=>setShowPreview(false)} style={{flex:1,padding:"12px",background:"#111",color:"#fff",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>✕ Fermer</button>
                 <button onClick={()=>window.print()} style={{flex:1,padding:"12px",background:typeMeta.color,color:"#000",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>🖨️ Imprimer / PDF</button>
