@@ -52,15 +52,11 @@ function XPRobot({ percent, message }: { percent: number; message: string }) {
         </div>
         {/* Robot */}
         <svg className="rf rg" width="110" height="118" viewBox="0 0 110 118" fill="none" style={{ position: 'absolute', bottom: 0 }}>
-          {/* Ombre */}
           <ellipse cx="55" cy="116" rx="26" ry="5" fill={glowColor} opacity="0.12"/>
-          {/* Antenne */}
           <line x1="55" y1="6" x2="55" y2="20" stroke={glowColor} strokeWidth="3" strokeLinecap="round"/>
           <circle cx="55" cy="4" r="6" fill={happy ? '#22d3ee' : '#a855f7'} style={{ filter: `drop-shadow(0 0 8px ${glowColor})` }}/>
-          {/* Tête */}
           <rect x="20" y="20" width="70" height="38" rx="14" fill={bodyColor} stroke={glowColor} strokeWidth="2"/>
           <rect x="24" y="23" width="28" height="8" rx="4" fill="white" opacity="0.07"/>
-          {/* Yeux */}
           <g className="re">
             <rect x="28" y="30" width="18" height="14" rx="5" fill={eyeColor} style={{ filter: `drop-shadow(0 0 6px ${eyeColor})` }}/>
             <rect x="32" y="34" width="5" height="5" rx="2" fill="white" opacity="0.7"/>
@@ -69,24 +65,20 @@ function XPRobot({ percent, message }: { percent: number; message: string }) {
             <rect x="64" y="30" width="18" height="14" rx="5" fill={eyeColor} style={{ filter: `drop-shadow(0 0 6px ${eyeColor})` }}/>
             <rect x="68" y="34" width="5" height="5" rx="2" fill="white" opacity="0.7"/>
           </g>
-          {/* Bouche */}
           {happy
             ? <path d="M36 50 Q55 60 74 50" stroke="#22d3ee" strokeWidth="3" fill="none" strokeLinecap="round"/>
             : ok
             ? <line x1="36" y1="54" x2="74" y2="54" stroke="#a855f7" strokeWidth="3" strokeLinecap="round"/>
             : <path d="M36 56 Q55 48 74 56" stroke="#6b7280" strokeWidth="3" fill="none" strokeLinecap="round"/>
           }
-          {/* Corps */}
           <rect x="24" y="62" width="62" height="42" rx="12" fill={bodyColor} stroke="#7c3aed" strokeWidth="2"/>
           <rect x="34" y="70" width="42" height="24" rx="8" fill="#0a0514" opacity="0.55"/>
           <text x="55" y="86" textAnchor="middle" fontSize="14" fontWeight="900" fill={happy ? '#22d3ee' : '#a855f7'} style={{ filter: `drop-shadow(0 0 5px ${glowColor})` }}>XP</text>
           <circle cx="36" cy="98" r="4" fill={happy ? '#22c55e' : '#374151'} style={{ filter: `drop-shadow(0 0 4px ${happy ? '#22c55e' : '#374151'})` }}/>
           <circle cx="48" cy="98" r="3" fill="#f59e0b" opacity="0.8"/>
           <circle cx="58" cy="98" r="3" fill="#f59e0b" opacity="0.5"/>
-          {/* Bras gauche */}
           <rect x="4" y="64" width="18" height="12" rx="6" fill={bodyColor} stroke="#6b21a8" strokeWidth="1.8"/>
           <circle cx="5" cy="70" r="6" fill={bodyColor} stroke="#6b21a8" strokeWidth="1.8"/>
-          {/* Bras droit animé */}
           <g className="rw">
             <rect x="88" y="62" width="18" height="12" rx="6" fill={bodyColor} stroke="#a855f7" strokeWidth="1.8"/>
             <circle cx="105" cy="68" r="6" fill={bodyColor} stroke="#a855f7" strokeWidth="1.8"/>
@@ -94,7 +86,6 @@ function XPRobot({ percent, message }: { percent: number; message: string }) {
             <line x1="105" y1="62" x2="112" y2="57" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round"/>
             <line x1="105" y1="62" x2="112" y2="66" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round"/>
           </g>
-          {/* Jambes */}
           <rect x="30" y="104" width="18" height="10" rx="5" fill={bodyColor} stroke="#7c3aed" strokeWidth="1.8"/>
           <rect x="62" y="104" width="18" height="10" rx="5" fill={bodyColor} stroke="#7c3aed" strokeWidth="1.8"/>
           <ellipse cx="39" cy="115" rx="13" ry="4.5" fill="#080510" stroke="#4c1d95" strokeWidth="1.2"/>
@@ -118,38 +109,28 @@ function WorkerCharacter({ isWorking }: { isWorking: boolean }) {
         .wsmile{animation:wSmile 2s ease-in-out infinite}
       `}</style>
       <svg className="wbody" width="80" height="110" viewBox="0 0 80 110" fill="none">
-        {/* Ombre */}
         <ellipse cx="40" cy="108" rx="18" ry="4" fill="#f59e0b" opacity="0.1"/>
-        {/* Casque */}
         <ellipse cx="40" cy="18" rx="24" ry="16" fill="#f59e0b"/>
         <ellipse cx="40" cy="18" rx="20" ry="12" fill="#fbbf24"/>
         <rect x="16" y="26" width="48" height="8" rx="3" fill="#d97706"/>
-        {/* Visage */}
         <circle cx="40" cy="38" r="16" fill="#fde68a"/>
         <circle cx="40" cy="38" r="15" fill="#fbbf24"/>
-        {/* Yeux */}
         <circle cx="34" cy="35" r="3.5" fill="#1e1b4b"/>
         <circle cx="46" cy="35" r="3.5" fill="#1e1b4b"/>
         <circle cx="35" cy="34" r="1.2" fill="white"/>
         <circle cx="47" cy="34" r="1.2" fill="white"/>
-        {/* Bouche / sourire */}
         <g className="wsmile">
           {isWorking
             ? <path d="M32 44 Q40 50 48 44" stroke="#92400e" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
             : <path d="M33 45 Q40 42 47 45" stroke="#92400e" strokeWidth="2" fill="none" strokeLinecap="round"/>
           }
         </g>
-        {/* Joues */}
         <circle cx="28" cy="41" r="4" fill="#f97316" opacity="0.3"/>
         <circle cx="52" cy="41" r="4" fill="#f97316" opacity="0.3"/>
-        {/* Corps gilet */}
         <rect x="22" y="54" width="36" height="32" rx="8" fill="#ea580c"/>
         <rect x="22" y="54" width="36" height="10" rx="8" fill="#c2410c"/>
-        {/* Bandes sécurité */}
         <rect x="22" y="66" width="36" height="4" fill="#fde68a" opacity="0.6"/>
-        {/* Logo casque sur corps */}
         <circle cx="40" cy="76" r="5" fill="#fbbf24" opacity="0.5"/>
-        {/* Bras */}
         <g className="warm">
           <rect x="4" y="56" width="16" height="8" rx="4" fill="#fbbf24"/>
           <circle cx="5" cy="60" r="5" fill="#fbbf24"/>
@@ -158,10 +139,8 @@ function WorkerCharacter({ isWorking }: { isWorking: boolean }) {
           <rect x="60" y="56" width="16" height="8" rx="4" fill="#fbbf24"/>
           <circle cx="75" cy="60" r="5" fill="#fbbf24"/>
         </g>
-        {/* Jambes */}
         <rect x="24" y="86" width="13" height="18" rx="5" fill="#1e40af"/>
         <rect x="43" y="86" width="13" height="18" rx="5" fill="#1e40af"/>
-        {/* Bottes */}
         <rect x="20" y="100" width="20" height="8" rx="4" fill="#1e3a8a"/>
         <rect x="40" y="100" width="20" height="8" rx="4" fill="#1e3a8a"/>
       </svg>
@@ -213,7 +192,15 @@ export default function HomePage() {
   const { getActiveLogForEmployee } = useProjectStore()
   const { getGoal, setGoalTarget, updateProgress, updateStreak, addXP } = useGoalStore()
   const t = (fr: string, en: string) => lang === 'fr' ? fr : en
-  const isXP = themeId === 'xp'
+
+  // ── Flags thème ────────────────────────────────────────────────────────────
+  const isXP      = themeId === 'xp'
+  const isDeco    = themeId === 'deco'
+  const isQuantum = themeId === 'quantum'
+  const isAventure = themeId === 'aventure'
+  const cardClass = isDeco    ? 'deco-card-sweep'    :
+                    isQuantum ? 'quantum-card-glow'  :
+                    isAventure ? 'aventure-card-glow' : ''
 
   const [screen, setScreen] = useState<Screen>('select')
   const [selectedId, setSelectedId] = useState('')
@@ -232,15 +219,15 @@ export default function HomePage() {
   const [showCelebration, setShowCelebration] = useState(false)
   const prevRevenueRef = useRef(0)
 
-  const currentEmployee = employees.find(e => e.id === currentEmployeeId)
-  const activeSession = currentEmployeeId ? activeSessions[currentEmployeeId] : null
-  const isRunning = !!activeSession
-  const isOnBreak = activeSession?.isOnBreak ?? false
-  const activeProjectLog = currentEmployeeId ? getActiveLogForEmployee(currentEmployeeId) : null
-  const today = new Date().toISOString().split('T')[0]
-  const goal = currentEmployeeId ? getGoal(currentEmployeeId) : null
-  const goalPct = goal ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0
-  const xpToNext = goal ? xpForLevel(goal.level + 1) - goal.xpPoints : 0
+  const currentEmployee    = employees.find(e => e.id === currentEmployeeId)
+  const activeSession      = currentEmployeeId ? activeSessions[currentEmployeeId] : null
+  const isRunning          = !!activeSession
+  const isOnBreak          = activeSession?.isOnBreak ?? false
+  const activeProjectLog   = currentEmployeeId ? getActiveLogForEmployee(currentEmployeeId) : null
+  const today              = new Date().toISOString().split('T')[0]
+  const goal               = currentEmployeeId ? getGoal(currentEmployeeId) : null
+  const goalPct            = goal ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0
+  const xpToNext           = goal ? xpForLevel(goal.level + 1) - goal.xpPoints : 0
 
   useEffect(() => {
     if (!goal || !currentEmployeeId) return
@@ -304,15 +291,15 @@ export default function HomePage() {
   const getDaysInMonth = () => {
     const [year, month] = currentMonth.split('-').map(Number)
     const firstDay = new Date(year, month - 1, 1)
-    const lastDay = new Date(year, month, 0)
+    const lastDay  = new Date(year, month, 0)
     const days: (Date | null)[] = []
     for (let i = 0; i < firstDay.getDay(); i++) days.push(null)
     for (let d = 1; d <= lastDay.getDate(); d++) days.push(new Date(year, month - 1, d))
     return days
   }
 
-  const monthLabel = new Date(currentMonth + '-01').toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' })
-  const revenue = activeSession?.revenue || 0
+  const monthLabel      = new Date(currentMonth + '-01').toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' })
+  const revenue         = activeSession?.revenue || 0
   const formattedRevenue = new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(revenue)
 
   // ══ SÉLECTION ══════════════════════════════════════════════════════════════
@@ -354,7 +341,7 @@ export default function HomePage() {
           {employees.filter(e => e.active).map((emp, idx) => {
             const empGoal = getGoal(emp.id)
             return (
-              <button key={emp.id} className="ec" onClick={() => handleSelectEmployee(emp.id)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '16px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.35)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', textAlign: 'left' as const, position: 'relative', overflow: 'hidden', animation: `fUp 0.4s ease ${idx * 0.1}s both` }}>
+              <button key={emp.id} className={`ec ${!isXP ? cardClass : ''}`} onClick={() => handleSelectEmployee(emp.id)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '16px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.35)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', textAlign: 'left' as const, position: 'relative', overflow: 'hidden', animation: `fUp 0.4s ease ${idx * 0.1}s both` }}>
                 {!isXP && <DecoBackground/>}
                 {!isXP && <DecoCorners opacity={0.3}/>}
                 {isXP && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 50%, rgba(168,85,247,0.08), transparent 60%)', pointerEvents: 'none' }}/>}
@@ -463,8 +450,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isXP ? 'rgba(17,7,40,0.95)' : 'var(--card)', border: isXP ? '1px solid rgba(168,85,247,0.4)' : '1px solid var(--border)' }}>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className={cardClass} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isXP ? 'rgba(17,7,40,0.95)' : 'var(--card)', border: isXP ? '1px solid rgba(168,85,247,0.4)' : '1px solid var(--border)' }}>
         {!isXP && <DecoBackground/>}
         {!isXP && <DecoCorners opacity={0.25}/>}
         {isXP && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 50%, rgba(168,85,247,0.08), transparent)', pointerEvents: 'none' }}/>}
@@ -486,9 +473,9 @@ export default function HomePage() {
         <button onClick={handleLogout} style={{ padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.3)' : '1px solid var(--border)', background: 'transparent', color: isXP ? '#a855f7' : 'var(--text-muted)', fontSize: '11px', fontWeight: 700, position: 'relative', zIndex: 1 }}>{t('SORTIR', 'LOGOUT')}</button>
       </div>
 
-      {/* Taux + Statut */}
+      {/* ── Taux + Statut ────────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-        <div style={{ ...card }}>
+        <div className={cardClass} style={{ ...card }}>
           {!isXP && <DecoBackground/>}
           {!isXP && <DecoCorners opacity={0.2}/>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1 }}>
@@ -508,7 +495,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        <div style={{ ...card }}>
+        <div className={cardClass} style={{ ...card }}>
           {!isXP && <DecoBackground/>}
           {!isXP && <DecoCorners opacity={0.2}/>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1 }}>
@@ -525,9 +512,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Revenus + Temps */}
+      {/* ── Revenus + Temps ──────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '10px' }}>
-        <div style={{ ...card, background: isXP ? 'linear-gradient(135deg, #0a0514, #12082a)' : 'linear-gradient(135deg, #1a1200, #2a1f00, #1a1200)' }}>
+        <div className={cardClass} style={{ ...card, background: isXP ? 'linear-gradient(135deg, #0a0514, #12082a)' : 'linear-gradient(135deg, #1a1200, #2a1f00, #1a1200)' }}>
           {!isXP && <DecoBackground/>}
           {!isXP && <DecoCorners opacity={0.35}/>}
           {revenue > 0 && [{ left: '15%', delay: '0s' }, { left: '50%', delay: '0.9s' }, { left: '80%', delay: '1.6s' }].map((coin, i) => (
@@ -537,7 +524,7 @@ export default function HomePage() {
           <p style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1, fontFamily: 'monospace', position: 'relative', zIndex: 1, background: isXP ? 'linear-gradient(90deg, #a855f7, #22d3ee, #a855f7)' : 'linear-gradient(90deg, #C49A3C, #F2D27A, #FFE9A0, #F2D27A, #C49A3C)', backgroundSize: '200% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'xpShimmer 3s linear infinite' }}>{formattedRevenue}</p>
           {isXP && revenue > 0 && <p style={{ fontSize: '10px', color: '#a855f7', marginTop: '4px', position: 'relative', zIndex: 1, fontWeight: 700 }}>+{Math.floor(revenue / 10)} XP</p>}
         </div>
-        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
+        <div className={cardClass} style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           {!isXP && <DecoBackground/>}
           <p style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '2px', color: isXP ? 'rgba(168,85,247,0.7)' : 'var(--primary)', textTransform: 'uppercase', marginBottom: '6px', position: 'relative', zIndex: 1 }}>{t('⏱ TEMPS', '⏱ TIME')}</p>
           <p style={{ color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '19px', fontWeight: 900, fontFamily: 'monospace', lineHeight: 1.1, position: 'relative', zIndex: 1 }}>{formatTimer(activeSession?.elapsed || 0)}</p>
@@ -548,9 +535,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ══ 1. NIVEAU XP ══ */}
+      {/* ── Niveau XP ────────────────────────────────────────────────────────── */}
       {isXP && goal && (
-        <div style={{ ...card }}>
+        <div className={cardClass} style={{ ...card }}>
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, rgba(168,85,247,0.05), transparent)', pointerEvents: 'none' }}/>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -575,21 +562,17 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ══ 2. OBJECTIF SEMAINE — entre niveau et badges ══ */}
+      {/* ── Objectif semaine XP ───────────────────────────────────────────────── */}
       {isXP && goal && (
-        <div style={{ ...card, border: '1px solid rgba(34,211,238,0.35)' }}>
+        <div className={cardClass} style={{ ...card, border: '1px solid rgba(34,211,238,0.35)' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 0%, rgba(34,211,238,0.06), transparent 60%)', pointerEvents: 'none' }}/>
           <div style={{ position: 'relative', zIndex: 1 }}>
-
-            {/* Titre */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <p style={{ fontSize: '11px', fontWeight: 800, color: '#22d3ee', letterSpacing: '2px' }}>🎯 OBJECTIF SEMAINE</p>
               <p style={{ fontSize: '10px', color: '#4c1d95' }}>
                 {new Date().toLocaleDateString('fr-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
               </p>
             </div>
-
-            {/* GROS input montant */}
             <div style={{ marginBottom: '16px' }}>
               <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                 But à atteindre cette semaine
@@ -629,8 +612,6 @@ export default function HomePage() {
                 Touchez pour modifier votre objectif
               </p>
             </div>
-
-            {/* Barre progression */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
                 <div>
@@ -648,8 +629,6 @@ export default function HomePage() {
                 <span style={{ fontSize: '9px', color: '#4c1d95' }}>{formatCurrency(goal.targetAmount)}</span>
               </div>
             </div>
-
-            {/* Message */}
             <div style={{ padding: '10px 14px', borderRadius: '10px', background: goalPct >= 100 ? 'rgba(34,197,94,0.15)' : goalPct >= 50 ? 'rgba(34,211,238,0.1)' : 'rgba(168,85,247,0.08)', border: `1px solid ${goalPct >= 100 ? 'rgba(34,197,94,0.3)' : goalPct >= 50 ? 'rgba(34,211,238,0.25)' : 'rgba(168,85,247,0.15)'}` }}>
               <p style={{ fontSize: '12px', fontWeight: 700, color: goalPct >= 100 ? '#22c55e' : goalPct >= 50 ? '#22d3ee' : '#a855f7', margin: 0 }}>
                 {goalPct >= 100 ? '🏆 OBJECTIF ATTEINT! Tu es une LÉGENDE!'
@@ -663,9 +642,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ══ 3. BADGES ══ */}
+      {/* ── Badges XP ────────────────────────────────────────────────────────── */}
       {isXP && goal && (
-        <div style={{ ...card }}>
+        <div className={cardClass} style={{ ...card }}>
           <div style={{ position: 'relative', zIndex: 1 }}>
             <p style={{ fontSize: '10px', fontWeight: 800, color: '#a855f7', letterSpacing: '2px', marginBottom: '14px' }}>🏅 BADGES & STATS</p>
             <div style={{ display: 'flex', justifyContent: 'space-around' }}>
@@ -678,9 +657,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Robot + Bouton Punch */}
+      {/* ── Robot + Bouton Punch ─────────────────────────────────────────────── */}
       {isXP ? (
-        <div style={{ ...card, background: 'rgba(10,5,20,0.95)', border: '1px solid rgba(168,85,247,0.3)', padding: '20px 16px' }}>
+        <div className={cardClass} style={{ ...card, background: 'rgba(10,5,20,0.95)', border: '1px solid rgba(168,85,247,0.3)', padding: '20px 16px' }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', width: '300px', height: '300px', transform: 'translate(-50%, -50%)', pointerEvents: 'none', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', width: '280px', height: '280px', background: 'repeating-conic-gradient(rgba(168,85,247,0.06) 0deg 10deg, transparent 10deg 20deg)', borderRadius: '50%', transform: 'translate(-50%, -50%)', animation: 'raysR 20s linear infinite' }}/>
           </div>
@@ -750,8 +729,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Calendrier */}
-      <div style={{ ...card }}>
+      {/* ── Calendrier ───────────────────────────────────────────────────────── */}
+      <div className={cardClass} style={{ ...card }}>
         {!isXP && <DecoBackground/>}
         {!isXP && <DecoCorners opacity={0.3}/>}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', position: 'relative', zIndex: 1 }}>
@@ -768,7 +747,7 @@ export default function HomePage() {
           {getDaysInMonth().map((day, i) => {
             if (!day) return <div key={`e-${i}`}/>
             const dateKey = day.toISOString().split('T')[0]
-            const detail = currentEmployeeId ? dayDetails[`${currentEmployeeId}-${dateKey}`] : null
+            const detail  = currentEmployeeId ? dayDetails[`${currentEmployeeId}-${dateKey}`] : null
             const isToday = dateKey === today
             return (
               <button key={dateKey} onClick={() => setSelectedDay(dateKey)} style={{ minHeight: '38px', borderRadius: '6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', border: isToday ? `2px solid ${isXP ? '#a855f7' : 'var(--primary)'}` : `1px solid ${isXP ? 'rgba(168,85,247,0.15)' : 'var(--border)'}`, background: isToday ? (isXP ? 'rgba(168,85,247,0.2)' : 'var(--primary)18') : detail ? (isXP ? 'rgba(34,211,238,0.08)' : 'var(--success)12') : (isXP ? 'rgba(168,85,247,0.05)' : 'var(--surface)'), boxShadow: isToday && isXP ? '0 0 12px rgba(168,85,247,0.4)' : 'none' }}>
@@ -780,8 +759,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Légende */}
-      <div style={{ ...card }}>
+      {/* ── Légende ──────────────────────────────────────────────────────────── */}
+      <div className={cardClass} style={{ ...card }}>
         {!isXP && <DecoBackground/>}
         {!isXP && <DecoCorners opacity={0.2}/>}
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -818,7 +797,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Modal détail journée */}
+      {/* ── Modal détail journée ─────────────────────────────────────────────── */}
       {selectedDay && (() => {
         const detail = currentEmployeeId ? dayDetails[`${currentEmployeeId}-${selectedDay}`] : null
         return (
