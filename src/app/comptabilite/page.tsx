@@ -10,9 +10,9 @@ import type { EmployeeInvoiceStatus } from '@/store/useEmployeeInvoiceStore'
 import { formatCurrency } from '@/lib/formatters'
 
 const EMP_INV_STATUS: Record<EmployeeInvoiceStatus, { label: string; labelEn: string; color: string; emoji: string }> = {
-  brouillon: { label: 'Brouillon', labelEn: 'Draft',  color: '#64748b', emoji: '📝' },
-  envoyee:   { label: 'Envoyée',   labelEn: 'Sent',   color: '#3b82f6', emoji: '📤' },
-  payee:     { label: 'Payée',     labelEn: 'Paid',   color: '#22c55e', emoji: '✅' },
+  brouillon: { label: 'Brouillon', labelEn: 'Draft', color: '#64748b', emoji: '📝' },
+  envoyee:   { label: 'Envoyée',   labelEn: 'Sent',  color: '#3b82f6', emoji: '📤' },
+  payee:     { label: 'Payée',     labelEn: 'Paid',  color: '#22c55e', emoji: '✅' },
 }
 
 export default function ComptabilitePage() {
@@ -22,75 +22,72 @@ export default function ComptabilitePage() {
   const { employees, dayDetails } = useEmployeeStore()
   const { invoices: empInvoices, updateStatus } = useEmployeeInvoiceStore()
 
-  // ── Theme card class ────────────────────────────────────────────────────────
   const isDeco     = themeId === 'deco'
   const isQuantum  = themeId === 'quantum'
   const isAventure = themeId === 'aventure'
-  const cardClass  = isDeco    ? 'deco-card-sweep'    :
-                     isQuantum ? 'quantum-card-glow'  :
-                     isAventure ? 'aventure-card-glow' : ''
+  const cardClass  = isDeco ? 'deco-card-sweep' : isQuantum ? 'quantum-card-glow' : isAventure ? 'aventure-card-glow' : ''
 
   const now          = new Date()
   const currentMonth = now.toISOString().slice(0, 7)
   const currentYear  = now.getFullYear().toString()
 
-  // ── Stats documents clients ──────────────────────────────────────────────────
-  const monthDocs    = documents.filter(d => d.createdAt?.startsWith(currentMonth))
-  const monthRevenue = monthDocs.filter(d => d.status === 'paye').reduce((s, d) => s + d.total, 0)
-  const monthPending = monthDocs.filter(d => d.status === 'envoye' || d.status === 'accepte').reduce((s, d) => s + d.balanceDue, 0)
-  const monthInvoices = monthDocs.filter(d => d.type === 'facture').length
-  const monthQuotes   = monthDocs.filter(d => d.type === 'devis').length
+  // ── Stats documents clients ─────────────────────────────────────────────
+  // ✅ FIX : 'paid' au lieu de 'paye', 'sent' au lieu de 'envoye'
+  const monthDocs     = documents.filter(d => d.createdAt?.startsWith(currentMonth))
+  const monthRevenue  = monthDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.total, 0)
+  const monthPending  = monthDocs.filter(d => d.status === 'sent').reduce((s, d) => s + (d.balanceDue ?? d.total), 0)
+  const monthInvoices = monthDocs.filter(d => d.type === 'invoice').length
+  const monthQuotes   = monthDocs.filter(d => d.type === 'quote').length
   const yearDocs      = documents.filter(d => d.createdAt?.startsWith(currentYear))
-  const yearRevenue   = yearDocs.filter(d => d.status === 'paye').reduce((s, d) => s + d.total, 0)
-  const yearPending   = yearDocs.filter(d => d.status === 'envoye' || d.status === 'accepte').reduce((s, d) => s + d.balanceDue, 0)
+  const yearRevenue   = yearDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.total, 0)
+  const yearPending   = yearDocs.filter(d => d.status === 'sent').reduce((s, d) => s + (d.balanceDue ?? d.total), 0)
 
-  // ── Stats invoices employés ──────────────────────────────────────────────────
-  const empInvBrouillon = empInvoices.filter(i => i.status === 'brouillon')
-  const empInvEnvoyees  = empInvoices.filter(i => i.status === 'envoyee')
-  const empInvPayees    = empInvoices.filter(i => i.status === 'payee')
-  const totalSalaireDu  = empInvEnvoyees.reduce((s, i) => s + i.total, 0)
+  // ── Stats invoices employés ─────────────────────────────────────────────
+  const empInvBrouillon  = empInvoices.filter(i => i.status === 'brouillon')
+  const empInvEnvoyees   = empInvoices.filter(i => i.status === 'envoyee')
+  const empInvPayees     = empInvoices.filter(i => i.status === 'payee')
+  const totalSalaireDu   = empInvEnvoyees.reduce((s, i) => s + i.total, 0)
   const totalSalairePaye = empInvPayees.reduce((s, i) => s + i.total, 0)
   const totalSalaireTotal = [...empInvEnvoyees, ...empInvPayees].reduce((s, i) => s + i.total, 0)
 
-  // ── Stats par statut docs ──────────────────────────────────────────────────
+  // ── Stats par statut docs ✅ FIX nouveaux statuts ───────────────────────
   const byStatus = {
-    brouillon: documents.filter(d => d.status === 'brouillon'),
-    envoye:    documents.filter(d => d.status === 'envoye'),
-    accepte:   documents.filter(d => d.status === 'accepte'),
-    paye:      documents.filter(d => d.status === 'paye'),
-    refuse:    documents.filter(d => d.status === 'refuse'),
+    draft:   documents.filter(d => d.status === 'draft'),
+    sent:    documents.filter(d => d.status === 'sent'),
+    paid:    documents.filter(d => d.status === 'paid'),
+    overdue: documents.filter(d => d.status === 'overdue'),
   }
 
-  // ── Stats par employé (punch) ──────────────────────────────────────────────
+  // ── Stats par employé ───────────────────────────────────────────────────
   const employeeStats = employees.map(emp => {
-    const empDetails   = Object.entries(dayDetails).filter(([key]) => key.startsWith(emp.id)).map(([, d]) => d)
-    const totalRevenue = empDetails.reduce((s, d) => s + d.totalRevenue, 0)
-    const totalHours   = empDetails.reduce((s, d) => s + d.totalHours, 0)
-    const totalDays    = empDetails.length
-    const empInvs      = empInvoices.filter(i => i.employeeId === emp.id)
-    const totalFacture = empInvs.reduce((s, i) => s + i.total, 0)
+    const empDetails    = Object.entries(dayDetails).filter(([key]) => key.startsWith(emp.id)).map(([, d]) => d)
+    const totalRevenue  = empDetails.reduce((s, d) => s + d.totalRevenue, 0)
+    const totalHours    = empDetails.reduce((s, d) => s + d.totalHours, 0)
+    const totalDays     = empDetails.length
+    const empInvs       = empInvoices.filter(i => i.employeeId === emp.id)
+    const totalFacture  = empInvs.reduce((s, i) => s + i.total, 0)
     return { emp, totalRevenue, totalHours, totalDays, totalFacture, invCount: empInvs.length }
   }).filter(s => s.totalRevenue > 0 || s.totalHours > 0)
 
-  // ── Graphique 6 mois ───────────────────────────────────────────────────────
+  // ── Graphique 6 mois ✅ FIX statuts ────────────────────────────────────
   const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d       = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key     = d.toISOString().slice(0, 7)
-    const label   = d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { month: 'short', year: '2-digit' })
-    const revenue = documents.filter(doc => doc.createdAt?.startsWith(key) && doc.status === 'paye').reduce((s, doc) => s + doc.total, 0)
-    const pending = documents.filter(doc => doc.createdAt?.startsWith(key) && (doc.status === 'envoye' || doc.status === 'accepte')).reduce((s, doc) => s + doc.balanceDue, 0)
+    const d        = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key      = d.toISOString().slice(0, 7)
+    const label    = d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { month: 'short', year: '2-digit' })
+    const revenue  = documents.filter(doc => doc.createdAt?.startsWith(key) && doc.status === 'paid').reduce((s, doc) => s + doc.total, 0)
+    const pending  = documents.filter(doc => doc.createdAt?.startsWith(key) && doc.status === 'sent').reduce((s, doc) => s + (doc.balanceDue ?? doc.total), 0)
     const salaires = empInvoices.filter(inv => inv.createdAt?.startsWith(key) && inv.status === 'payee').reduce((s, inv) => s + inv.total, 0)
     return { key, label, revenue, pending, salaires }
   }).reverse()
 
   const maxRevenue = Math.max(...last6Months.map(m => m.revenue + m.pending), 1)
 
+  // ✅ FIX nouveaux statuts pour affichage
   const STATUS_CONFIG_DOC = {
-    brouillon: { label: lang === 'fr' ? 'Brouillon' : 'Draft',    color: '#64748b', emoji: '📝' },
-    envoye:    { label: lang === 'fr' ? 'Envoyé' : 'Sent',        color: '#3b82f6', emoji: '📤' },
-    accepte:   { label: lang === 'fr' ? 'Accepté' : 'Accepted',   color: '#22c55e', emoji: '✅' },
-    paye:      { label: lang === 'fr' ? 'Payé' : 'Paid',          color: '#f59e0b', emoji: '💰' },
-    refuse:    { label: lang === 'fr' ? 'Refusé' : 'Refused',     color: '#ef4444', emoji: '❌' },
+    draft:   { label: lang === 'fr' ? 'Brouillon' : 'Draft',   color: '#64748b', emoji: '📝' },
+    sent:    { label: lang === 'fr' ? 'Envoyé' : 'Sent',       color: '#3b82f6', emoji: '📤' },
+    paid:    { label: lang === 'fr' ? 'Payé' : 'Paid',         color: '#f59e0b', emoji: '💰' },
+    overdue: { label: lang === 'fr' ? 'En retard' : 'Overdue', color: '#ef4444', emoji: '⚠️' },
   }
 
   const card: React.CSSProperties = {
@@ -109,17 +106,17 @@ export default function ComptabilitePage() {
         📊 {lang === 'fr' ? 'COMPTABILITÉ' : 'ACCOUNTING'}
       </h1>
 
-      {/* ── REVENUS CLIENT CE MOIS ──────────────────────────────────────────── */}
+      {/* ── REVENUS CLIENT CE MOIS ─────────────────────────────────────────── */}
       <div className={cardClass} style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
           📅 {lang === 'fr' ? 'REVENUS CLIENTS — CE MOIS' : 'CLIENT REVENUE — THIS MONTH'}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {[
-            { label: lang === 'fr' ? 'Encaissé' : 'Collected',         value: formatCurrency(monthRevenue), color: '#22c55e', icon: '💰' },
-            { label: lang === 'fr' ? 'En attente' : 'Pending',          value: formatCurrency(monthPending), color: '#f59e0b', icon: '⏳' },
-            { label: lang === 'fr' ? 'Factures créées' : 'Invoices',    value: `${monthInvoices}`,           color: theme.colors.primary, icon: '📄' },
-            { label: lang === 'fr' ? 'Devis envoyés' : 'Quotes sent',   value: `${monthQuotes}`,             color: theme.colors.primaryLight, icon: '📋' },
+            { label: lang === 'fr' ? 'Encaissé' : 'Collected',       value: formatCurrency(monthRevenue), color: '#22c55e',               icon: '💰' },
+            { label: lang === 'fr' ? 'En attente' : 'Pending',        value: formatCurrency(monthPending), color: '#f59e0b',               icon: '⏳' },
+            { label: lang === 'fr' ? 'Factures créées' : 'Invoices',  value: `${monthInvoices}`,           color: theme.colors.primary,    icon: '📄' },
+            { label: lang === 'fr' ? 'Devis envoyés' : 'Quotes sent', value: `${monthQuotes}`,             color: theme.colors.primaryLight ?? theme.colors.primary, icon: '📋' },
           ].map(item => (
             <div key={item.label} style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px' }}>
               <p style={{ fontSize: '20px', marginBottom: '4px' }}>{item.icon}</p>
@@ -130,28 +127,25 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* ── SALAIRES EMPLOYÉS ────────────────────────────────────────────────── */}
+      {/* ── SALAIRES EMPLOYÉS ──────────────────────────────────────────────── */}
       <div className={cardClass} style={{ ...card, border: `1px solid ${theme.colors.primary}44` }}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
           👷 {lang === 'fr' ? 'SALAIRES EMPLOYÉS — AUTONOMES' : 'EMPLOYEE WAGES — CONTRACTORS'}
         </p>
-
-        {/* Stats salaires */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '14px' }}>
           {[
-            { label: lang === 'fr' ? 'Dû' : 'Owed',         value: formatCurrency(totalSalaireDu),   color: '#f59e0b', count: empInvEnvoyees.length  },
-            { label: lang === 'fr' ? 'Payé' : 'Paid',        value: formatCurrency(totalSalairePaye), color: '#22c55e', count: empInvPayees.length    },
-            { label: lang === 'fr' ? 'Total' : 'Total',      value: formatCurrency(totalSalaireTotal),color: theme.colors.primary, count: empInvoices.length },
+            { label: lang === 'fr' ? 'Dû' : 'Owed',    value: formatCurrency(totalSalaireDu),    color: '#f59e0b', count: empInvEnvoyees.length },
+            { label: lang === 'fr' ? 'Payé' : 'Paid',  value: formatCurrency(totalSalairePaye),  color: '#22c55e', count: empInvPayees.length   },
+            { label: 'Total',                            value: formatCurrency(totalSalaireTotal), color: theme.colors.primary, count: empInvoices.length },
           ].map(s => (
             <div key={s.label} style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
               <p style={{ color: s.color, fontSize: '16px', fontWeight: 900, lineHeight: 1 }}>{s.value}</p>
               <p style={{ color: theme.colors.textMuted, fontSize: '10px', marginTop: '4px' }}>{s.label}</p>
-              <p style={{ color: theme.colors.textWeak, fontSize: '10px' }}>{s.count} invoice{s.count !== 1 ? 's' : ''}</p>
+              <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{s.count} inv.</p>
             </div>
           ))}
         </div>
 
-        {/* Liste invoices employés récentes */}
         {empInvoices.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '16px 0', color: theme.colors.textMuted, fontSize: '13px' }}>
             {lang === 'fr' ? '📄 Aucune invoice employé générée' : '📄 No employee invoice generated'}
@@ -175,7 +169,6 @@ export default function ComptabilitePage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ color: theme.colors.primary, fontSize: '14px', fontWeight: 800 }}>{formatCurrency(inv.total)}</p>
-                    {/* Boutons changement statut rapide */}
                     <div style={{ display: 'flex', gap: '4px', marginTop: '4px', justifyContent: 'flex-end' }}>
                       {inv.status !== 'payee' && (
                         <button
@@ -200,36 +193,28 @@ export default function ComptabilitePage() {
         )}
       </div>
 
-      {/* ── ANNÉE EN COURS ───────────────────────────────────────────────────── */}
+      {/* ── ANNÉE EN COURS ─────────────────────────────────────────────────── */}
       <div className={cardClass} style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
           📆 {lang === 'fr' ? `ANNÉE ${currentYear}` : `YEAR ${currentYear}`}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          <div style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px' }}>
-            <p style={{ fontSize: '20px', marginBottom: '4px' }}>💰</p>
-            <p style={{ color: '#22c55e', fontSize: '18px', fontWeight: 800 }}>{formatCurrency(yearRevenue)}</p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'Total encaissé (clients)' : 'Total collected (clients)'}</p>
-          </div>
-          <div style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px' }}>
-            <p style={{ fontSize: '20px', marginBottom: '4px' }}>⏳</p>
-            <p style={{ color: '#f59e0b', fontSize: '18px', fontWeight: 800 }}>{formatCurrency(yearPending)}</p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'En attente (clients)' : 'Pending (clients)'}</p>
-          </div>
-          <div style={{ background: theme.colors.surface, borderRadius: '10px', padding: '12px' }}>
-            <p style={{ fontSize: '20px', marginBottom: '4px' }}>👷</p>
-            <p style={{ color: '#ef4444', fontSize: '18px', fontWeight: 800 }}>-{formatCurrency(totalSalaireTotal)}</p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'Salaires (autonomes)' : 'Wages (contractors)'}</p>
-          </div>
-          <div style={{ background: `${theme.colors.primary}18`, border: `1px solid ${theme.colors.primary}44`, borderRadius: '10px', padding: '12px' }}>
-            <p style={{ fontSize: '20px', marginBottom: '4px' }}>📊</p>
-            <p style={{ color: theme.colors.primary, fontSize: '18px', fontWeight: 800 }}>{formatCurrency(Math.max(0, yearRevenue - totalSalaireTotal))}</p>
-            <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{lang === 'fr' ? 'Marge brute' : 'Gross margin'}</p>
-          </div>
+          {[
+            { icon: '💰', value: formatCurrency(yearRevenue),                                color: '#22c55e',           label: lang === 'fr' ? 'Total encaissé (clients)' : 'Total collected (clients)' },
+            { icon: '⏳', value: formatCurrency(yearPending),                                color: '#f59e0b',           label: lang === 'fr' ? 'En attente (clients)' : 'Pending (clients)' },
+            { icon: '👷', value: `-${formatCurrency(totalSalaireTotal)}`,                   color: '#ef4444',           label: lang === 'fr' ? 'Salaires (autonomes)' : 'Wages (contractors)' },
+            { icon: '📊', value: formatCurrency(Math.max(0, yearRevenue - totalSalaireTotal)), color: theme.colors.primary, label: lang === 'fr' ? 'Marge brute' : 'Gross margin', highlight: true },
+          ].map(item => (
+            <div key={item.label} style={{ background: (item as any).highlight ? `${theme.colors.primary}18` : theme.colors.surface, border: (item as any).highlight ? `1px solid ${theme.colors.primary}44` : 'none', borderRadius: '10px', padding: '12px' }}>
+              <p style={{ fontSize: '20px', marginBottom: '4px' }}>{item.icon}</p>
+              <p style={{ color: item.color, fontSize: '18px', fontWeight: 800 }}>{item.value}</p>
+              <p style={{ color: theme.colors.textMuted, fontSize: '10px' }}>{item.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── GRAPHIQUE 6 MOIS ─────────────────────────────────────────────────── */}
+      {/* ── GRAPHIQUE 6 MOIS ───────────────────────────────────────────────── */}
       <div className={cardClass} style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '16px' }}>
           📈 {lang === 'fr' ? '6 DERNIERS MOIS' : 'LAST 6 MONTHS'}
@@ -238,8 +223,8 @@ export default function ComptabilitePage() {
           {last6Months.map(m => (
             <div key={m.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'flex-end' }}>
-                {m.pending > 0 && <div style={{ width: '100%', height: `${(m.pending / maxRevenue) * 80}px`, background: '#f59e0b', borderRadius: '4px 4px 0 0', minHeight: '4px' }} />}
-                {m.revenue > 0 && <div style={{ width: '100%', height: `${(m.revenue / maxRevenue) * 80}px`, background: '#22c55e', borderRadius: m.pending > 0 ? '0' : '4px 4px 0 0', minHeight: '4px' }} />}
+                {m.pending  > 0 && <div style={{ width: '100%', height: `${(m.pending  / maxRevenue) * 80}px`, background: '#f59e0b', borderRadius: '4px 4px 0 0', minHeight: '4px' }} />}
+                {m.revenue  > 0 && <div style={{ width: '100%', height: `${(m.revenue  / maxRevenue) * 80}px`, background: '#22c55e', borderRadius: m.pending > 0 ? '0' : '4px 4px 0 0', minHeight: '4px' }} />}
                 {m.salaires > 0 && <div style={{ width: '100%', height: `${(m.salaires / maxRevenue) * 30}px`, background: '#ef444455', borderRadius: '0', minHeight: '2px' }} />}
                 {m.revenue === 0 && m.pending === 0 && m.salaires === 0 && <div style={{ width: '100%', height: '4px', background: theme.colors.border, borderRadius: '4px' }} />}
               </div>
@@ -249,9 +234,9 @@ export default function ComptabilitePage() {
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
           {[
-            { color: '#22c55e', label: lang === 'fr' ? 'Encaissé' : 'Collected' },
-            { color: '#f59e0b', label: lang === 'fr' ? 'En attente' : 'Pending'  },
-            { color: '#ef444455', label: lang === 'fr' ? 'Salaires' : 'Wages'   },
+            { color: '#22c55e',   label: lang === 'fr' ? 'Encaissé' : 'Collected' },
+            { color: '#f59e0b',   label: lang === 'fr' ? 'En attente' : 'Pending'  },
+            { color: '#ef444455', label: lang === 'fr' ? 'Salaires' : 'Wages'      },
           ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: l.color }} />
@@ -261,7 +246,7 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* ── PAR STATUT DOCUMENTS ────────────────────────────────────────────── */}
+      {/* ── PAR STATUT DOCUMENTS ───────────────────────────────────────────── */}
       <div className={cardClass} style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
           📋 {lang === 'fr' ? 'DOCUMENTS PAR STATUT' : 'DOCUMENTS BY STATUS'}
@@ -286,7 +271,7 @@ export default function ComptabilitePage() {
         </div>
       </div>
 
-      {/* ── PAR EMPLOYÉ (punch + invoices) ──────────────────────────────────── */}
+      {/* ── PAR EMPLOYÉ ────────────────────────────────────────────────────── */}
       {employeeStats.length > 0 && (
         <div className={cardClass} style={card}>
           <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
@@ -319,7 +304,7 @@ export default function ComptabilitePage() {
         </div>
       )}
 
-      {/* ── TOUS LES DOCUMENTS ──────────────────────────────────────────────── */}
+      {/* ── TOUS LES DOCUMENTS ─────────────────────────────────────────────── */}
       <div className={cardClass} style={card}>
         <p style={{ color: theme.colors.primary, fontSize: '11px', letterSpacing: '2px', fontWeight: 700, marginBottom: '12px' }}>
           🗂️ {lang === 'fr' ? 'TOUS LES DOCUMENTS' : 'ALL DOCUMENTS'}
@@ -335,9 +320,12 @@ export default function ComptabilitePage() {
               return (
                 <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '8px' }}>
                   <div>
-                    <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: 700 }}>{doc.number}</p>
+                    <p style={{ color: theme.colors.text, fontSize: '13px', fontWeight: 700 }}>
+                      {doc.number || doc.id.slice(0, 8)}
+                    </p>
+                    {/* ✅ FIX : doc.clientName au lieu de doc.client.name */}
                     <p style={{ color: theme.colors.textMuted, fontSize: '11px' }}>
-                      {doc.client.name || (lang === 'fr' ? 'Client non défini' : 'Client not defined')} · {doc.date}
+                      {doc.clientName || (lang === 'fr' ? 'Client non défini' : 'Client not defined')} · {doc.date}
                     </p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
