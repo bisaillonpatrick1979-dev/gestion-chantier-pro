@@ -1,506 +1,730 @@
+// src/app/settings/page.tsx
 "use client";
 
 import { useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useDocumentStore } from "@/store/useDocumentStore";
+import { useRouter } from "next/navigation";
 import { useCompanyStore } from "@/store/useCompanyStore";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
 import { useClientStore } from "@/store/useClientStore";
+import { useCatalogueStore } from "@/store/useCatalogueStore";
 import { useThemeStore } from "@/store/useThemeStore";
-import DocumentWatermark from "@/components/DocumentWatermark";
-import type { Document, DocumentType, DocumentStatus, LineItem } from "@/types/documents";
+import { getAllThemes } from "@/lib/themes";
 
-function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(n ?? 0);
-}
-function today(): string { return new Date().toISOString().split("T")[0]; }
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr); d.setDate(d.getDate() + days); return d.toISOString().split("T")[0];
-}
-function safeDocType(t: unknown): DocumentType {
-  if (t === "facture" || t === "devis" || t === "contrat") return t; return "facture";
-}
-
-function Field({ label, value, onChange, type = "text", placeholder = "", readOnly = false }: {
-  label: string; value: string | number; onChange?: (v: string) => void;
-  type?: string; placeholder?: string; readOnly?: boolean;
+function Field({
+  label, value, onChange, type = "text", placeholder = "",
+}: {
+  label: string; value: string | number;
+  onChange: (v: string) => void; type?: string; placeholder?: string;
 }) {
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
-      <input type={type} value={value ?? ""} onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        placeholder={placeholder} readOnly={readOnly}
-        style={{ width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "10px 12px", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", outline: "none", opacity: readOnly ? 0.6 : 1 }}
+    <div style={{ marginBottom: "12px" }}>
+      <label style={{
+        display: "block", fontSize: "11px", color: "var(--text-muted)",
+        marginBottom: "4px", textTransform: "uppercase",
+        letterSpacing: "0.06em", fontWeight: 700,
+      }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%", background: "var(--surface)",
+          border: "1px solid var(--border)", borderRadius: "8px",
+          padding: "10px 12px", color: "var(--text)",
+          fontSize: "15px", boxSizing: "border-box", outline: "none",
+        }}
       />
     </div>
   );
 }
 
-function SignatureCanvas({ label, isXP, onClear, canvasRef }: {
-  label: string; isXP: boolean; onClear: () => void;
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-}) {
-  const [isDrawing, setIsDrawing] = useState(false);
-  const el = () => canvasRef.current;
-  const ctx = () => el()?.getContext("2d") ?? null;
-  const rect = () => el()?.getBoundingClientRect() ?? null;
-  const scale = () => { const e=el(); const r=rect(); return e&&r?{sx:e.width/r.width,sy:e.height/r.height}:{sx:1,sy:1}; };
-  const color = isXP ? "#a855f7" : "var(--primary, #D4AF37)";
-  return (
-    <div style={{ background:"var(--surface)",borderRadius:"10px",padding:"14px",border:"1px solid var(--border)",marginBottom:"14px" }}>
-      <label style={{ display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"10px",textTransform:"uppercase",letterSpacing:"0.05em" }}>✍️ {label}</label>
-      <canvas ref={canvasRef as React.RefObject<HTMLCanvasElement>} width={320} height={110}
-        style={{ background:"var(--card)",border:"1px solid var(--border)",borderRadius:"8px",touchAction:"none",display:"block",width:"100%" }}
-        onMouseDown={() => { setIsDrawing(true); ctx()?.beginPath(); }}
-        onMouseUp={() => setIsDrawing(false)} onMouseLeave={() => setIsDrawing(false)}
-        onMouseMove={(e) => {
-          if (!isDrawing) return; const c=ctx(); const r=rect(); const s=scale(); if(!c||!r) return;
-          c.strokeStyle=color; c.lineWidth=2; c.lineCap="round";
-          c.lineTo((e.clientX-r.left)*s.sx,(e.clientY-r.top)*s.sy); c.stroke(); c.beginPath(); c.moveTo((e.clientX-r.left)*s.sx,(e.clientY-r.top)*s.sy);
+export default function SettingsPage() {
+  const router = useRouter();
+  const { company, updateCompany, resetNumbering } = useCompanyStore();
+  const { employees, addEmployee, deleteEmployee, currentEmployeeId } = useEmployeeStore();
+  const { clients, addClient, deleteClient } = useClientStore();
+  const { materials, addMaterial } = useCatalogueStore();
+  const { themeId, setTheme } = useThemeStore();
+  const allThemes = getAllThemes();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const currentEmployee = employees.find((e) => e.id === currentEmployeeId) ?? null;
+  const isAdmin = currentEmployee?.role === "admin";
+  const isXP      = themeId === "xp";
+  const isDeco     = themeId === "deco";
+  const isQuantum  = themeId === "quantum";
+  const isAventure = themeId === "aventure";
+  const cardClass  = isDeco     ? "deco-card-sweep"    :
+                     isQuantum  ? "quantum-card-glow"  :
+                     isAventure ? "aventure-card-glow" : "";
+
+  const [saved, setSaved] = useState(false);
+
+  const [showAddEmp, setShowAddEmp]   = useState(false);
+  const [newEmpName, setNewEmpName]   = useState("");
+  const [newEmpPin, setNewEmpPin]     = useState("");
+  const [newEmpRole, setNewEmpRole]   = useState<"admin" | "employee">("employee");
+  const [newEmpMode, setNewEmpMode]   = useState<"heure" | "surface" | "forfait">("heure");
+  const [newEmpRate, setNewEmpRate]   = useState<number>(25);
+  const [empError, setEmpError]       = useState("");
+
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [newCName, setNewCName]           = useState("");
+  const [newCPhone, setNewCPhone]         = useState("");
+  const [newCEmail, setNewCEmail]         = useState("");
+  const [newCAddress, setNewCAddress]     = useState("");
+  const [newCCity, setNewCCity]           = useState("");
+  const [newCProvince, setNewCProvince]   = useState("AB");
+  const [newCPostal, setNewCPostal]       = useState("");
+  const [newCNotes, setNewCNotes]         = useState("");
+
+  const [showAddMat, setShowAddMat]   = useState(false);
+  const [newMatName, setNewMatName]   = useState("");
+  const [newMatPrice, setNewMatPrice] = useState<number>(0);
+  const [newMatCat, setNewMatCat]     = useState("toiture");
+  const [newMatUnit, setNewMatUnit]   = useState("pi²");
+  const [newMatEmoji, setNewMatEmoji] = useState("📦");
+
+  type AdminSection = "company"|"contact"|"legal"|"payment"|"billing"|"employees"|"clients"|"catalogue"|"theme"|"numbering"|"danger";
+  type EmpSection   = "theme"|"pin"|"paye";
+  type AnySection   = AdminSection | EmpSection;
+  const [activeSection, setActiveSection] = useState<AnySection>(isAdmin ? "company" : "theme");
+
+  const adminSections = [
+    { id: "company"   as AdminSection, emoji: "🏢", label: "Compagnie"    },
+    { id: "contact"   as AdminSection, emoji: "📞", label: "Contact"      },
+    { id: "legal"     as AdminSection, emoji: "📋", label: "Légal"        },
+    { id: "payment"   as AdminSection, emoji: "💳", label: "Paiement"     },
+    { id: "billing"   as AdminSection, emoji: "🧾", label: "Facturation"  },
+    { id: "employees" as AdminSection, emoji: "👷", label: "Employés"     },
+    { id: "clients"   as AdminSection, emoji: "👥", label: "Clients"      },
+    { id: "catalogue" as AdminSection, emoji: "📦", label: "Catalogue"    },
+    { id: "theme"     as AdminSection, emoji: "🎨", label: "Thème"        },
+    { id: "numbering" as AdminSection, emoji: "🔢", label: "Numérotation" },
+    { id: "danger"    as AdminSection, emoji: "⚠️", label: "Danger"       },
+  ];
+
+  const empSections = [
+    { id: "theme" as EmpSection, emoji: "🎨", label: "Thème"   },
+    { id: "pin"   as EmpSection, emoji: "🔒", label: "Mon PIN" },
+    { id: "paye"  as EmpSection, emoji: "💰", label: "Ma Paye" },
+  ];
+
+  function save() {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      updateCompany({ logoUrl: ev.target?.result as string });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleAddEmployee() {
+    if (!newEmpName.trim()) { setEmpError("Le nom est requis"); return; }
+    if (!/^\d{4}$/.test(newEmpPin)) { setEmpError("PIN = 4 chiffres exactement (ex: 1234)"); return; }
+    addEmployee({
+      name: newEmpName.trim(), role: newEmpRole, pin: newEmpPin,
+      workMode: newEmpMode, hourlyRate: newEmpRate, color: "", active: true,
+    });
+    setNewEmpName(""); setNewEmpPin(""); setNewEmpRole("employee");
+    setNewEmpMode("heure"); setNewEmpRate(25); setEmpError("");
+    setShowAddEmp(false);
+  }
+
+  function handleAddClient() {
+    if (!newCName.trim()) return;
+    addClient({
+      name: newCName.trim(), phone: newCPhone, email: newCEmail,
+      address: newCAddress, city: newCCity, province: newCProvince,
+      postalCode: newCPostal, notes: newCNotes,
+    });
+    setNewCName(""); setNewCPhone(""); setNewCEmail("");
+    setNewCAddress(""); setNewCCity(""); setNewCProvince("AB");
+    setNewCPostal(""); setNewCNotes(""); setShowAddClient(false);
+  }
+
+  function handleAddMaterial() {
+    if (!newMatName.trim()) return;
+    addMaterial({
+      name: newMatName.trim(), nameen: newMatName.trim(),
+      category: newMatCat as "toiture"|"siding"|"fixations"|"etancheite"|"structure"|"maindoeuvre",
+      unit: newMatUnit as "pi²"|"pi lin."|"boîte"|"rouleau"|"feuille"|"tube"|"unité"|"heure",
+      price: newMatPrice, priceMin: newMatPrice, priceMax: newMatPrice,
+      emoji: newMatEmoji || "📦", description: "", descriptionen: "",
+    });
+    setNewMatName(""); setNewMatPrice(0); setNewMatEmoji("📦"); setShowAddMat(false);
+  }
+
+  // ── Styles ──────────────────────────────────────────────────────────────────
+  const cardStyle: React.CSSProperties = {
+    background: "var(--card)", border: "1px solid var(--border)",
+    borderRadius: "12px", padding: "20px", marginBottom: "16px",
+  };
+  const btnPrimary: React.CSSProperties = {
+    background: isXP
+      ? "linear-gradient(135deg, #7c3aed, #a855f7)"
+      : "linear-gradient(135deg, var(--primary), var(--secondary, #B8963E))",
+    color: isXP ? "#fff" : "#000", border: "none", borderRadius: "10px",
+    padding: "13px 24px", fontWeight: 800, fontSize: "14px", cursor: "pointer",
+    width: "100%", letterSpacing: "0.5px",
+    boxShadow: isXP ? "0 0 16px rgba(168,85,247,0.3)" : "none",
+  };
+  const btnDanger: React.CSSProperties = {
+    background: "#7f1d1d", color: "#fca5a5", border: "1px solid #991b1b",
+    borderRadius: "10px", padding: "13px 24px", fontWeight: 700,
+    fontSize: "14px", cursor: "pointer", width: "100%", marginTop: "10px",
+  };
+  const btnSmallPrimary: React.CSSProperties = {
+    background: isXP
+      ? "linear-gradient(135deg, #7c3aed, #a855f7)"
+      : "linear-gradient(135deg, var(--primary), var(--secondary, #B8963E))",
+    color: isXP ? "#fff" : "#000", border: "none", borderRadius: "8px",
+    padding: "8px 16px", cursor: "pointer", fontSize: "13px", fontWeight: 700,
+    boxShadow: isXP ? "0 0 10px rgba(168,85,247,0.3)" : "none",
+  };
+  const inputStyle: React.CSSProperties = {
+    width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
+    borderRadius: "8px", padding: "10px 12px", color: "var(--text)",
+    fontSize: "14px", boxSizing: "border-box", outline: "none",
+  };
+  const selectStyle: React.CSSProperties = {
+    width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
+    borderRadius: "8px", padding: "10px 12px", color: "var(--text)",
+    fontSize: "14px", boxSizing: "border-box", outline: "none",
+  };
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: "11px", color: "var(--text-muted)",
+    marginBottom: "4px", fontWeight: 700,
+    textTransform: "uppercase", letterSpacing: "0.06em",
+  };
+
+  function TabButton({ id, emoji, label }: { id: AnySection; emoji: string; label: string }) {
+    const isActive = activeSection === id;
+    return (
+      <button
+        onClick={() => setActiveSection(id)}
+        style={{
+          flexShrink: 0, padding: "8px 14px", borderRadius: "20px",
+          cursor: "pointer", whiteSpace: "nowrap", fontSize: "13px",
+          fontWeight: isActive ? 700 : 400,
+          border: isActive ? "none" : "1px solid var(--border)",
+          background: isActive
+            ? isXP
+              ? "linear-gradient(135deg, #7c3aed, #a855f7)"
+              : "linear-gradient(135deg, var(--primary), var(--secondary, #B8963E))"
+            : "transparent",
+          color: isActive ? (isXP ? "#fff" : "#000") : "var(--text-muted)",
+          boxShadow: isActive && isXP ? "0 0 12px rgba(168,85,247,0.4)" : "none",
         }}
-        onTouchStart={(e) => { e.preventDefault(); setIsDrawing(true); ctx()?.beginPath(); }}
-        onTouchMove={(e) => {
-          e.preventDefault(); if (!isDrawing) return; const c=ctx(); const r=rect(); const s=scale(); const t=e.touches[0]; if(!c||!r) return;
-          c.strokeStyle=color; c.lineWidth=2; c.lineCap="round";
-          c.lineTo((t.clientX-r.left)*s.sx,(t.clientY-r.top)*s.sy); c.stroke(); c.beginPath(); c.moveTo((t.clientX-r.left)*s.sx,(t.clientY-r.top)*s.sy);
-        }}
-        onTouchEnd={() => setIsDrawing(false)}
-      />
-      <button onClick={onClear} style={{ marginTop:"8px",background:"none",border:"1px solid var(--border)",color:"var(--text-muted)",borderRadius:"6px",padding:"6px 14px",cursor:"pointer",fontSize:"13px" }}>Effacer</button>
-    </div>
-  );
-}
+      >
+        {emoji} {label}
+      </button>
+    );
+  }
 
-const TYPE_META: Record<DocumentType, { label: string; emoji: string; color: string }> = {
-  facture: { label:"Facture",emoji:"📄",color:"#f59e0b" },
-  devis:   { label:"Devis",  emoji:"📋",color:"#3b82f6" },
-  contrat: { label:"Contrat",emoji:"📝",color:"#22c55e" },
-};
-const STATUS_COLORS: Record<DocumentStatus, string> = {
-  brouillon:"var(--text-muted)",envoye:"#3b82f6",accepte:"#22c55e",refuse:"#ef4444",paye:"#f59e0b",
-};
-const STATUS_LABELS: Record<DocumentStatus, string> = {
-  brouillon:"Brouillon",envoye:"Envoyé",accepte:"Accepté",refuse:"Refusé",paye:"Payé",
-};
-function getWatermarkType(type: DocumentType): "FACTURE"|"DEVIS"|"CONTRAT" {
-  if (type==="facture") return "FACTURE"; if (type==="devis") return "DEVIS"; return "CONTRAT";
-}
-const TABS_BY_TYPE: Record<DocumentType,{id:string;label:string}[]> = {
-  facture:[{id:"info",label:"📋 Info"},{id:"items",label:"🔧 Articles"},{id:"totals",label:"💰 Totaux"},{id:"notes",label:"📝 Notes"}],
-  devis:  [{id:"info",label:"📋 Info"},{id:"travaux",label:"🏗️ Travaux"},{id:"items",label:"🔧 Articles"},{id:"totals",label:"💰 Totaux"},{id:"notes",label:"📝 Notes"}],
-  contrat:[{id:"info",label:"📋 Info"},{id:"travaux",label:"🏗️ Travaux"},{id:"clauses",label:"⚖️ Clauses"},{id:"totals",label:"💰 Montant"},{id:"sign",label:"✍️ Signatures"}],
-};
-
-export default function DocumentPage() {
-  const params=useParams(); const router=useRouter();
-  const docId=params.id as string; const isNew=docId==="new";
-  const { documents,addDocument,updateDocument,updateLineItem:storeUpdateLine,addLineItem:storeAddLine,removeLineItem:storeRemoveLine,updateDiscount,updateDeposit,calculateTotals,deleteDocument } = useDocumentStore();
-  const { company }=useCompanyStore(); const { clients }=useClientStore(); const { themeId }=useThemeStore();
-  const isXP=themeId==="xp";
-
-  const [activeTab,setActiveTab]=useState("info");
-  const [showClientPicker,setShowClientPicker]=useState(false);
-  const [showStatusPicker,setShowStatusPicker]=useState(false);
-  const [showPreview,setShowPreview]=useState(false);
-  const [saved,setSaved]=useState(false);
-  const [toast,setToast]=useState("");
-  const [startDate,setStartDate]=useState(today());
-  const [endDate,setEndDate]=useState(addDays(today(),30));
-  const [validDays,setValidDays]=useState("30");
-  const [workDesc,setWorkDesc]=useState("");
-  const [clauses,setClauses]=useState("1. Les travaux seront exécutés selon les règles de l'art.\n2. Tout travail supplémentaire fera l'objet d'un avenant écrit.\n3. Le client s'engage à fournir un accès libre au chantier.\n4. Le paiement final est dû à la réception des travaux.\n5. Garantie sur la main-d'œuvre : 1 an.");
-  const contractorSigRef=useRef<HTMLCanvasElement>(null);
-  const clientSigRef=useRef<HTMLCanvasElement>(null);
-  const singleSigRef=useRef<HTMLCanvasElement>(null);
-
-  const [currentId]=useState<string>(()=>{
-    if (!isNew) return docId;
-    const newDoc=addDocument("facture");
-    if (typeof window!=="undefined") window.history.replaceState(null,"",`/documents/${newDoc.id}`);
-    return newDoc.id;
-  });
-
-  const doc=documents.find((d)=>d.id===currentId) as Document|undefined??null;
-  const docType:DocumentType=safeDocType(doc?.type);
-
-  function upd(updates:Partial<Document>){if(!currentId)return;updateDocument(currentId,updates as Parameters<typeof updateDocument>[1]);}
-  function handleLineChange(itemId:string,field:keyof LineItem,value:string|number){storeUpdateLine(currentId,itemId,{[field]:value});}
-  function showToastMsg(msg:string){setToast(msg);setTimeout(()=>setToast(""),2800);}
-  function selectClient(clientId:string){const client=clients.find((c)=>c.id===clientId);if(!client)return;upd({client:{name:client.name,email:client.email||"",phone:client.phone||"",address:client.address||"",city:"",province:"AB",postalCode:""}});setShowClientPicker(false);}
-  function handleSave(){setSaved(true);showToastMsg("✅ Document sauvegardé!");setTimeout(()=>{setSaved(false);router.push("/documents");},1500);}
-  function handleSendEmail(){if(!doc)return;const meta=TYPE_META[docType];const subject=encodeURIComponent(`${meta.label} ${doc.number} — ${company.name}`);const body=encodeURIComponent(`Bonjour ${doc.client.name||""},\n\nVeuillez trouver ci-joint votre ${meta.label.toLowerCase()} numéro ${doc.number} d'un montant de ${formatCurrency(doc.total)}.\n\nMerci de votre confiance.\n\n${company.name}\n${company.phone||""}\n${company.email||""}`);window.open(`mailto:${encodeURIComponent(doc.client.email||"")}?subject=${subject}&body=${body}`);upd({status:"envoye"});showToastMsg("📧 Email ouvert — statut → Envoyé");}
-  function handleSendSMS(){if(!doc)return;const meta=TYPE_META[docType];const msg=encodeURIComponent(`Bonjour ${doc.client.name||""}! Votre ${meta.label.toLowerCase()} #${doc.number} de ${formatCurrency(doc.total)} est prête. — ${company.name} ${company.phone||""}`);window.open(`sms:${(doc.client.phone||"").replace(/\D/g,"")}?body=${msg}`);showToastMsg("💬 SMS ouvert");}
-  function clearCanvas(ref:React.RefObject<HTMLCanvasElement|null>){const el=ref.current;if(el)el.getContext("2d")?.clearRect(0,0,el.width,el.height);}
-
-  const currentTabs=TABS_BY_TYPE[docType];
-  const safeTab=currentTabs.map(t=>t.id).includes(activeTab)?activeTab:"info";
-
-  if(!doc) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",color:"var(--text-muted)",fontSize:"15px"}}>Chargement...</div>;
-
-  const wm=getWatermarkType(docType);
-  const typeMeta=TYPE_META[docType];
-  const cardStyle:React.CSSProperties={background:"var(--card)",border:"1px solid var(--border)",borderRadius:"12px",padding:"16px",marginBottom:"14px",position:"relative",overflow:"hidden"};
-  const inputStyle:React.CSSProperties={width:"100%",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"8px",padding:"10px 12px",color:"var(--text)",fontSize:"15px",boxSizing:"border-box",outline:"none"};
-  const btnPrimary:React.CSSProperties={background:isXP?"linear-gradient(135deg,#7c3aed,#a855f7)":"linear-gradient(135deg,var(--primary),var(--secondary))",color:isXP?"#fff":"#000",border:"none",borderRadius:"10px",padding:"14px 20px",fontWeight:700,fontSize:"15px",cursor:"pointer",flex:1,boxShadow:isXP?"0 0 20px rgba(168,85,247,0.4)":"none"};
-  const tabActive:React.CSSProperties={borderBottom:isXP?"2px solid #a855f7":"2px solid var(--primary)",color:isXP?"#a855f7":"var(--primary)",fontWeight:700};
-  const typeActive:React.CSSProperties={background:isXP?"linear-gradient(135deg,#7c3aed,#a855f7)":"linear-gradient(135deg,var(--primary),var(--secondary))",color:isXP?"#fff":"#000",border:"none"};
-
-  return (
-    <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)",paddingBottom:"130px"}}>
-      {toast&&<div style={{position:"fixed",top:"16px",left:"50%",transform:"translateX(-50%)",background:"var(--card)",border:"1px solid var(--border)",borderRadius:"12px",padding:"12px 20px",color:"var(--text)",fontSize:"14px",fontWeight:600,zIndex:999,boxShadow:"0 8px 32px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>{toast}</div>}
-
-      <div style={{display:"flex",alignItems:"center",gap:"12px",padding:"16px",borderBottom:"1px solid var(--border)"}}>
-        <button onClick={()=>router.push("/documents")} style={{background:"transparent",border:"1px solid var(--border)",borderRadius:"8px",color:"var(--text-muted)",padding:"8px 12px",cursor:"pointer",fontSize:"14px"}}>← Retour</button>
-        <div style={{flex:1}}><h1 style={{margin:0,fontSize:"18px",fontWeight:800,color:typeMeta.color}}>{typeMeta.emoji} {doc.number}</h1><div style={{fontSize:"12px",color:"var(--text-muted)",marginTop:"2px"}}>{company.name}</div></div>
-        <button onClick={()=>setShowStatusPicker(true)} style={{padding:"4px 10px",borderRadius:"20px",fontSize:"11px",fontWeight:700,background:STATUS_COLORS[doc.status as DocumentStatus]+"22",color:STATUS_COLORS[doc.status as DocumentStatus],border:"1px solid "+STATUS_COLORS[doc.status as DocumentStatus]+"44",cursor:"pointer"}}>{STATUS_LABELS[doc.status as DocumentStatus]} ▾</button>
-      </div>
-
-      <div style={{display:"flex",gap:"8px",padding:"12px 16px",borderBottom:"1px solid var(--border)"}}>
-        {(["facture","devis","contrat"] as DocumentType[]).map((t)=>(
-          <button key={t} onClick={()=>{upd({type:t});setActiveTab("info");}} style={{flex:1,padding:"10px 4px",borderRadius:"10px",cursor:"pointer",fontSize:"13px",fontWeight:docType===t?700:400,...(docType===t?typeActive:{border:"1px solid var(--border)",background:"transparent",color:"var(--text-muted)"})}}>
-            {TYPE_META[t].emoji} {TYPE_META[t].label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{display:"flex",borderBottom:"1px solid var(--border)",overflowX:"auto",scrollbarWidth:"none"}}>
-        {currentTabs.map((tab)=>(
-          <button key={tab.id} onClick={()=>setActiveTab(tab.id)} style={{flex:1,minWidth:"60px",padding:"12px 4px",border:"none",borderBottom:"2px solid transparent",background:"none",cursor:"pointer",fontSize:"11px",color:"var(--text-muted)",whiteSpace:"nowrap",...(safeTab===tab.id?tabActive:{})}}>{tab.label}</button>
-        ))}
-      </div>
-
-      <div style={{padding:"16px"}}>
-        {safeTab==="info"&&(<>
-          <div style={{...cardStyle,border:`1px solid ${typeMeta.color}44`,background:`${typeMeta.color}08`,minHeight:"120px"}}>
-            <DocumentWatermark type={wm} logoUrl={company.logoUrl} companyName={company.name} opacity={0.07}/>
-            <div style={{position:"relative",zIndex:1}}>
-              <div style={{fontSize:"11px",color:typeMeta.color,letterSpacing:"0.1em",marginBottom:"10px",textTransform:"uppercase",fontWeight:700}}>✨ De (Auto — Réglages)</div>
-              {company.logoUrl&&<img src={company.logoUrl} alt="Logo" style={{width:"44px",height:"44px",objectFit:"contain",borderRadius:"6px",marginBottom:"8px",background:"#fff"}}/>}
-              <div style={{fontWeight:700,fontSize:"15px",color:"var(--text)"}}>{company.name}</div>
-              {company.tagline&&<div style={{fontSize:"12px",color:typeMeta.color,marginBottom:"6px"}}>{company.tagline}</div>}
-              <div style={{fontSize:"13px",color:"var(--text-muted)",lineHeight:"1.7"}}>
-                {company.address&&<div>{company.address}</div>}{company.city&&<div>{company.city}, {company.province} {company.postalCode}</div>}
-                {company.phone&&<div>📞 {company.phone}</div>}{company.email&&<div>✉️ {company.email}</div>}
-                {company.gstNumber&&<div>GST: {company.gstNumber}</div>}{company.wcbNumber&&<div>WCB: {company.wcbNumber}</div>}
-              </div>
-            </div>
-          </div>
-          <div style={cardStyle}>
-            <Field label="Numéro de document" value={doc.number} onChange={(v)=>upd({number:v})}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
-              <Field label="Date" value={doc.date} onChange={(v)=>upd({date:v})} type="date"/>
-              {docType==="facture"&&<Field label="Échéance paiement" value={doc.dueDate} onChange={(v)=>upd({dueDate:v})} type="date"/>}
-              {docType==="devis"&&<Field label="Valide (jours)" value={validDays} onChange={setValidDays} type="number" placeholder="30"/>}
-              {docType==="contrat"&&<Field label="Début des travaux" value={startDate} onChange={setStartDate} type="date"/>}
-            </div>
-            {docType==="contrat"&&<Field label="Date fin prévue" value={endDate} onChange={setEndDate} type="date"/>}
-          </div>
-          <div style={cardStyle}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
-              <span style={{fontWeight:700,color:"var(--text)"}}>{docType==="contrat"?"🤝 Partie cliente":"👤 Client"}</span>
-              <button onClick={()=>setShowClientPicker(true)} style={{background:"var(--success)18",border:"1px solid var(--success)44",color:"var(--success)",borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"13px",fontWeight:600}}>👥 Choisir</button>
-            </div>
-            <Field label="Nom complet" value={doc.client.name} onChange={(v)=>upd({client:{...doc.client,name:v}})} placeholder="Nom du client"/>
-            <Field label="Courriel" value={doc.client.email} onChange={(v)=>upd({client:{...doc.client,email:v}})} type="email" placeholder="email@exemple.com"/>
-            <Field label="Téléphone" value={doc.client.phone} onChange={(v)=>upd({client:{...doc.client,phone:v}})} type="tel" placeholder="(780) 555-5555"/>
-            <Field label="Adresse" value={doc.client.address} onChange={(v)=>upd({client:{...doc.client,address:v}})} placeholder="Adresse complète"/>
-          </div>
-        </>)}
-
-        {safeTab==="travaux"&&(<>
-          <div style={cardStyle}>
-            <h3 style={{marginTop:0,marginBottom:"14px",color:"var(--text)"}}>🏗️ Description des travaux</h3>
-            <label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>{docType==="devis"?"Travaux proposés":"Travaux à réaliser"}</label>
-            <textarea value={workDesc} onChange={(e)=>setWorkDesc(e.target.value)} rows={8} placeholder="Décrire en détail les travaux..." style={{...inputStyle,resize:"vertical",lineHeight:"1.6"}}/>
-          </div>
-          {docType==="devis"&&<div style={{...cardStyle,border:"1px solid #3b82f644",background:"#3b82f608"}}><div style={{fontSize:"11px",color:"#3b82f6",letterSpacing:"0.1em",marginBottom:"10px",textTransform:"uppercase",fontWeight:700}}>ℹ️ Validité</div><p style={{margin:0,fontSize:"14px",color:"var(--text-muted)"}}>Ce devis est valide <strong style={{color:"var(--text)"}}>{validDays} jours</strong> à compter du <strong style={{color:"var(--text)"}}>{doc.date}</strong>.</p></div>}
-          {docType==="contrat"&&<div style={{...cardStyle,border:"1px solid #22c55e44",background:"#22c55e08"}}><div style={{fontSize:"11px",color:"#22c55e",letterSpacing:"0.1em",marginBottom:"10px",textTransform:"uppercase",fontWeight:700}}>📅 Calendrier</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}><div><div style={{fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px"}}>DÉBUT</div><div style={{fontWeight:700,color:"var(--text)",fontSize:"15px"}}>{startDate}</div></div><div><div style={{fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px"}}>FIN PRÉVUE</div><div style={{fontWeight:700,color:"var(--text)",fontSize:"15px"}}>{endDate}</div></div></div></div>}
-        </>)}
-
-        {safeTab==="clauses"&&docType==="contrat"&&(<>
-          <div style={cardStyle}><h3 style={{marginTop:0,marginBottom:"14px",color:"var(--text)"}}>⚖️ Clauses & Conditions</h3><textarea value={clauses} onChange={(e)=>setClauses(e.target.value)} rows={12} style={{...inputStyle,resize:"vertical",lineHeight:"1.7"}} placeholder="1. ..."/></div>
-          <div style={{...cardStyle,border:"1px solid #f59e0b44",background:"#f59e0b08"}}><div style={{fontSize:"11px",color:"#f59e0b",letterSpacing:"0.1em",marginBottom:"10px",textTransform:"uppercase",fontWeight:700}}>⚠️ Modalités de paiement</div><textarea value={doc.terms??""} onChange={(e)=>upd({terms:e.target.value})} rows={4} placeholder="Ex: 30% à la signature..." style={{...inputStyle,resize:"vertical"}}/></div>
-        </>)}
-
-        {safeTab==="items"&&(
-          <div style={cardStyle}>
-            <h3 style={{marginTop:0,marginBottom:"16px",color:"var(--text)"}}>{docType==="devis"?"🔧 Estimatif des travaux":"🔧 Articles / Services"}</h3>
-            {doc.items.map((item:LineItem,idx:number)=>(
-              <div key={item.id} style={{background:"var(--surface)",borderRadius:"10px",padding:"14px",marginBottom:"10px",border:"1px solid var(--border)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
-                  <span style={{fontSize:"12px",color:"var(--text-muted)",fontWeight:600}}>Ligne {idx+1}</span>
-                  {doc.items.length>1&&<button onClick={()=>storeRemoveLine(currentId,item.id)} style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:"20px",padding:"0 4px"}}>✕</button>}
+  const ThemeSection = () => (
+    <div className={cardClass} style={cardStyle}>
+      <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "6px", color: "var(--text)" }}>
+        🎨 Thème de l&apos;application
+      </h2>
+      <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>
+        Le thème change toute l&apos;application instantanément.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        {allThemes.map((theme) => {
+          const isActive = themeId === theme.id;
+          return (
+            <button
+              key={theme.id}
+              onClick={() => setTheme(theme.id)}
+              style={{
+                background: theme.colors.background,
+                border: isActive ? `2px solid ${theme.colors.primary}` : "2px solid transparent",
+                borderRadius: "12px", padding: "14px 12px", cursor: "pointer",
+                textAlign: "left", position: "relative", overflow: "hidden", transition: "all 0.2s",
+              }}
+            >
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: theme.colors.primary }}/>
+              <div style={{ fontSize: "20px", marginBottom: "6px" }}>{theme.emoji}</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: theme.colors.text, lineHeight: 1.3 }}>{theme.nameFr}</div>
+              {isActive && (
+                <div style={{ marginTop: "6px", fontSize: "10px", color: theme.colors.primary, fontWeight: 800, letterSpacing: "1px" }}>
+                  ✓ ACTIF
                 </div>
-                <div style={{marginBottom:"8px"}}><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Description</label><input type="text" value={item.description} onChange={(e)=>handleLineChange(item.id,"description",e.target.value)} placeholder="Description..." style={inputStyle}/></div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
-                  <div><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Qté</label><input type="number" value={item.quantity} onChange={(e)=>handleLineChange(item.id,"quantity",Number(e.target.value))} min="0" step="0.5" style={inputStyle}/></div>
-                  <div><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Prix unit.</label><input type="number" value={item.unitPrice} onChange={(e)=>handleLineChange(item.id,"unitPrice",Number(e.target.value))} min="0" step="0.01" style={inputStyle}/></div>
-                  <div><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Total</label><input type="text" value={formatCurrency(item.total)} readOnly style={{...inputStyle,opacity:0.6}}/></div>
-                </div>
-              </div>
-            ))}
-            <button onClick={()=>storeAddLine(currentId)} style={{width:"100%",padding:"12px",background:"transparent",border:"2px dashed var(--border)",borderRadius:"10px",color:"var(--primary)",cursor:"pointer",fontSize:"14px",fontWeight:600}}>+ Ajouter une ligne</button>
-          </div>
-        )}
-
-        {safeTab==="totals"&&(<>
-          <div style={{...cardStyle,minHeight:"200px"}}>
-            <DocumentWatermark type={wm} logoUrl={company.logoUrl} companyName={company.name} opacity={0.05}/>
-            <div style={{position:"relative",zIndex:1}}>
-              <h3 style={{marginTop:0,marginBottom:"16px",color:"var(--text)"}}>{docType==="contrat"?"💰 Montant du contrat":"💰 Totaux"}</h3>
-              {docType!=="contrat"&&<div style={{marginBottom:"12px"}}><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Remise (%)</label><input type="number" value={doc.discountType==="percent"?doc.discountValue:0} onChange={(e)=>{updateDiscount(currentId,"percent",Number(e.target.value));calculateTotals(currentId);}} min="0" max="100" style={inputStyle}/></div>}
-              <div style={{marginBottom:"16px"}}><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>{docType==="contrat"?"Acompte à la signature ($)":docType==="devis"?"Dépôt demandé ($)":"Dépôt reçu ($)"}</label><input type="number" value={doc.deposit??0} onChange={(e)=>updateDeposit(currentId,Number(e.target.value))} min="0" step="0.01" style={inputStyle}/></div>
-              <div style={{background:"var(--surface)",borderRadius:"10px",padding:"16px",border:"1px solid var(--border)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:"8px",fontSize:"14px",color:"var(--text-muted)"}}><span>Sous-total</span><span>{formatCurrency(doc.subtotal)}</span></div>
-                {doc.discountAmount>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:"8px",fontSize:"14px",color:"#22c55e"}}><span>Remise</span><span>−{formatCurrency(doc.discountAmount)}</span></div>}
-                {doc.taxes.filter((t:{enabled:boolean})=>t.enabled).map((tax:{id:string;name:string;rate:number})=>(
-                  <div key={tax.id} style={{display:"flex",justifyContent:"space-between",marginBottom:"8px",fontSize:"14px",color:"var(--text-muted)"}}><span>{tax.name} ({tax.rate}%)</span><span>{formatCurrency((doc.subtotal-(doc.discountAmount??0))*tax.rate/100)}</span></div>
-                ))}
-                <div style={{borderTop:"1px solid var(--border)",paddingTop:"12px",marginTop:"8px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:"22px",fontWeight:800,color:typeMeta.color,marginBottom:"12px"}}><span>TOTAL</span><span>{formatCurrency(doc.total)}</span></div>
-                  {(doc.deposit??0)>0&&(<><div style={{display:"flex",justifyContent:"space-between",fontSize:"14px",color:"#3b82f6",marginBottom:"6px"}}><span>{docType==="contrat"?"Acompte":"Dépôt"}</span><span>−{formatCurrency(doc.deposit)}</span></div><div style={{display:"flex",justifyContent:"space-between",fontSize:"16px",fontWeight:700,color:"var(--danger)"}}><span>Solde dû</span><span>{formatCurrency(doc.balanceDue)}</span></div></>)}
-                </div>
-              </div>
-            </div>
-          </div>
-          {(company.etransferEmail||company.bankName)&&<div style={{...cardStyle,border:"1px solid #3b82f644",background:"#3b82f608"}}><div style={{fontSize:"11px",color:"#3b82f6",letterSpacing:"0.1em",marginBottom:"10px",textTransform:"uppercase",fontWeight:700}}>💳 Paiement (Auto — Réglages)</div>{company.etransferEmail&&<div style={{fontSize:"14px",color:"var(--text-muted)",marginBottom:"4px"}}>Interac: <strong style={{color:"var(--text)"}}>{company.etransferEmail}</strong></div>}{company.bankName&&<div style={{fontSize:"14px",color:"var(--text-muted)"}}>{company.bankName}{company.bankAccount&&" — "+company.bankAccount}</div>}</div>}
-        </>)}
-
-        {safeTab==="notes"&&(
-          <div style={{...cardStyle,minHeight:"260px"}}>
-            <DocumentWatermark type={wm} logoUrl={company.logoUrl} companyName={company.name} opacity={0.05}/>
-            <div style={{position:"relative",zIndex:1}}>
-              <h3 style={{marginTop:0,marginBottom:"16px",color:"var(--text)"}}>📝 Notes & Signature</h3>
-              <div style={{marginBottom:"16px"}}><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Notes pour le client</label><textarea value={doc.notes??""} onChange={(e)=>upd({notes:e.target.value})} rows={4} style={{...inputStyle,resize:"vertical"}} placeholder="Merci pour votre confiance..."/></div>
-              {docType==="devis"&&<div style={{marginBottom:"16px"}}><label style={{display:"block",fontSize:"11px",color:"var(--text-muted)",marginBottom:"4px",textTransform:"uppercase"}}>Conditions d'acceptation</label><textarea value={doc.terms??""} onChange={(e)=>upd({terms:e.target.value})} rows={3} style={{...inputStyle,resize:"vertical"}} placeholder="L'acceptation de ce devis vaut bon de commande..."/></div>}
-              <SignatureCanvas label="Signature du client" isXP={isXP} canvasRef={singleSigRef} onClear={()=>clearCanvas(singleSigRef)}/>
-            </div>
-          </div>
-        )}
-
-        {safeTab==="sign"&&docType==="contrat"&&(
-          <div style={{...cardStyle,border:"1px solid #22c55e44",background:"#22c55e08"}}>
-            <DocumentWatermark type="CONTRAT" logoUrl={company.logoUrl} companyName={company.name} opacity={0.05}/>
-            <div style={{position:"relative",zIndex:1}}>
-              <h3 style={{marginTop:0,marginBottom:"6px",color:"var(--text)"}}>✍️ Signatures des parties</h3>
-              <p style={{margin:"0 0 20px",fontSize:"13px",color:"var(--text-muted)"}}>Les deux parties confirment avoir lu et accepté les termes du présent contrat.</p>
-              <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"12px"}}><div style={{flex:1,height:"1px",background:"var(--border)"}}/><span style={{fontSize:"12px",color:"var(--primary)",fontWeight:700,whiteSpace:"nowrap",padding:"4px 12px",background:"var(--primary)18",borderRadius:"20px",border:"1px solid var(--primary)44"}}>🔨 CONTRACTEUR</span><div style={{flex:1,height:"1px",background:"var(--border)"}}/></div>
-              <div style={{fontSize:"13px",color:"var(--text-muted)",marginBottom:"12px"}}><strong style={{color:"var(--text)"}}>{company.name}</strong>{company.ownerName&&<span> — {company.ownerName}</span>}</div>
-              <SignatureCanvas label="Signature du contracteur" isXP={isXP} canvasRef={contractorSigRef} onClear={()=>clearCanvas(contractorSigRef)}/>
-              <Field label="Date de signature — contracteur" value={today()} type="date" readOnly/>
-              <div style={{display:"flex",alignItems:"center",gap:"10px",margin:"20px 0"}}><div style={{flex:1,height:"1px",background:"var(--border)"}}/><span style={{fontSize:"11px",color:"var(--text-muted)",fontWeight:600}}>ET</span><div style={{flex:1,height:"1px",background:"var(--border)"}}/></div>
-              <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"12px"}}><div style={{flex:1,height:"1px",background:"var(--border)"}}/><span style={{fontSize:"12px",color:"#22c55e",fontWeight:700,whiteSpace:"nowrap",padding:"4px 12px",background:"#22c55e18",borderRadius:"20px",border:"1px solid #22c55e44"}}>👤 CLIENT</span><div style={{flex:1,height:"1px",background:"var(--border)"}}/></div>
-              <div style={{fontSize:"13px",color:"var(--text-muted)",marginBottom:"12px"}}><strong style={{color:doc.client.name?"var(--text)":"var(--danger)"}}>{doc.client.name||"⚠️ Client non défini — allez dans Info"}</strong></div>
-              <SignatureCanvas label="Signature du client" isXP={isXP} canvasRef={clientSigRef} onClear={()=>clearCanvas(clientSigRef)}/>
-              <Field label="Date de signature — client" value={today()} type="date" readOnly/>
-              <div style={{marginTop:"20px",padding:"14px",background:"var(--surface)",borderRadius:"10px",border:"1px solid var(--border)"}}><div style={{fontSize:"11px",color:"var(--text-muted)",lineHeight:"1.7"}}>En signant ce document, les deux parties reconnaissent avoir pris connaissance de l'ensemble des clauses et conditions.</div></div>
-            </div>
-          </div>
-        )}
-
-        <div style={{marginTop:"8px",display:"flex",flexDirection:"column",gap:"10px"}}>
-          <button style={btnPrimary} onClick={handleSave}>{saved?"✅ Sauvegardé!":"💾 Sauvegarder"}</button>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
-            <button onClick={handleSendEmail} style={{padding:"13px",borderRadius:"10px",cursor:"pointer",border:"1px solid #3b82f644",background:"#3b82f608",color:"#3b82f6",fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>📧 Email</button>
-            <button onClick={handleSendSMS} style={{padding:"13px",borderRadius:"10px",cursor:"pointer",border:"1px solid #22c55e44",background:"#22c55e08",color:"#22c55e",fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>💬 SMS</button>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
-            <button onClick={()=>setShowPreview(true)} style={{padding:"13px",borderRadius:"10px",cursor:"pointer",border:"1px solid var(--primary)44",background:"var(--primary)08",color:"var(--primary)",fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>👁️ Aperçu</button>
-            <button onClick={()=>window.print()} style={{padding:"13px",borderRadius:"10px",cursor:"pointer",border:"1px solid #f59e0b44",background:"#f59e0b08",color:"#f59e0b",fontWeight:700,fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>🖨️ PDF</button>
-          </div>
-          <button onClick={()=>{if(confirm("Supprimer ce document?")){deleteDocument(currentId);router.push("/documents");}}} style={{padding:"12px",borderRadius:"10px",cursor:"pointer",border:"1px solid var(--danger)44",background:"var(--danger)08",color:"var(--danger)",fontWeight:600,fontSize:"13px"}}>🗑️ Supprimer ce document</button>
-        </div>
-      </div>
-
-      {showClientPicker&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:100,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowClientPicker(false)}>
-          <div style={{background:"var(--surface)",border:"1px solid var(--border)",width:"100%",maxHeight:"70vh",borderRadius:"20px 20px 0 0",padding:"20px",overflowY:"auto"}} onClick={(e)=>e.stopPropagation()}>
-            <h3 style={{marginTop:0,marginBottom:"16px",color:"var(--text)"}}>👥 Choisir un client</h3>
-            {clients.length===0?<p style={{color:"var(--text-muted)",textAlign:"center",padding:"20px 0"}}>Aucun client. Ajoutez-en dans Réglages.</p>
-              :clients.map((client)=>(
-                <button key={client.id} onClick={()=>selectClient(client.id)} style={{display:"block",width:"100%",background:"var(--card)",border:"1px solid var(--border)",borderRadius:"10px",padding:"14px",color:"var(--text)",textAlign:"left",cursor:"pointer",marginBottom:"8px"}}>
-                  <div style={{fontWeight:700}}>{client.name}</div>
-                  {client.email&&<div style={{fontSize:"12px",color:"var(--text-muted)"}}>{client.email}</div>}
-                  {client.phone&&<div style={{fontSize:"12px",color:"var(--text-muted)"}}>{client.phone}</div>}
-                </button>
-              ))
-            }
-          </div>
-        </div>
-      )}
-
-      {showStatusPicker&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:100,display:"flex",alignItems:"flex-end"}} onClick={()=>setShowStatusPicker(false)}>
-          <div style={{background:"var(--surface)",border:"1px solid var(--border)",width:"100%",borderRadius:"20px 20px 0 0",padding:"20px"}} onClick={(e)=>e.stopPropagation()}>
-            <h3 style={{marginTop:0,marginBottom:"16px",color:"var(--text)"}}>Changer le statut</h3>
-            {(Object.keys(STATUS_LABELS) as DocumentStatus[]).map((s)=>(
-              <button key={s} onClick={()=>{upd({status:s});setShowStatusPicker(false);showToastMsg("Statut → "+STATUS_LABELS[s]);}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:doc.status===s?STATUS_COLORS[s]+"18":"var(--card)",border:"1px solid "+(doc.status===s?STATUS_COLORS[s]+"66":"var(--border)"),borderRadius:"10px",padding:"14px",color:"var(--text)",cursor:"pointer",marginBottom:"8px",fontWeight:doc.status===s?700:400}}>
-                <span>{STATUS_LABELS[s]}</span>{doc.status===s&&<span style={{color:STATUS_COLORS[s]}}>✓</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showPreview&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:200,overflowY:"auto"}} onClick={()=>setShowPreview(false)}>
-          <div
-            onClick={(e)=>e.stopPropagation()}
-            style={{
-              background:"#fff",
-              color:"#111",
-              margin:"20px auto",
-              maxWidth:"600px",
-              borderRadius:"12px",
-              padding:"32px",
-              position:"relative",
-              overflow:"hidden",
-            }}
-          >
-            {/* ══ FILIGRANE ══
-                ✅ Logo 3x plus grand : 420px
-                ✅ FACTURE collé juste sous le logo : gap 0px
-                ✅ FACTURE gros : 52px, letterSpacing serré
-                ✅ opacity 0.20, mixBlendMode multiply
-                ✅ Centré avec translate(-50%,-50%) rotate(-22deg)
-            ══════════════════════════════════════════════════ */}
-            <div style={{
-              position:"absolute",
-              top:"50%",
-              left:"50%",
-              transform:"translate(-50%, -50%) rotate(-22deg)",
-              pointerEvents:"none",
-              zIndex:0,
-              display:"flex",
-              flexDirection:"column",
-              alignItems:"center",
-              gap:"0px",
-              opacity:0.20,
-              userSelect:"none",
-              textAlign:"center",
-            }}>
-              {company.logoUrl&&(
-                <img
-                  src={company.logoUrl}
-                  alt=""
-                  style={{
-                    width:"420px",
-                    height:"420px",
-                    objectFit:"contain",
-                    mixBlendMode:"multiply",
-                    display:"block",
-                  }}
-                />
               )}
-              <div style={{
-                fontSize:"52px",
-                fontWeight:900,
-                color:"#000",
-                letterSpacing:"16px",
-                textTransform:"uppercase",
-                whiteSpace:"nowrap",
-                lineHeight:1,
-                marginTop:"-8px",
-              }}>
-                {wm}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ── VUE EMPLOYÉ ─────────────────────────────────────────────────────────────
+  if (!isAdmin) {
+    const emp = currentEmployee;
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", paddingBottom: "80px" }}>
+        <div style={{ padding: "20px 16px 12px", borderBottom: "1px solid var(--border)", marginBottom: "16px" }}>
+          <h1 style={{ fontSize: "20px", fontWeight: 800, margin: 0, color: "var(--primary)" }}>⚙️ Réglages</h1>
+          {emp && <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>{emp.name} — Employé</p>}
+        </div>
+        <div style={{ display: "flex", gap: "8px", padding: "0 16px 12px", overflowX: "auto", scrollbarWidth: "none" }}>
+          {empSections.map(s => <TabButton key={s.id} id={s.id} emoji={s.emoji} label={s.label}/>)}
+        </div>
+        <div style={{ padding: "0 16px" }}>
+          {activeSection === "theme" && <ThemeSection/>}
+          {activeSection === "pin" && (
+            <div className={cardClass} style={cardStyle}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🔒 Changer mon PIN</h2>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                👑 Seul l&apos;admin peut modifier les PINs
               </div>
             </div>
+          )}
+          {activeSection === "paye" && (
+            <div className={cardClass} style={cardStyle}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>💰 Ma Paye</h2>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "20px" }}>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Taux horaire</div>
+                <div style={{ fontSize: "32px", fontWeight: 900, color: "var(--primary)" }}>${emp?.hourlyRate ?? 0}/h</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>Mode: {emp?.workMode ?? "—"}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-            {/* ══ CONTENU ══ */}
-            <div style={{position:"relative",zIndex:1}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"24px"}}>
-                <div>
-                  {company.logoUrl&&(
-                    <img src={company.logoUrl} alt="Logo"
-                      style={{width:"100px",height:"100px",objectFit:"contain",marginBottom:"10px",display:"block"}}
-                    />
-                  )}
-                  <div style={{fontWeight:800,fontSize:"18px"}}>{company.name}</div>
-                  {company.tagline&&<div style={{fontSize:"12px",color:"#666"}}>{company.tagline}</div>}
-                  <div style={{fontSize:"12px",color:"#666",marginTop:"6px",lineHeight:"1.6"}}>
-                    {company.address&&<div>{company.address}</div>}
-                    {company.city&&<div>{company.city}, {company.province} {company.postalCode}</div>}
-                    {company.phone&&<div>{company.phone}</div>}
-                    {company.email&&<div>{company.email}</div>}
-                    {company.gstNumber&&<div>GST: {company.gstNumber}</div>}
+  // ── VUE ADMIN ────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", paddingBottom: "80px" }}>
+      <div style={{ padding: "20px 16px 12px", borderBottom: "1px solid var(--border)", marginBottom: "12px" }}>
+        <h1 style={{ fontSize: "20px", fontWeight: 800, margin: 0, color: "var(--primary)" }}>
+          {isXP ? "⚙️ CONFIG" : "⚙️ Réglages Admin"}
+        </h1>
+      </div>
+
+      <div style={{ display: "flex", overflowX: "auto", gap: "8px", padding: "0 16px 12px", scrollbarWidth: "none" }}>
+        {adminSections.map(s => <TabButton key={s.id} id={s.id} emoji={s.emoji} label={s.label}/>)}
+      </div>
+
+      <div style={{ padding: "0 16px" }}>
+
+        {/* ── COMPANY ── */}
+        {activeSection === "company" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🏢 Informations Compagnie</h2>
+            <Field label="Nom de la compagnie" value={company.name} onChange={(v) => updateCompany({ name: v })}/>
+            <Field label="Slogan" value={company.tagline} onChange={(v) => updateCompany({ tagline: v })}/>
+            <Field label="Nom du propriétaire" value={company.ownerName} onChange={(v) => updateCompany({ ownerName: v })}/>
+            <div style={{ marginBottom: "16px", marginTop: "4px" }}>
+              <label style={labelStyle}>Logo de la compagnie</label>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "10px", marginTop: "2px" }}>
+                Apparaît en filigrane sur toutes les factures, devis, contrats et commandes.
+              </p>
+              {company.logoUrl ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px", padding: "12px", background: "var(--surface)", borderRadius: "10px", border: "1px solid var(--border)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={company.logoUrl} alt="Logo" style={{ width: "56px", height: "56px", objectFit: "contain", borderRadius: "8px", background: "#fff" }}/>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", margin: 0 }}>Logo actuel</p>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "2px 0 0" }}>Visible en filigrane sur les documents</p>
+                  </div>
+                  <button
+                    onClick={() => updateCompany({ logoUrl: "" })}
+                    style={{ background: "#7f1d1d22", border: "1px solid #7f1d1d55", color: "#fca5a5", borderRadius: "8px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
+                  >
+                    ✕ Retirer
+                  </button>
+                </div>
+              ) : (
+                <div style={{ padding: "20px", background: "var(--surface)", borderRadius: "10px", border: "2px dashed var(--border)", textAlign: "center", marginBottom: "10px" }}>
+                  <div style={{ fontSize: "32px", marginBottom: "6px" }}>🖼️</div>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>Aucun logo — cliquez pour en ajouter un</p>
+                </div>
+              )}
+              <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoUpload} style={{ display: "none" }}/>
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                style={{ width: "100%", padding: "12px", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--primary)", background: "var(--primary)12", color: "var(--primary)", fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+              >
+                📁 {company.logoUrl ? "Changer le logo" : "Choisir un logo"}
+              </button>
+              <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px", textAlign: "center" }}>
+                PNG, JPG, SVG ou WEBP recommandé · Fond transparent idéal
+              </p>
+            </div>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── CONTACT ── */}
+        {activeSection === "contact" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>📞 Coordonnées</h2>
+            <Field label="Adresse" value={company.address} onChange={(v) => updateCompany({ address: v })}/>
+            <Field label="Ville" value={company.city} onChange={(v) => updateCompany({ city: v })}/>
+            <Field label="Province" value={company.province} onChange={(v) => updateCompany({ province: v })}/>
+            <Field label="Code postal" value={company.postalCode} onChange={(v) => updateCompany({ postalCode: v })}/>
+            <Field label="Téléphone" value={company.phone} onChange={(v) => updateCompany({ phone: v })} type="tel"/>
+            <Field label="Courriel" value={company.email} onChange={(v) => updateCompany({ email: v })} type="email"/>
+            <Field label="Site web" value={company.website} onChange={(v) => updateCompany({ website: v })}/>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── LEGAL ── */}
+        {activeSection === "legal" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>📋 Légal & Taxes (Alberta)</h2>
+            <div style={{ background: "var(--success)18", border: "1px solid var(--success)44", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "13px", color: "var(--success)" }}>
+              Alberta = GST 5% seulement (pas de PST/HST). WCB pour assurance employés.
+            </div>
+            <Field label="Numéro GST/HST (5% Alberta)" value={company.gstNumber} onChange={(v) => updateCompany({ gstNumber: v })} placeholder="123456789 RT 0001"/>
+            <Field label="Numéro WCB" value={company.wcbNumber} onChange={(v) => updateCompany({ wcbNumber: v })}/>
+            <Field label="Numéro d'entreprise (CRA)" value={company.businessNumber} onChange={(v) => updateCompany({ businessNumber: v })}/>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── PAYMENT ── */}
+        {activeSection === "payment" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>💳 Informations de Paiement</h2>
+            <Field label="Courriel Interac e-Transfer" value={company.etransferEmail} onChange={(v) => updateCompany({ etransferEmail: v })} type="email"/>
+            <Field label="Nom de la banque" value={company.bankName} onChange={(v) => updateCompany({ bankName: v })}/>
+            <Field label="Numéro de transit" value={company.bankTransit} onChange={(v) => updateCompany({ bankTransit: v })}/>
+            <Field label="Numéro de compte" value={company.bankAccount} onChange={(v) => updateCompany({ bankAccount: v })}/>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── BILLING ── */}
+        {activeSection === "billing" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🧾 Paramètres Facturation</h2>
+            <Field label="Dépôt requis (%)" value={company.defaultDepositPercent} onChange={(v) => updateCompany({ defaultDepositPercent: Number(v) })} type="number"/>
+            <Field label="Délai de paiement (jours)" value={company.defaultPaymentTermsDays} onChange={(v) => updateCompany({ defaultPaymentTermsDays: Number(v) })} type="number"/>
+            <div style={{ marginBottom: "12px" }}>
+              <label style={labelStyle}>Notes par défaut</label>
+              <textarea
+                value={company.defaultNotes}
+                onChange={(e) => updateCompany({ defaultNotes: e.target.value })}
+                rows={3}
+                style={{ width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "10px 12px", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", outline: "none", resize: "vertical" }}
+              />
+            </div>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── EMPLOYEES ── */}
+        {activeSection === "employees" && (
+          <div className={cardClass} style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                👷 Employés <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({employees.length})</span>
+              </h2>
+              <button onClick={() => { setShowAddEmp(!showAddEmp); setEmpError(""); }} style={btnSmallPrimary}>
+                {showAddEmp ? "✕ Fermer" : "+ Ajouter"}
+              </button>
+            </div>
+            {showAddEmp && (
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  ➕ Nouvel Employé
+                </p>
+                {empError && (
+                  <div style={{ background: "#7f1d1d22", border: "1px solid #7f1d1d", borderRadius: "8px", padding: "10px", marginBottom: "12px", fontSize: "13px", color: "#fca5a5" }}>
+                    ⚠️ {empError}
+                  </div>
+                )}
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={labelStyle}>Nom complet *</label>
+                  <input value={newEmpName} onChange={e => setNewEmpName(e.target.value)} placeholder="Ex: Jean Tremblay" style={inputStyle}/>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <label style={labelStyle}>PIN (4 chiffres) *</label>
+                    <input value={newEmpPin} onChange={e => setNewEmpPin(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1234" maxLength={4} type="password" style={inputStyle}/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Rôle</label>
+                    <select value={newEmpRole} onChange={e => setNewEmpRole(e.target.value as "admin"|"employee")} style={selectStyle}>
+                      <option value="employee">👷 Employé</option>
+                      <option value="admin">👑 Admin</option>
+                    </select>
                   </div>
                 </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:"26px",fontWeight:900,color:typeMeta.color,textTransform:"uppercase"}}>{typeMeta.label}</div>
-                  <div style={{fontSize:"14px",fontWeight:700}}>{doc.number}</div>
-                  <div style={{fontSize:"12px",color:"#666",marginTop:"4px"}}>Date: {doc.date}</div>
-                  {docType==="facture"&&<div style={{fontSize:"12px",color:"#666"}}>Échéance: {doc.dueDate}</div>}
-                  {docType==="devis"&&<div style={{fontSize:"12px",color:"#666"}}>Valide {validDays} jours</div>}
-                  {docType==="contrat"&&<div style={{fontSize:"12px",color:"#666"}}>{startDate} → {endDate}</div>}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+                  <div>
+                    <label style={labelStyle}>Mode de travail</label>
+                    <select value={newEmpMode} onChange={e => setNewEmpMode(e.target.value as "heure"|"surface"|"forfait")} style={selectStyle}>
+                      <option value="heure">⏱ Par heure</option>
+                      <option value="surface">📐 Par surface</option>
+                      <option value="forfait">💼 Forfait</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Taux horaire ($)</label>
+                    <input type="number" value={newEmpRate} onChange={e => setNewEmpRate(Number(e.target.value))} min={0} style={inputStyle}/>
+                  </div>
                 </div>
+                <button onClick={handleAddEmployee} style={btnPrimary}>✅ Créer l&apos;employé</button>
               </div>
-
-              <div style={{background:"rgba(0,0,0,0.04)",borderRadius:"8px",padding:"16px",marginBottom:"24px"}}>
-                <div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>{docType==="contrat"?"Partie cliente":"Facturer à"}</div>
-                <div style={{fontWeight:700}}>{doc.client.name||"—"}</div>
-                {doc.client.email&&<div style={{fontSize:"13px",color:"#555"}}>{doc.client.email}</div>}
-                {doc.client.phone&&<div style={{fontSize:"13px",color:"#555"}}>{doc.client.phone}</div>}
-                {doc.client.address&&<div style={{fontSize:"13px",color:"#555"}}>{doc.client.address}</div>}
-              </div>
-
-              {workDesc&&(
-                <div style={{marginBottom:"20px",padding:"14px",background:"rgba(22,163,74,0.06)",borderRadius:"8px"}}>
-                  <div style={{fontSize:"11px",color:"#16a34a",textTransform:"uppercase",marginBottom:"6px"}}>Description des travaux</div>
-                  <div style={{fontSize:"13px",color:"#333",whiteSpace:"pre-wrap",lineHeight:"1.6"}}>{workDesc}</div>
+            )}
+            {employees.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "20px 0" }}>Aucun employé enregistré</p>
+            ) : (
+              employees.map((emp) => (
+                <div key={emp.id} className={cardClass} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: isXP ? "8px" : "50%", background: emp.color || "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 800, color: "white", boxShadow: `0 0 10px ${emp.color}55` }}>
+                      {emp.name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: "var(--text)" }}>{emp.name}</div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                        {emp.role === "admin" ? "👑 Admin" : "👷 Employé"}{emp.hourlyRate ? ` • $${emp.hourlyRate}/h` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  {emp.role !== "admin" && (
+                    <button
+                      onClick={() => { if (confirm(`Supprimer ${emp.name}?`)) deleteEmployee(emp.id); }}
+                      style={{ background: "#7f1d1d", color: "#fca5a5", border: "none", borderRadius: "8px", padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
+                    >
+                      Supprimer
+                    </button>
+                  )}
                 </div>
-              )}
-
-              {doc.items.some((i:LineItem)=>i.description)&&(
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"24px"}}>
-                  <thead>
-                    <tr style={{background:"rgba(17,17,17,0.85)",color:"#fff"}}>
-                      <th style={{padding:"10px 12px",textAlign:"left",fontSize:"12px"}}>Description</th>
-                      <th style={{padding:"10px 12px",textAlign:"center",fontSize:"12px"}}>Qté</th>
-                      <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Prix unit.</th>
-                      <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {doc.items.map((item:LineItem,i:number)=>(
-                      <tr key={item.id} style={{background:i%2===0?"rgba(0,0,0,0.04)":"transparent"}}>
-                        <td style={{padding:"10px 12px",fontSize:"13px",color:"#111"}}>{item.description||"—"}</td>
-                        <td style={{padding:"10px 12px",textAlign:"center",fontSize:"13px",color:"#111"}}>{item.quantity}</td>
-                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",color:"#111"}}>{formatCurrency(item.unitPrice)}</td>
-                        <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",fontWeight:600,color:"#111"}}>{formatCurrency(item.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              <div style={{marginLeft:"auto",maxWidth:"260px",marginBottom:"24px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"13px"}}><span style={{color:"#666"}}>Sous-total</span><span>{formatCurrency(doc.subtotal)}</span></div>
-                {doc.taxes.filter((t:{enabled:boolean})=>t.enabled).map((tax:{id:string;name:string;rate:number})=>(
-                  <div key={tax.id} style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"13px",color:"#666"}}><span>{tax.name} ({tax.rate}%)</span><span>{formatCurrency((doc.subtotal-(doc.discountAmount??0))*tax.rate/100)}</span></div>
-                ))}
-                <div style={{borderTop:"2px solid #111",paddingTop:"10px",marginTop:"10px",display:"flex",justifyContent:"space-between",fontSize:"20px",fontWeight:800}}><span>TOTAL</span><span style={{color:typeMeta.color}}>{formatCurrency(doc.total)}</span></div>
-                {(doc.deposit??0)>0&&(<>
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:"8px",fontSize:"13px",color:"#3b82f6"}}><span>{docType==="contrat"?"Acompte":"Dépôt"}</span><span>−{formatCurrency(doc.deposit)}</span></div>
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:"4px",fontSize:"15px",fontWeight:700,color:"#ef4444"}}><span>Solde dû</span><span>{formatCurrency(doc.balanceDue)}</span></div>
-                </>)}
-              </div>
-
-              {docType==="contrat"&&clauses&&<div style={{marginBottom:"20px",padding:"14px",background:"rgba(0,0,0,0.03)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"8px"}}>Clauses & Conditions</div><div style={{fontSize:"12px",color:"#444",whiteSpace:"pre-wrap",lineHeight:"1.7"}}>{clauses}</div></div>}
-              {doc.notes&&<div style={{marginBottom:"16px",padding:"14px",background:"rgba(0,0,0,0.03)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>Notes</div><div style={{fontSize:"13px",color:"#444"}}>{doc.notes}</div></div>}
-              {(company.etransferEmail||company.bankName)&&<div style={{marginBottom:"20px",padding:"14px",background:"rgba(59,130,246,0.06)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#3b82f6",textTransform:"uppercase",marginBottom:"6px"}}>Paiement</div>{company.etransferEmail&&<div style={{fontSize:"13px"}}>Interac: <strong>{company.etransferEmail}</strong></div>}{company.bankName&&<div style={{fontSize:"13px"}}>{company.bankName}{company.bankAccount&&" — "+company.bankAccount}</div>}</div>}
-
-              <div style={{display:"grid",gridTemplateColumns:docType==="contrat"?"1fr 1fr":"1fr",gap:"16px",marginTop:"24px"}}>
-                {docType==="contrat"&&<div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Contracteur — {company.name}</div></div>}
-                <div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Client — {doc.client.name||"—"}</div></div>
-              </div>
-
-              <div style={{marginTop:"24px",display:"flex",gap:"10px"}}>
-                <button onClick={()=>setShowPreview(false)} style={{flex:1,padding:"12px",background:"#111",color:"#fff",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>✕ Fermer</button>
-                <button onClick={()=>window.print()} style={{flex:1,padding:"12px",background:typeMeta.color,color:"#000",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>🖨️ Imprimer / PDF</button>
-              </div>
-            </div>
+              ))
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── CLIENTS ── */}
+        {activeSection === "clients" && (
+          <div className={cardClass} style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                👥 Clients <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({clients.length})</span>
+              </h2>
+              <button onClick={() => setShowAddClient(!showAddClient)} style={btnSmallPrimary}>
+                {showAddClient ? "✕ Fermer" : "+ Ajouter"}
+              </button>
+            </div>
+            {showAddClient && (
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  ➕ Nouveau Client
+                </p>
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={labelStyle}>Nom *</label>
+                  <input value={newCName} onChange={e => setNewCName(e.target.value)} placeholder="Nom du client ou compagnie" style={inputStyle}/>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <label style={labelStyle}>Téléphone</label>
+                    <input value={newCPhone} onChange={e => setNewCPhone(e.target.value)} placeholder="780-555-1234" type="tel" style={inputStyle}/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Courriel</label>
+                    <input value={newCEmail} onChange={e => setNewCEmail(e.target.value)} placeholder="client@email.com" type="email" style={inputStyle}/>
+                  </div>
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={labelStyle}>Adresse</label>
+                  <input value={newCAddress} onChange={e => setNewCAddress(e.target.value)} placeholder="123 rue Exemple" style={inputStyle}/>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+                  <div>
+                    <label style={labelStyle}>Ville</label>
+                    <input value={newCCity} onChange={e => setNewCCity(e.target.value)} placeholder="Calgary" style={inputStyle}/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Code postal</label>
+                    <input value={newCPostal} onChange={e => setNewCPostal(e.target.value)} placeholder="T2X 0A1" style={inputStyle}/>
+                  </div>
+                </div>
+                <button onClick={handleAddClient} style={btnPrimary}>✅ Ajouter le client</button>
+              </div>
+            )}
+            {clients.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>
+                <div style={{ fontSize: "32px", marginBottom: "8px" }}>👥</div>
+                <p style={{ fontSize: "14px" }}>Aucun client enregistré</p>
+                <p style={{ fontSize: "12px" }}>Cliquez &quot;+ Ajouter&quot; pour commencer</p>
+              </div>
+            ) : (
+              clients.map((client) => (
+                <div key={client.id} className={cardClass} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "8px", border: "1px solid var(--border)" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "var(--text)", fontSize: "14px" }}>{client.name}</div>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                      {client.phone ? `📞 ${client.phone}` : ""}
+                      {client.phone && client.city ? " • " : ""}
+                      {client.city ? `📍 ${client.city}` : ""}
+                      {!client.phone && !client.city && client.email ? `✉️ ${client.email}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { if (confirm(`Supprimer ${client.name}?`)) deleteClient(client.id); }}
+                    style={{ background: "#7f1d1d", color: "#fca5a5", border: "none", borderRadius: "8px", padding: "8px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── CATALOGUE ── */}
+        {activeSection === "catalogue" && (
+          <div className={cardClass} style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                📦 Catalogue <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 400 }}>({materials.length} articles)</span>
+              </h2>
+              <button onClick={() => setShowAddMat(!showAddMat)} style={btnSmallPrimary}>
+                {showAddMat ? "✕ Fermer" : "+ Ajouter"}
+              </button>
+            </div>
+            {showAddMat && (
+              <div style={{ background: "var(--surface)", border: "2px solid var(--primary)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary)", marginTop: 0, marginBottom: "14px", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  ➕ Nouveau Matériau
+                </p>
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={labelStyle}>Nom *</label>
+                  <input value={newMatName} onChange={e => setNewMatName(e.target.value)} placeholder="Ex: Bardeau premium" style={inputStyle}/>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <label style={labelStyle}>Prix ($)</label>
+                    <input type="number" value={newMatPrice} onChange={e => setNewMatPrice(parseFloat(e.target.value) || 0)} min={0} step={0.01} style={inputStyle}/>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Unité</label>
+                    <select value={newMatUnit} onChange={e => setNewMatUnit(e.target.value)} style={selectStyle}>
+                      {["pi²","pi lin.","boîte","rouleau","feuille","tube","unité","heure"].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Emoji</label>
+                    <input value={newMatEmoji} onChange={e => setNewMatEmoji(e.target.value)} placeholder="📦" style={{ ...inputStyle, textAlign: "center" }}/>
+                  </div>
+                </div>
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={labelStyle}>Catégorie</label>
+                  <select value={newMatCat} onChange={e => setNewMatCat(e.target.value)} style={selectStyle}>
+                    <option value="toiture">🏠 Toiture</option>
+                    <option value="siding">🏡 Siding</option>
+                    <option value="fixations">🔩 Fixations</option>
+                    <option value="etancheite">💧 Étanchéité</option>
+                    <option value="structure">🪵 Structure</option>
+                    <option value="maindoeuvre">👷 Main d&apos;oeuvre</option>
+                  </select>
+                </div>
+                <button onClick={handleAddMaterial} style={btnPrimary}>✅ Ajouter au catalogue</button>
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "14px" }}>
+              {[
+                { key: "toiture",     label: "Toiture",       emoji: "🏠", color: "#ea580c" },
+                { key: "siding",      label: "Siding",        emoji: "🏡", color: "#f59e0b" },
+                { key: "fixations",   label: "Fixations",     emoji: "🔩", color: "#06b6d4" },
+                { key: "etancheite",  label: "Étanchéité",    emoji: "💧", color: "#3b82f6" },
+                { key: "structure",   label: "Structure",     emoji: "🪵", color: "#22c55e" },
+                { key: "maindoeuvre", label: "Main-d'oeuvre", emoji: "👷", color: "#a855f7" },
+              ].map(cat => {
+                const count = materials.filter(m => m.category === cat.key).length;
+                return (
+                  <div key={cat.key} style={{ background: `${cat.color}15`, border: `1px solid ${cat.color}44`, borderRadius: "8px", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: cat.color, fontWeight: 700 }}>{cat.emoji} {cat.label}</span>
+                    <span style={{ fontSize: "16px", fontWeight: 800, color: cat.color }}>{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => router.push("/catalogue")}
+              style={{ width: "100%", padding: "14px", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+            >
+              📦 Gérer le catalogue complet →
+            </button>
+          </div>
+        )}
+
+        {/* ── THEME ── */}
+        {activeSection === "theme" && <ThemeSection/>}
+
+        {/* ── NUMBERING ── */}
+        {activeSection === "numbering" && (
+          <div className={cardClass} style={cardStyle}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "16px", color: "var(--text)" }}>🔢 Numérotation des Documents</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+              <Field label="Préfixe Facture"    value={company.invoicePrefix}      onChange={(v) => updateCompany({ invoicePrefix: v })}                         placeholder="FAC"/>
+              <Field label="Prochain # Facture" value={company.nextInvoiceNumber}  onChange={(v) => updateCompany({ nextInvoiceNumber: Number(v) })}  type="number"/>
+              <Field label="Préfixe Devis"      value={company.quotePrefix}        onChange={(v) => updateCompany({ quotePrefix: v })}                           placeholder="DEV"/>
+              <Field label="Prochain # Devis"   value={company.nextQuoteNumber}    onChange={(v) => updateCompany({ nextQuoteNumber: Number(v) })}    type="number"/>
+              <Field label="Préfixe Contrat"    value={company.contractPrefix}     onChange={(v) => updateCompany({ contractPrefix: v })}                        placeholder="CTR"/>
+              <Field label="Prochain # Contrat" value={company.nextContractNumber} onChange={(v) => updateCompany({ nextContractNumber: Number(v) })} type="number"/>
+            </div>
+            <div style={{ background: "var(--surface)", borderRadius: "8px", padding: "12px", marginBottom: "12px", fontSize: "13px", color: "var(--text-muted)" }}>
+              Exemple: <strong style={{ color: "var(--primary)" }}>{company.invoicePrefix}-{String(company.nextInvoiceNumber).padStart(3, "0")}</strong>
+            </div>
+            <button style={btnPrimary} onClick={save}>{saved ? "✅ Sauvegardé!" : "💾 Sauvegarder"}</button>
+          </div>
+        )}
+
+        {/* ── DANGER ── */}
+        {activeSection === "danger" && (
+          <div className={cardClass} style={{ ...cardStyle, borderColor: "#7f1d1d" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, marginTop: 0, marginBottom: "8px", color: "#fca5a5" }}>⚠️ Zone Danger</h2>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>Ces actions sont irréversibles.</p>
+            <button
+              style={btnDanger}
+              onClick={() => {
+                if (confirm("Réinitialiser la numérotation? Repart à 001.")) {
+                  resetNumbering();
+                  alert("Numérotation réinitialisée.");
+                }
+              }}
+            >
+              🔢 Réinitialiser numérotation (001)
+            </button>
+            <button
+              style={{ ...btnDanger, marginTop: "12px" }}
+              onClick={() => {
+                if (confirm("ATTENTION: Effacer TOUTES les données de la compagnie?")) {
+                  updateCompany({
+                    name: "Hailite Xteriors", tagline: "", address: "", city: "",
+                    phone: "", email: "", gstNumber: "", wcbNumber: "",
+                    businessNumber: "", etransferEmail: "",
+                  });
+                  alert("Données réinitialisées.");
+                }
+              }}
+            >
+              🗑️ Réinitialiser infos compagnie
+            </button>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
+
