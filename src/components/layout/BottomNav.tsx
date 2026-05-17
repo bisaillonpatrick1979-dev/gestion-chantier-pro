@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useGoalStore } from '@/store/useGoalStore'
+import { useLangStore } from '@/store/useLangStore'
 
 function IcoAccueil({ c, glow }: { c: string; glow?: boolean }) {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={glow ? { filter: `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 3px ${c})` } : {}}>
@@ -78,30 +79,34 @@ export default function BottomNav() {
   const { employees, currentEmployeeId } = useEmployeeStore()
   const { themeId, theme } = useThemeStore()
   const { getGoal } = useGoalStore()
-  const currentEmployee = employees.find(e => e.id === currentEmployeeId) ?? null
-  const isAdmin = currentEmployee?.role === 'admin'
-  const isXP = themeId === 'xp'
-  const isDeco = themeId === 'deco'
-  const isQuantum = themeId === 'quantum'
-  const goal = currentEmployeeId ? getGoal(currentEmployeeId) : null
+  const { lang } = useLangStore()   // ← FIX : écoute les changements de langue en temps réel
 
+  const t = (fr: string, en: string) => lang === 'fr' ? fr : en
+
+  const currentEmployee = employees.find(e => e.id === currentEmployeeId) ?? null
+  const isAdmin    = currentEmployee?.role === 'admin'
+  const isXP       = themeId === 'xp'
+  const isDeco     = themeId === 'deco'
+  const isQuantum  = themeId === 'quantum'
+  const goal       = currentEmployeeId ? getGoal(currentEmployeeId) : null
+
+  // ── Labels bilingues ───────────────────────────────────────────────────────
   const adminItems = [
-    { href: '/',          label: isXP ? 'Base'     : 'Accueil',   Icon: IcoAccueil   },
-    { href: '/invoice',   label: 'Factures',                       Icon: IcoFacture   },
-    { href: '/projects',  label: isXP ? 'Quêtes'   : 'Projets',   Icon: IcoProjet    },
-    { href: '/documents', label: 'Docs',                           Icon: IcoDocument  },
-    { href: '/commandes', label: isXP ? 'PO'       : 'Commandes', Icon: IcoCommandes },
-    { href: '/stats',     label: isXP ? 'Stats XP' : 'Stats',     Icon: IcoStats     },
-    { href: '/settings',  label: isXP ? 'Config'   : 'Réglages',  Icon: IcoReglages  },
+    { href: '/',          label: isXP ? 'Base'                       : t('Accueil',   'Home'),     Icon: IcoAccueil   },
+    { href: '/invoice',   label:                                        t('Factures',  'Invoices'), Icon: IcoFacture   },
+    { href: '/projects',  label: isXP ? t('Quêtes', 'Quests')        : t('Projets',  'Projects'), Icon: IcoProjet    },
+    { href: '/documents', label:                                        t('Docs',      'Docs'),     Icon: IcoDocument  },
+    { href: '/commandes', label: isXP ? 'PO'                          : t('Commandes','Orders'),   Icon: IcoCommandes },
+    { href: '/stats',     label: isXP ? t('Stats XP', 'XP Stats')    : 'Stats',                   Icon: IcoStats     },
+    { href: '/settings',  label: isXP ? t('Config',   'Config')      : t('Réglages', 'Settings'), Icon: IcoReglages  },
   ]
 
-  // ✅ Factures ajouté dans la nav employé
   const employeeItems = [
-    { href: '/',          label: 'Accueil',  Icon: IcoAccueil  },
-    { href: '/invoice',   label: 'Factures', Icon: IcoFacture  },
-    { href: '/stats',     label: 'Stats',    Icon: IcoStats    },
-    { href: '/paye',      label: 'Paye',     Icon: IcoPaye     },
-    { href: '/settings',  label: 'Réglages', Icon: IcoReglages },
+    { href: '/',         label: t('Accueil',  'Home'),     Icon: IcoAccueil  },
+    { href: '/invoice',  label: t('Factures', 'Invoices'), Icon: IcoFacture  },
+    { href: '/stats',    label: 'Stats',                   Icon: IcoStats    },
+    { href: '/paye',     label: t('Paye',     'Payroll'),  Icon: IcoPaye     },
+    { href: '/settings', label: t('Réglages', 'Settings'), Icon: IcoReglages },
   ]
 
   const items = isAdmin ? adminItems : employeeItems
@@ -113,10 +118,10 @@ export default function BottomNav() {
   ]
   const displayItems = isXP && isAdmin ? xpAdminItems : items
 
-  const activeColor      = isXP ? '#a855f7' : isDeco ? '#D6B25E' : isQuantum ? '#2F80FF' : theme.colors.navActive
-  const inactiveColor    = isXP ? '#7c3aed' : isDeco ? '#A67C2D' : isQuantum ? '#4A6FA5' : theme.colors.navInactive
+  const activeColor       = isXP ? '#a855f7' : isDeco ? '#D6B25E' : isQuantum ? '#2F80FF' : theme.colors.navActive
+  const inactiveColor     = isXP ? '#7c3aed' : isDeco ? '#A67C2D' : isQuantum ? '#4A6FA5' : theme.colors.navInactive
   const inactiveGlowColor = isXP ? 'rgba(168,85,247,0.40)' : isDeco ? 'rgba(214,178,94,0.35)' : isQuantum ? 'rgba(47,128,255,0.35)' : theme.colors.glow1
-  const decoLineColor    = isXP
+  const decoLineColor     = isXP
     ? 'linear-gradient(90deg,transparent,#a855f7,#22d3ee,#a855f7,transparent)'
     : isDeco
     ? 'linear-gradient(90deg,transparent,#7A5A1A,#D6B25E,#FFE9A0,#D6B25E,#7A5A1A,transparent)'
@@ -142,7 +147,7 @@ export default function BottomNav() {
       `}</style>
 
       <nav style={{
-        position:'fixed',bottom:0,left:0,right:0,zIndex:50,
+        position:'fixed', bottom:0, left:0, right:0, zIndex:50,
         background: isXP ? 'rgba(10,5,20,0.97)' : 'var(--nav-bg,#0a0a0a)',
         borderTop:`1px solid ${isXP ? 'rgba(168,85,247,0.3)' : 'var(--nav-border,#222)'}`,
         paddingBottom:'env(safe-area-inset-bottom,0px)',
@@ -162,15 +167,15 @@ export default function BottomNav() {
               const isActive = pathname === '/stats'
               return (
                 <Link key="xp-center" href="/stats" className="nav-link" style={{
-                  display:'flex',flexDirection:'column',alignItems:'center',
-                  justifyContent:'flex-end',flex:1,padding:'0 2px 8px',
-                  textDecoration:'none',position:'relative',
+                  display:'flex', flexDirection:'column', alignItems:'center',
+                  justifyContent:'flex-end', flex:1, padding:'0 2px 8px',
+                  textDecoration:'none', position:'relative',
                 }}>
                   <div className="xp-center-icon" style={{
-                    width:'52px',height:'52px',borderRadius:'14px',
+                    width:'52px', height:'52px', borderRadius:'14px',
                     background:'linear-gradient(135deg,#7c3aed,#a855f7)',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    position:'absolute',bottom:'8px',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    position:'absolute', bottom:'8px',
                     border:'2px solid rgba(196,181,253,0.4)',
                   }}>
                     <IcoXP active={isActive}/>
@@ -184,15 +189,15 @@ export default function BottomNav() {
 
             return (
               <Link key={item.href} href={item.href} className="nav-link" style={{
-                display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:'2px',flex:1,
-                padding:'5px 1px',textDecoration:'none',
+                display:'flex', flexDirection:'column', alignItems:'center',
+                justifyContent:'center', gap:'2px', flex:1,
+                padding:'5px 1px', textDecoration:'none',
                 opacity: isActive ? 1 : 0.85, position:'relative', transition:'opacity 0.2s',
               }}>
                 {isActive && (
                   <div className="nav-indicator" style={{
-                    position:'absolute',top:0,left:'20%',right:'20%',height:'2px',
-                    background: isXP ? 'linear-gradient(90deg,#a855f7,#22d3ee)'
+                    position:'absolute', top:0, left:'20%', right:'20%', height:'2px',
+                    background: isXP     ? 'linear-gradient(90deg,#a855f7,#22d3ee)'
                       : isDeco   ? 'linear-gradient(90deg,#A67C2D,#FFE9A0,#A67C2D)'
                       : isQuantum ? 'linear-gradient(90deg,#2F80FF,#38D9FF,#2F80FF)'
                       : activeColor,
@@ -211,7 +216,7 @@ export default function BottomNav() {
                   {item.label}
                 </span>
                 {isXP && isActive && goal && (
-                  <span style={{fontSize:'6px',color:'#22d3ee',fontWeight:700}}>Nv.{goal.level}</span>
+                  <span style={{fontSize:'6px', color:'#22d3ee', fontWeight:700}}>Nv.{goal.level}</span>
                 )}
               </Link>
             )
