@@ -190,7 +190,8 @@ export default function DocumentDetailPage() {
     if (existing) {
       updateDocument(docId, payload)
     } else {
-      addDocument(payload)
+      addDocument(docType)
+      updateDocument(docId, payload)
     }
     router.push('/documents')
   }
