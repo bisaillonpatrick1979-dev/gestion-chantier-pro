@@ -341,13 +341,6 @@ export default function DocumentPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          APERÇU PDF
-          ✅ Filigrane ancré BAS-GAUCHE → monte en diagonale -28deg
-          ✅ Logo 260px, mixBlendMode multiply (fond blanc PNG transparent)
-          ✅ Tableau zébré transparent : rgba(0,0,0,0.04) / transparent
-          ✅ Tous les fonds de blocs en rgba → filigrane visible partout
-      ═══════════════════════════════════════════════════════════════════ */}
       {showPreview&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:200,overflowY:"auto"}} onClick={()=>setShowPreview(false)}>
           <div
@@ -363,51 +356,55 @@ export default function DocumentPage() {
               overflow:"hidden",
             }}
           >
-            {/* ══ FILIGRANE — ancré bas-gauche, monte en diagonale ══ */}
+            {/* ══ FILIGRANE — centré, diagonale -22deg, logo sans fond blanc ══
+                top/left 50% + translate(-50%,-50%) = parfaitement centré
+                mixBlendMode multiply = fond blanc PNG disparaît
+                opacity 0.13 = visible sans écraser le contenu
+            ══════════════════════════════════════════════════════════════ */}
             <div style={{
               position:"absolute",
-              bottom:"-20px",
-              left:"-40px",
+              top:"50%",
+              left:"50%",
+              transform:"translate(-50%, -50%) rotate(-22deg)",
               pointerEvents:"none",
               zIndex:0,
               display:"flex",
               flexDirection:"column",
-              alignItems:"flex-start",
-              gap:"6px",
-              opacity:0.14,
-              transform:"rotate(-28deg)",
-              transformOrigin:"bottom left",
+              alignItems:"center",
+              gap:"10px",
+              opacity:0.13,
               userSelect:"none",
+              textAlign:"center",
+              width:"100%",
             }}>
               {company.logoUrl&&(
                 <img
                   src={company.logoUrl}
                   alt=""
                   style={{
-                    width:"260px",
-                    height:"260px",
+                    width:"180px",
+                    height:"180px",
                     objectFit:"contain",
-                    // Rend le fond blanc du PNG transparent
                     mixBlendMode:"multiply",
                     display:"block",
                   }}
                 />
               )}
               <div style={{
-                fontSize:"56px",
+                fontSize:"44px",
                 fontWeight:900,
                 color:"#000",
                 letterSpacing:"2px",
-                lineHeight:1,
+                lineHeight:1.1,
                 whiteSpace:"nowrap",
               }}>
                 {company.name||"HAILITE XTERIORS"}
               </div>
               <div style={{
-                fontSize:"34px",
+                fontSize:"26px",
                 fontWeight:800,
                 color:"#000",
-                letterSpacing:"12px",
+                letterSpacing:"10px",
                 textTransform:"uppercase",
                 whiteSpace:"nowrap",
               }}>
@@ -415,10 +412,8 @@ export default function DocumentPage() {
               </div>
             </div>
 
-            {/* ══ CONTENU — zIndex 1, fonds rgba pour laisser passer le filigrane ══ */}
+            {/* ══ CONTENU ══ */}
             <div style={{position:"relative",zIndex:1}}>
-
-              {/* En-tête */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"24px"}}>
                 <div>
                   {company.logoUrl&&(
@@ -446,7 +441,6 @@ export default function DocumentPage() {
                 </div>
               </div>
 
-              {/* Bloc client — fond semi-transparent */}
               <div style={{background:"rgba(0,0,0,0.04)",borderRadius:"8px",padding:"16px",marginBottom:"24px"}}>
                 <div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>{docType==="contrat"?"Partie cliente":"Facturer à"}</div>
                 <div style={{fontWeight:700}}>{doc.client.name||"—"}</div>
@@ -462,15 +456,10 @@ export default function DocumentPage() {
                 </div>
               )}
 
-              {/* ══ TABLEAU ZÉBRÉ TRANSPARENT ══
-                  En-tête : fond sombre semi-opaque (lisibilité texte blanc)
-                  Lignes paires  : rgba(0,0,0,0.04) = très légèrement teinté
-                  Lignes impaires: transparent = filigrane pleinement visible
-              */}
               {doc.items.some((i:LineItem)=>i.description)&&(
                 <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"24px"}}>
                   <thead>
-                    <tr style={{background:"rgba(17,17,17,0.82)",color:"#fff"}}>
+                    <tr style={{background:"rgba(17,17,17,0.85)",color:"#fff"}}>
                       <th style={{padding:"10px 12px",textAlign:"left",fontSize:"12px"}}>Description</th>
                       <th style={{padding:"10px 12px",textAlign:"center",fontSize:"12px"}}>Qté</th>
                       <th style={{padding:"10px 12px",textAlign:"right",fontSize:"12px"}}>Prix unit.</th>
@@ -479,9 +468,7 @@ export default function DocumentPage() {
                   </thead>
                   <tbody>
                     {doc.items.map((item:LineItem,i:number)=>(
-                      <tr key={item.id} style={{
-                        background: i%2===0 ? "rgba(0,0,0,0.04)" : "transparent",
-                      }}>
+                      <tr key={item.id} style={{background:i%2===0?"rgba(0,0,0,0.04)":"transparent"}}>
                         <td style={{padding:"10px 12px",fontSize:"13px",color:"#111"}}>{item.description||"—"}</td>
                         <td style={{padding:"10px 12px",textAlign:"center",fontSize:"13px",color:"#111"}}>{item.quantity}</td>
                         <td style={{padding:"10px 12px",textAlign:"right",fontSize:"13px",color:"#111"}}>{formatCurrency(item.unitPrice)}</td>
@@ -492,7 +479,6 @@ export default function DocumentPage() {
                 </table>
               )}
 
-              {/* Totaux */}
               <div style={{marginLeft:"auto",maxWidth:"260px",marginBottom:"24px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"13px"}}><span style={{color:"#666"}}>Sous-total</span><span>{formatCurrency(doc.subtotal)}</span></div>
                 {doc.taxes.filter((t:{enabled:boolean})=>t.enabled).map((tax:{id:string;name:string;rate:number})=>(
@@ -509,13 +495,11 @@ export default function DocumentPage() {
               {doc.notes&&<div style={{marginBottom:"16px",padding:"14px",background:"rgba(0,0,0,0.03)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#888",textTransform:"uppercase",marginBottom:"6px"}}>Notes</div><div style={{fontSize:"13px",color:"#444"}}>{doc.notes}</div></div>}
               {(company.etransferEmail||company.bankName)&&<div style={{marginBottom:"20px",padding:"14px",background:"rgba(59,130,246,0.06)",borderRadius:"8px"}}><div style={{fontSize:"11px",color:"#3b82f6",textTransform:"uppercase",marginBottom:"6px"}}>Paiement</div>{company.etransferEmail&&<div style={{fontSize:"13px"}}>Interac: <strong>{company.etransferEmail}</strong></div>}{company.bankName&&<div style={{fontSize:"13px"}}>{company.bankName}{company.bankAccount&&" — "+company.bankAccount}</div>}</div>}
 
-              {/* Signatures */}
               <div style={{display:"grid",gridTemplateColumns:docType==="contrat"?"1fr 1fr":"1fr",gap:"16px",marginTop:"24px"}}>
                 {docType==="contrat"&&<div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Contracteur — {company.name}</div></div>}
                 <div style={{borderTop:"2px solid #111",paddingTop:"10px"}}><div style={{height:"60px",background:"rgba(0,0,0,0.03)",borderRadius:"6px",marginBottom:"8px"}}/><div style={{fontSize:"11px",color:"#888"}}>Client — {doc.client.name||"—"}</div></div>
               </div>
 
-              {/* Boutons */}
               <div style={{marginTop:"24px",display:"flex",gap:"10px"}}>
                 <button onClick={()=>setShowPreview(false)} style={{flex:1,padding:"12px",background:"#111",color:"#fff",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>✕ Fermer</button>
                 <button onClick={()=>window.print()} style={{flex:1,padding:"12px",background:typeMeta.color,color:"#000",border:"none",borderRadius:"8px",cursor:"pointer",fontWeight:700}}>🖨️ Imprimer / PDF</button>
