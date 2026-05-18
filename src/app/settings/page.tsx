@@ -55,6 +55,9 @@ export default function SettingsPage() {
   const [newPin, setNewPin] = useState('')
   const [newRole, setNewRole] = useState<'admin' | 'employee'>('employee')
   const [newRate, setNewRate] = useState('')
+  const [newWorkerType, setNewWorkerType] = useState<'contractor' | 'salaried'>('contractor')
+  const [newProvince, setNewProvince] = useState('AB')
+  const [newPayFrequency, setNewPayFrequency] = useState<'weekly' | 'biweekly' | 'semimonthly' | 'monthly'>('biweekly')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editRate, setEditRate] = useState('')
   const [editName, setEditName] = useState('')
@@ -71,8 +74,8 @@ export default function SettingsPage() {
 
   const handleAddEmployee = () => {
     if (!newName.trim() || newPin.length < 4) return
-    addEmployee({ name: newName.trim(), pin: newPin, role: newRole, hourlyRate: parseFloat(newRate) || 0, workMode: 'heure', color: '#a855f7', active: true })
-    setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee')
+    addEmployee({ name: newName.trim(), pin: newPin, role: newRole, hourlyRate: parseFloat(newRate) || 0, workMode: 'heure', color: '#a855f7', active: true, workerType: newWorkerType, employeeProvince: newWorkerType === 'salaried' ? newProvince : undefined, payFrequency: newWorkerType === 'salaried' ? newPayFrequency : undefined })
+    setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee'); setNewWorkerType('contractor'); setNewProvince('AB'); setNewPayFrequency('biweekly')
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,6 +243,23 @@ export default function SettingsPage() {
                 <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value)} type="password" placeholder={t('PIN (4+ chiffres)', 'PIN (4+ digits)')} />
                 <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)} type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
                 <select className={inputClass} value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'employee')}><option value="employee">👷 {t('Employé', 'Employee')}</option><option value="admin">👑 Admin</option></select>
+                <select className={inputClass} value={newWorkerType} onChange={e => setNewWorkerType(e.target.value as any)}>
+                  <option value="contractor">📋 {t('Contracteur autonome', 'Independent Contractor')}</option>
+                  <option value="salaried">💼 {t('Salarié', 'Salaried Employee')}</option>
+                </select>
+                {newWorkerType === 'salaried' && (
+                  <>
+                    <select className={inputClass} value={newProvince} onChange={e => setNewProvince(e.target.value)}>
+                      {['AB','BC','ON','QC','MB','SK','NS','NB','NL','PE'].map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <select className={inputClass} value={newPayFrequency} onChange={e => setNewPayFrequency(e.target.value as any)}>
+                      <option value="weekly">{t('Hebdomadaire (40h)', 'Weekly (40h)')}</option>
+                      <option value="biweekly">{t('Aux 2 semaines (80h)', 'Biweekly (80h)')}</option>
+                      <option value="semimonthly">{t('2x/mois (86.67h)', 'Semi-monthly (86.67h)')}</option>
+                      <option value="monthly">{t('Mensuel (173.33h)', 'Monthly (173.33h)')}</option>
+                    </select>
+                  </>
+                )}
                 <button onClick={handleAddEmployee} className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>{t('✅ Ajouter', '✅ Add')}</button>
               </div>
             </div>
