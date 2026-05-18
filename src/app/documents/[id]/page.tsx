@@ -48,18 +48,14 @@ export default function DocumentDetailPage() {
 
   const existing = documents.find(d => d.id === docId)
 
+  // ── États de base ─────────────────────────────────────────────────────────
   const [docType, setDocType] = useState<'invoice' | 'quote' | 'contract'>((existing?.type as any) ?? 'invoice')
   const [docNumber, setDocNumber]   = useState(existing?.number ?? '')
   const [docDate, setDocDate]       = useState(existing?.date ?? new Date().toISOString().split('T')[0])
   const [dueDate, setDueDate]       = useState(existing?.dueDate ?? '')
   const [status, setStatus]         = useState(existing?.status ?? 'draft')
 
-  const [clientId, setClientId]           = useState(existing?.clientId ?? '')
-  const [clientName, setClientName]       = useState(existing?.clientName ?? '')
-  const [clientAddress, setClientAddress] = useState(existing?.clientAddress ?? '')
-  const [clientEmail, setClientEmail]     = useState(existing?.clientEmail ?? '')
-  const [clientPhone, setClientPhone]     = useState(existing?.clientPhone ?? '')
-
+  // ── Compagnie ──────────────────────────────────────────────────────────────
   const [compName, setCompName]         = useState(existing?.companyName  ?? company.name)
   const [compAddress, setCompAddress]   = useState(company.address)
   const [compCity, setCompCity]         = useState(company.city)
@@ -69,20 +65,41 @@ export default function DocumentDetailPage() {
   const [compEmail, setCompEmail]       = useState(existing?.companyEmail ?? company.email)
   const [compGST, setCompGST]           = useState(existing?.companyGST   ?? company.gstNumber)
   const [compWCB, setCompWCB]           = useState(existing?.companyWCB   ?? company.wcbNumber)
+  const [compBN, setCompBN]             = useState(company.bnNumber ?? '')
 
+  // ── Client ─────────────────────────────────────────────────────────────────
+  const [clientId, setClientId]           = useState(existing?.clientId ?? '')
+  const [clientName, setClientName]       = useState(existing?.clientName ?? '')
+  const [clientAddress, setClientAddress] = useState(existing?.clientAddress ?? '')
+  const [clientEmail, setClientEmail]     = useState(existing?.clientEmail ?? '')
+  const [clientPhone, setClientPhone]     = useState(existing?.clientPhone ?? '')
+  const [siteAddress, setSiteAddress]     = useState('')
+  const [refQuote, setRefQuote]           = useState('')
+  const [refContract, setRefContract]     = useState('')
+
+  // ── Lignes ─────────────────────────────────────────────────────────────────
   const [lines, setLines] = useState<LineItem[]>(
     existing?.lines ?? [{ id: uid(), description: '', qty: 1, unit: t('unité', 'unit'), unitPrice: 0 }]
   )
+
+  // ── Total / Conditions ─────────────────────────────────────────────────────
   const [taxRate, setTaxRate]             = useState(existing?.taxRate ?? 5)
   const [discountPct, setDiscountPct]     = useState(existing?.discountPct ?? 0)
   const [depositAmount, setDepositAmount] = useState(existing?.depositAmount ?? 0)
+  const [lateInterestPct, setLateInterestPct] = useState(2)
+  const [holdbackPct, setHoldbackPct]     = useState(0)
+  const [quoteValidDays, setQuoteValidDays] = useState(30)
+  const [workStartDate, setWorkStartDate] = useState('')
+  const [workEndDate, setWorkEndDate]     = useState('')
+  const [warrantyYears, setWarrantyYears] = useState(2)
   const [notes, setNotes]                 = useState(existing?.notes ?? '')
 
+  // ── Signature ──────────────────────────────────────────────────────────────
   const [clientSignature, setClientSignature] = useState(existing?.signature ?? '')
   const sigRef   = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing] = useState(false)
 
-  const [tab, setTab]             = useState<'info' | 'lines' | 'total' | 'sign'>('info')
+  const [tab, setTab]                   = useState<'info' | 'lines' | 'total' | 'sign'>('info')
   const [showPdfPreview, setShowPdfPreview] = useState(false)
 
   const todayFormatted = new Date().toLocaleDateString(
@@ -90,6 +107,11 @@ export default function DocumentDetailPage() {
     { year: 'numeric', month: 'long', day: 'numeric' }
   )
   const ownerName = company.ownerName || company.name || 'Hailite Xteriors'
+
+  // Calcul date validité devis
+  const quoteExpiryDate = docType === 'quote' && docDate
+    ? new Date(new Date(docDate).getTime() + quoteValidDays * 86400000).toISOString().split('T')[0]
+    : ''
 
   useEffect(() => {
     if (!existing) {
@@ -102,6 +124,7 @@ export default function DocumentDetailPage() {
       setCompEmail(company.email)
       setCompGST(company.gstNumber)
       setCompWCB(company.wcbNumber)
+      setCompBN((company as any).bnNumber ?? '')
     }
   }, [company])
 
@@ -116,11 +139,13 @@ export default function DocumentDetailPage() {
     }
   }
 
+  // ── Calculs ────────────────────────────────────────────────────────────────
   const subtotal    = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0)
   const discountAmt = subtotal * (discountPct / 100)
   const taxable     = subtotal - discountAmt
   const taxAmt      = taxable * (taxRate / 100)
   const total       = taxable + taxAmt
+  const holdbackAmt = total * (holdbackPct / 100)
   const balanceDue  = total - depositAmount
 
   const addLine = () =>
@@ -130,6 +155,7 @@ export default function DocumentDetailPage() {
   const removeLine = (id: string) =>
     setLines(l => l.filter(li => li.id !== id))
 
+  // ── Sauvegarde ─────────────────────────────────────────────────────────────
   const save = () => {
     const payload: GCPDocument = {
       id: docId, type: docType, number: docNumber, date: docDate, dueDate, status,
@@ -149,7 +175,7 @@ export default function DocumentDetailPage() {
     router.push('/documents')
   }
 
-  // Extrait les coordonnées peu importe Pointer ou Touch
+  // ── Canvas signature ───────────────────────────────────────────────────────
   const getXY = (clientX: number, clientY: number) => {
     const canvas = sigRef.current!
     const r = canvas.getBoundingClientRect()
@@ -188,6 +214,7 @@ export default function DocumentDetailPage() {
     setClientSignature('')
   }
 
+  // ── Actions ────────────────────────────────────────────────────────────────
   const docTypeLabel = docType === 'invoice' ? t('Facture', 'Invoice') : docType === 'quote' ? t('Devis', 'Quote') : t('Contrat', 'Contract')
 
   const handleSendEmail = () => {
@@ -224,6 +251,7 @@ export default function DocumentDetailPage() {
     setTimeout(() => window.print(), 400)
   }
 
+  // ── UI ─────────────────────────────────────────────────────────────────────
   const inputClass = `w-full rounded-xl px-4 py-3 text-sm font-medium outline-none border transition-all
     ${isDeco ? 'bg-[#1a1500]/80 border-[#D6B25E]/30 text-[#D6B25E] placeholder-[#D6B25E]/40 focus:border-[#D6B25E]'
       : isQuantum ? 'bg-[#0a0015]/80 border-violet-500/30 text-violet-100 placeholder-violet-400/40 focus:border-violet-400'
@@ -235,8 +263,6 @@ export default function DocumentDetailPage() {
   const accentColor  = isDeco ? '#D6B25E' : isQuantum ? '#a855f7' : '#3b82f6'
   const accentBg     = isDeco ? 'rgba(214,178,94,0.12)'  : isQuantum ? 'rgba(168,85,247,0.12)'  : 'rgba(59,130,246,0.12)'
   const accentBorder = isDeco ? 'rgba(214,178,94,0.3)'   : isQuantum ? 'rgba(168,85,247,0.3)'   : 'rgba(59,130,246,0.3)'
-
-  // Couleur du bloc TOTAL DÛ selon type de doc
   const totalBgColor = docType === 'invoice' ? '#2563eb' : docType === 'quote' ? '#059669' : '#7c3aed'
 
   const TABS = [
@@ -260,6 +286,37 @@ export default function DocumentDetailPage() {
   ] as const
 
   const watermarkText = docType === 'invoice' ? t('FACTURE', 'INVOICE') : docType === 'quote' ? t('DEVIS', 'QUOTE') : t('CONTRAT', 'CONTRACT')
+
+  // ── Canvas component réutilisable ──────────────────────────────────────────
+  const SignatureCanvas = () => (
+    <div>
+      <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>👤 {t('Signature client', 'Client Signature')}</p>
+      <div className={`rounded-xl overflow-hidden border ${isDeco ? 'border-[#D6B25E]/30 bg-[#0a0700]' : 'border-white/20 bg-black/30'}`}>
+        <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair"
+          style={{ display: 'block', touchAction: 'none' }}
+          onPointerDown={e => startDraw(e.clientX, e.clientY)}
+          onPointerMove={e => continueDraw(e.clientX, e.clientY)}
+          onPointerUp={endDraw}
+          onPointerLeave={endDraw}
+        />
+      </div>
+      <button onClick={clearSig} className="w-full mt-2 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">🗑️ {t('Effacer', 'Clear')}</button>
+      {clientSignature && <p className="text-center text-xs mt-1 text-emerald-400 font-bold">✅ {t('Signée', 'Signed')}</p>}
+    </div>
+  )
+
+  const ContractorSig = () => (
+    <div>
+      <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>🏢 {t('Contracteur', 'Contractor')}</p>
+      <div style={{ height: '120px', border: `1px solid ${accentBorder}`, borderRadius: '12px', background: accentBg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px' }}>
+        <div style={{ borderTop: `1px solid ${accentColor}`, paddingTop: '8px' }}>
+          <p style={{ color: accentColor, fontSize: '13px', fontWeight: 800, fontFamily: 'Georgia, serif' }}>{ownerName}</p>
+          <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '2px' }}>{compName}</p>
+          <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.4)', fontSize: '9px', marginTop: '1px' }}>{todayFormatted}</p>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen pb-28 pt-4 px-4 relative" style={{ fontFamily: 'system-ui, sans-serif' }}>
@@ -308,20 +365,10 @@ export default function DocumentDetailPage() {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>{t('N° Document', 'Doc Number')}</label>
-              <input className={inputClass} value={docNumber} onChange={e => setDocNumber(e.target.value)} placeholder="INV-2024-001" />
-            </div>
-            <div>
-              <label className={labelClass}>{t('Date', 'Date')}</label>
-              <input className={inputClass} type="date" value={docDate} onChange={e => setDocDate(e.target.value)} />
-            </div>
-            <div>
-              <label className={labelClass}>{t('Échéance', 'Due Date')}</label>
-              <input className={inputClass} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-            </div>
-            <div>
-              <label className={labelClass}>{t('Statut', 'Status')}</label>
+            <div><label className={labelClass}>{t('N° Document', 'Doc Number')}</label><input className={inputClass} value={docNumber} onChange={e => setDocNumber(e.target.value)} placeholder="INV-2024-001" /></div>
+            <div><label className={labelClass}>{t('Date', 'Date')}</label><input className={inputClass} type="date" value={docDate} onChange={e => setDocDate(e.target.value)} /></div>
+            <div><label className={labelClass}>{t('Échéance', 'Due Date')}</label><input className={inputClass} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
+            <div><label className={labelClass}>{t('Statut', 'Status')}</label>
               <select className={inputClass} value={status} onChange={e => setStatus(e.target.value as any)}>
                 {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
@@ -342,9 +389,10 @@ export default function DocumentDetailPage() {
           ))}
         </div>
 
-        {/* TAB INFO */}
+        {/* ══════ TAB INFO ══════ */}
         {tab === 'info' && (
           <div className="space-y-4">
+            {/* Compagnie */}
             <div className={`rounded-2xl p-5 space-y-3 ${cardClass}
               ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
                 : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
@@ -361,15 +409,17 @@ export default function DocumentDetailPage() {
                 <div className="col-span-2"><label className={labelClass}>{t('Nom compagnie', 'Company Name')}</label><input className={inputClass} value={compName} onChange={e => setCompName(e.target.value)} placeholder="Hailite Xteriors" /></div>
                 <div className="col-span-2"><label className={labelClass}>{t('Adresse', 'Address')}</label><input className={inputClass} value={compAddress} onChange={e => setCompAddress(e.target.value)} placeholder="123 Main St" /></div>
                 <div><label className={labelClass}>{t('Ville', 'City')}</label><input className={inputClass} value={compCity} onChange={e => setCompCity(e.target.value)} placeholder="Calgary" /></div>
-                <div><label className={labelClass}>{t('Province', 'Province/State')}</label><input className={inputClass} value={compProvince} onChange={e => setCompProvince(e.target.value)} placeholder="AB" /></div>
+                <div><label className={labelClass}>{t('Province', 'Province')}</label><input className={inputClass} value={compProvince} onChange={e => setCompProvince(e.target.value)} placeholder="AB" /></div>
                 <div><label className={labelClass}>{t('Code postal', 'Postal Code')}</label><input className={inputClass} value={compPostal} onChange={e => setCompPostal(e.target.value)} placeholder="T2X 1A1" /></div>
                 <div><label className={labelClass}>{t('Téléphone', 'Phone')}</label><input className={inputClass} value={compPhone} onChange={e => setCompPhone(e.target.value)} placeholder="403-555-1234" /></div>
                 <div className="col-span-2"><label className={labelClass}>{t('Courriel', 'Email')}</label><input className={inputClass} value={compEmail} onChange={e => setCompEmail(e.target.value)} placeholder="info@hailite.ca" /></div>
                 <div><label className={labelClass}>{t('N° TPS/GST', 'GST Number')}</label><input className={inputClass} value={compGST} onChange={e => setCompGST(e.target.value)} placeholder="123456789 RT0001" /></div>
                 <div><label className={labelClass}>{t('N° WCB', 'WCB Number')}</label><input className={inputClass} value={compWCB} onChange={e => setCompWCB(e.target.value)} placeholder="WCB-XXXXXX" /></div>
+                <div className="col-span-2"><label className={labelClass}>{t('N° Entreprise (BN)', 'Business Number (BN)')}</label><input className={inputClass} value={compBN} onChange={e => setCompBN(e.target.value)} placeholder="123456789" /></div>
               </div>
             </div>
 
+            {/* Client */}
             <div className={`rounded-2xl p-5 space-y-3 ${cardClass}
               ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
                 : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
@@ -387,15 +437,29 @@ export default function DocumentDetailPage() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2"><label className={labelClass}>{t('Nom du client', "Client's Name")}</label><input className={inputClass} value={clientName} onChange={e => setClientName(e.target.value)} placeholder={t('Jean Tremblay', 'John Smith')} /></div>
-                <div className="col-span-2"><label className={labelClass}>{t('Adresse client', 'Client Address')}</label><input className={inputClass} value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="456 Oak Ave, Calgary AB" /></div>
+                <div className="col-span-2"><label className={labelClass}>{t('Adresse de facturation', 'Billing Address')}</label><input className={inputClass} value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="456 Oak Ave, Calgary AB" /></div>
+                <div className="col-span-2"><label className={labelClass}>{t('Adresse du chantier', 'Site Address')}</label><input className={inputClass} value={siteAddress} onChange={e => setSiteAddress(e.target.value)} placeholder={t('Si différente de la facturation', 'If different from billing')} /></div>
                 <div><label className={labelClass}>{t('Courriel', 'Email')}</label><input className={inputClass} value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="client@email.com" /></div>
                 <div><label className={labelClass}>{t('Téléphone', 'Phone')}</label><input className={inputClass} value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="403-555-5678" /></div>
+              </div>
+            </div>
+
+            {/* Références */}
+            <div className={`rounded-2xl p-5 space-y-3 ${cardClass}
+              ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
+                : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
+                : 'bg-white/5 border border-white/10'}`}>
+              {isDeco && <DecoCorners />}
+              <div className={`text-sm font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>🔗 {t('Références', 'References')}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelClass}>{t('Réf. Devis', 'Quote Ref.')}</label><input className={inputClass} value={refQuote} onChange={e => setRefQuote(e.target.value)} placeholder="DE-2026-001" /></div>
+                <div><label className={labelClass}>{t('Réf. Contrat', 'Contract Ref.')}</label><input className={inputClass} value={refContract} onChange={e => setRefContract(e.target.value)} placeholder="CT-2026-001" /></div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB LIGNES */}
+        {/* ══════ TAB LIGNES ══════ */}
         {tab === 'lines' && (
           <div className="space-y-3">
             {lines.map((line, idx) => (
@@ -427,7 +491,7 @@ export default function DocumentDetailPage() {
           </div>
         )}
 
-        {/* TAB TOTAL */}
+        {/* ══════ TAB TOTAL ══════ */}
         {tab === 'total' && (
           <div className="space-y-4">
             <div className={`rounded-2xl p-5 space-y-4 ${cardClass}
@@ -435,19 +499,34 @@ export default function DocumentDetailPage() {
                 : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
                 : 'bg-white/5 border border-white/10'}`}>
               {isDeco && <DecoCorners />}
+
+              {/* Taxes et remise */}
               <div className="grid grid-cols-2 gap-3">
                 <div><label className={labelClass}>{t('Remise %', 'Discount %')}</label><input className={inputClass} type="number" value={discountPct} onChange={e => setDiscountPct(parseFloat(e.target.value) || 0)} min="0" max="100" /></div>
                 <div><label className={labelClass}>{t('TPS/GST %', 'GST %')}</label><input className={inputClass} type="number" value={taxRate} onChange={e => setTaxRate(parseFloat(e.target.value) || 0)} min="0" max="100" /></div>
-                <div className="col-span-2"><label className={labelClass}>{t('Dépôt reçu $', 'Deposit Received $')}</label><input className={inputClass} type="number" value={depositAmount} onChange={e => setDepositAmount(parseFloat(e.target.value) || 0)} min="0" /></div>
+                <div><label className={labelClass}>{t('Dépôt reçu $', 'Deposit $')}</label><input className={inputClass} type="number" value={depositAmount} onChange={e => setDepositAmount(parseFloat(e.target.value) || 0)} min="0" /></div>
+                <div><label className={labelClass}>{t('Intérêts retard %/mois', 'Late Interest %/mo')}</label><input className={inputClass} type="number" value={lateInterestPct} onChange={e => setLateInterestPct(parseFloat(e.target.value) || 0)} min="0" max="5" step="0.5" /></div>
+                <div><label className={labelClass}>{t('Retenue Builders Lien %', 'Holdback %')}</label><input className={inputClass} type="number" value={holdbackPct} onChange={e => setHoldbackPct(parseFloat(e.target.value) || 0)} min="0" max="20" /></div>
+                {docType === 'quote' && <div><label className={labelClass}>{t('Validité devis (jours)', 'Quote Valid (days)')}</label><input className={inputClass} type="number" value={quoteValidDays} onChange={e => setQuoteValidDays(parseInt(e.target.value) || 30)} min="1" /></div>}
               </div>
+
+              {/* Calendrier travaux */}
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelClass}>{t('Début travaux', 'Work Start')}</label><input className={inputClass} type="date" value={workStartDate} onChange={e => setWorkStartDate(e.target.value)} /></div>
+                <div><label className={labelClass}>{t('Fin travaux', 'Work End')}</label><input className={inputClass} type="date" value={workEndDate} onChange={e => setWorkEndDate(e.target.value)} /></div>
+                <div className="col-span-2"><label className={labelClass}>{t('Garantie pose (années)', 'Warranty (years)')}</label><input className={inputClass} type="number" value={warrantyYears} onChange={e => setWarrantyYears(parseInt(e.target.value) || 2)} min="0" max="25" /></div>
+              </div>
+
+              {/* Récap totaux */}
               <div className={`rounded-xl p-4 space-y-2 ${isDeco ? 'bg-[#D6B25E]/5 border border-[#D6B25E]/20' : 'bg-white/5 border border-white/10'}`}>
                 {[
                   { label: t('Sous-total', 'Subtotal'), val: subtotal },
                   ...(discountPct > 0 ? [{ label: `🏷️ ${t('Remise', 'Discount')} (${discountPct}%)`, val: -discountAmt }] : []),
                   { label: `🇨🇦 GST (${taxRate}%)`, val: taxAmt },
                   { label: t('💰 TOTAL', '💰 TOTAL'), val: total, big: true },
+                  ...(holdbackPct > 0 ? [{ label: `🔒 ${t('Retenue', 'Holdback')} (${holdbackPct}%)`, val: -holdbackAmt }] : []),
                   ...(depositAmount > 0 ? [
-                    { label: t('✅ Dépôt reçu', '✅ Deposit Received'), val: -depositAmount },
+                    { label: t('✅ Dépôt reçu', '✅ Deposit'), val: -depositAmount },
                     { label: t('🔴 Solde dû', '🔴 Balance Due'), val: balanceDue, big: true, red: true },
                   ] : []),
                 ].map((row, i) => (
@@ -457,6 +536,7 @@ export default function DocumentDetailPage() {
                   </div>
                 ))}
               </div>
+
               <div>
                 <label className={labelClass}>{t('Notes / Conditions', 'Notes / Terms')}</label>
                 <textarea className={`${inputClass} min-h-[80px] resize-none`} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('Merci pour votre confiance!', 'Thank you for your business!')} />
@@ -466,79 +546,21 @@ export default function DocumentDetailPage() {
           </div>
         )}
 
-        {/* TAB SIGNATURE */}
+        {/* ══════ TAB SIGNATURE ══════ */}
         {tab === 'sign' && (
           <div className={`rounded-2xl p-5 space-y-5 ${cardClass}
             ${isDeco ? 'bg-[#0d0a00]/80 border border-[#D6B25E]/20'
               : isQuantum ? 'bg-[#0a0015]/80 border border-violet-500/20'
               : 'bg-white/5 border border-white/10'}`}>
             {isDeco && <DecoCorners />}
-            {docType !== 'contract' && (
-              <div>
-                <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${isDeco ? 'text-[#D6B25E]/70' : isQuantum ? 'text-violet-400/70' : 'text-white/50'}`}>✍️ {t('Signatures', 'Signatures')}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  {/* Gauche — Signature client (canvas) */}
-                  <div>
-                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>👤 {t('Client', 'Client')}</p>
-                    <div className={`rounded-xl overflow-hidden border ${isDeco ? 'border-[#D6B25E]/30 bg-[#0a0700]' : 'border-white/20 bg-black/30'}`}>
-                      <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair"
-                        style={{ display: 'block', touchAction: 'none' }}
-                        onPointerDown={e => startDraw(e.clientX, e.clientY)}
-                        onPointerMove={e => continueDraw(e.clientX, e.clientY)}
-                        onPointerUp={endDraw}
-                        onPointerLeave={endDraw}
-                      />
-                    </div>
-                    <button onClick={clearSig} className="w-full mt-2 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">🗑️ {t('Effacer', 'Clear')}</button>
-                    {clientSignature && <p className="text-center text-xs mt-1 text-emerald-400 font-bold">✅ {t('Signée', 'Signed')}</p>}
-                  </div>
-                  {/* Droite — Signature contracteur (statique) */}
-                  <div>
-                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>🏢 {t('Contracteur', 'Contractor')}</p>
-                    <div style={{ height: '120px', border: `1px solid ${accentBorder}`, borderRadius: '12px', background: accentBg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px' }}>
-                      <div style={{ borderTop: `1px solid ${accentColor}`, paddingTop: '8px' }}>
-                        <p style={{ color: accentColor, fontSize: '13px', fontWeight: 800, fontFamily: 'Georgia, serif' }}>{ownerName}</p>
-                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '2px' }}>{compName}</p>
-                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.4)', fontSize: '9px', marginTop: '1px' }}>{todayFormatted}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className={`text-xs mt-3 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>💡 {t('Signature contracteur : Réglages → Compagnie → Nom du propriétaire', 'Contractor signature: Settings → Company → Owner Name')}</p>
-              </div>
-            )}
-            {docType === 'contract' && (
-              <div>
-                <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${isDeco ? 'text-[#D6B25E]/70' : isQuantum ? 'text-violet-400/70' : 'text-white/50'}`}>✍️ {t('Signatures du contrat', 'Contract Signatures')}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>👤 {t('Client', 'Client')}</p>
-                    <div className={`rounded-xl overflow-hidden border ${isDeco ? 'border-[#D6B25E]/30 bg-[#0a0700]' : 'border-white/20 bg-black/30'}`}>
-                      <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair"
-                        style={{ display: 'block', touchAction: 'none' }}
-                        onPointerDown={e => startDraw(e.clientX, e.clientY)}
-                        onPointerMove={e => continueDraw(e.clientX, e.clientY)}
-                        onPointerUp={endDraw}
-                        onPointerLeave={endDraw}
-                      />
-                    </div>
-                    <button onClick={clearSig} className="w-full mt-2 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">🗑️ {t('Effacer', 'Clear')}</button>
-                    {clientSignature && <p className="text-center text-xs mt-1 text-emerald-400 font-bold">✅ {t('Signée', 'Signed')}</p>}
-                  </div>
-                  <div>
-                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>🏢 {t('Contracteur', 'Contractor')}</p>
-                    <div style={{ height: '120px', border: `1px solid ${accentBorder}`, borderRadius: '12px', background: accentBg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px' }}>
-                      <div style={{ borderTop: `1px solid ${accentColor}`, paddingTop: '8px' }}>
-                        <p style={{ color: accentColor, fontSize: '13px', fontWeight: 800, fontFamily: 'Georgia, serif' }}>{ownerName}</p>
-                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '2px' }}>{compName}</p>
-                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.4)', fontSize: '9px', marginTop: '1px' }}>{todayFormatted}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <p className={`text-xs mt-3 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>💡 {t('Nom du contracteur : Réglages → Compagnie → Propriétaire', 'Contractor name: Settings → Company → Owner')}</p>
-              </div>
-            )}
+            <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDeco ? 'text-[#D6B25E]/70' : isQuantum ? 'text-violet-400/70' : 'text-white/50'}`}>✍️ {t('Signatures', 'Signatures')}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <SignatureCanvas />
+              <ContractorSig />
+            </div>
+            <p className={`text-xs mt-2 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+              💡 {t('Signature contracteur : Réglages → Compagnie → Nom du propriétaire', 'Contractor: Settings → Company → Owner Name')}
+            </p>
           </div>
         )}
 
@@ -582,113 +604,115 @@ export default function DocumentDetailPage() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-           MODAL PDF PREVIEW — Layout compact style Excel référence
+           MODAL PDF PREVIEW — Compact, légal Alberta, zéro espace perdu
           ══════════════════════════════════════════════════════════════════════ */}
       {showPdfPreview && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 300, display: 'flex', alignItems: 'flex-end', fontFamily: 'system-ui, sans-serif' }}>
           <div style={{ background: '#f3f4f6', borderRadius: '20px 20px 0 0', width: '100%', maxHeight: '96vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
             {/* Header modal */}
-            <div style={{ position: 'sticky', top: 0, background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+            <div style={{ position: 'sticky', top: 0, background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
               <div>
                 <p style={{ color: 'white', fontSize: '15px', fontWeight: 800 }}>👁️ {t('Preview', 'Preview')} — {docTypeLabel} {docNumber}</p>
                 <p style={{ color: '#9ca3af', fontSize: '11px', marginTop: '2px' }}>{clientName || t('Sans client', 'No client')} · {fmt(total)}</p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => window.print()} style={{ background: accentColor, border: 'none', borderRadius: '10px', padding: '8px 14px', color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>🖨️ {t('Imprimer / PDF', 'Print / PDF')}</button>
+                <button onClick={() => window.print()} style={{ background: accentColor, border: 'none', borderRadius: '10px', padding: '8px 14px', color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>🖨️ PDF</button>
                 <button onClick={() => setShowPdfPreview(false)} style={{ background: '#374151', border: 'none', borderRadius: '50%', width: '36px', height: '36px', color: '#9ca3af', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
               </div>
             </div>
 
-            {/* ── Document formaté ── */}
-            <div id="document-to-print" style={{ background: 'white', margin: '12px', borderRadius: '12px', padding: '24px 20px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden' }}>
+            {/* ── Document ── */}
+            <div id="document-to-print" style={{ background: 'white', margin: '10px', borderRadius: '10px', padding: '18px 16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden' }}>
 
               {/* Filigrane */}
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', fontSize: '80px', fontWeight: 900, color: accentColor, opacity: 0.10, pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap', zIndex: 2, letterSpacing: '4px', mixBlendMode: 'multiply' }}>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%) rotate(-35deg)', fontSize: '80px', fontWeight: 900, color: accentColor, opacity: 0.10, pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap', zIndex: 2, letterSpacing: '4px', mixBlendMode: 'multiply' }}>
                 {watermarkText}
               </div>
 
-              <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ position: 'relative', zIndex: 1, fontSize: '11px' }}>
 
-                {/* ── LIGNE 1 : Titre doc + Numéro/Date à droite ── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {company.logoUrl && <img src={company.logoUrl} alt="Logo" style={{ height: '36px', objectFit: 'contain' }} />}
-                    <p style={{ fontSize: '22px', fontWeight: 900, color: accentColor, letterSpacing: '1px' }}>
+                {/* ── LIGNE 1 : Titre + Numéro/Date ── */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {company.logoUrl && <img src={company.logoUrl} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} />}
+                    <p style={{ fontSize: '20px', fontWeight: 900, color: accentColor, letterSpacing: '1px' }}>
                       {docType === 'invoice' ? t('FACTURE', 'INVOICE') : docType === 'quote' ? t('DEVIS', 'QUOTE') : t('CONTRAT', 'CONTRACT')}
                     </p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    {docNumber && <p style={{ fontSize: '13px', fontWeight: 800, color: '#374151' }}>#{docNumber}</p>}
-                    <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{t('Date :', 'Date:')} {docDate}</p>
-                    {dueDate && <p style={{ fontSize: '11px', color: '#6b7280' }}>{t('Échéance :', 'Due:')} {dueDate}</p>}
-                    <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: 700, background: status === 'paid' ? '#d1fae5' : status === 'overdue' ? '#fee2e2' : status === 'sent' ? '#dbeafe' : '#f3f4f6', color: status === 'paid' ? '#065f46' : status === 'overdue' ? '#991b1b' : status === 'sent' ? '#1e40af' : '#6b7280' }}>
+                    {docNumber && <p style={{ fontSize: '12px', fontWeight: 800, color: '#374151' }}>#{docNumber}</p>}
+                    {refQuote && <p style={{ fontSize: '10px', color: '#6b7280' }}>{t('Réf. Devis:', 'Quote Ref:')} {refQuote}</p>}
+                    {refContract && <p style={{ fontSize: '10px', color: '#6b7280' }}>{t('Réf. Contrat:', 'Contract Ref:')} {refContract}</p>}
+                    <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{t('Date:', 'Date:')} {docDate}</p>
+                    {dueDate && <p style={{ fontSize: '10px', color: '#6b7280' }}>{t('Échéance:', 'Due:')} {dueDate}</p>}
+                    {docType === 'quote' && quoteExpiryDate && <p style={{ fontSize: '10px', color: '#059669', fontWeight: 700 }}>{t('Valide jusqu\'au:', 'Valid until:')} {quoteExpiryDate}</p>}
+                    <span style={{ display: 'inline-block', marginTop: '3px', padding: '2px 7px', borderRadius: '20px', fontSize: '9px', fontWeight: 700, background: status === 'paid' ? '#d1fae5' : status === 'overdue' ? '#fee2e2' : status === 'sent' ? '#dbeafe' : '#f3f4f6', color: status === 'paid' ? '#065f46' : status === 'overdue' ? '#991b1b' : status === 'sent' ? '#1e40af' : '#6b7280' }}>
                       {status === 'paid' ? t('PAYÉ', 'PAID') : status === 'overdue' ? t('EN RETARD', 'OVERDUE') : status === 'sent' ? t('ENVOYÉ', 'SENT') : t('BROUILLON', 'DRAFT')}
                     </span>
                   </div>
                 </div>
 
-                {/* ── BLOC TOTAL DÛ — pleine largeur, couleur vive ── */}
-                <div style={{ background: totalBgColor, borderRadius: '10px', padding: '14px 20px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* ── BLOC TOTAL DÛ ── */}
+                <div style={{ background: totalBgColor, borderRadius: '8px', padding: '10px 16px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
                       {depositAmount > 0 ? t('SOLDE DÛ', 'BALANCE DUE') : t('TOTAL DÛ', 'TOTAL DUE')}
                     </p>
-                    <p style={{ color: 'white', fontSize: '26px', fontWeight: 900, marginTop: '2px' }}>
+                    <p style={{ color: 'white', fontSize: '22px', fontWeight: 900, marginTop: '1px' }}>
                       {fmt(depositAmount > 0 ? balanceDue : total)}
                     </p>
                   </div>
-                  {dueDate && (
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('ÉCHÉANCE', 'DUE DATE')}</p>
-                      <p style={{ color: 'white', fontSize: '14px', fontWeight: 800, marginTop: '2px' }}>{dueDate}</p>
-                    </div>
-                  )}
+                  <div style={{ textAlign: 'right' }}>
+                    {dueDate && <>
+                      <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>{t('ÉCHÉANCE', 'DUE DATE')}</p>
+                      <p style={{ color: 'white', fontSize: '13px', fontWeight: 800, marginTop: '1px' }}>{dueDate}</p>
+                    </>}
+                    {(workStartDate || workEndDate) && <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: '9px', marginTop: '3px' }}>🗓️ {workStartDate} {workEndDate ? `→ ${workEndDate}` : ''}</p>}
+                  </div>
                 </div>
 
-                {/* ── FROM | BILL TO — 2 colonnes côte à côte ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  {/* FROM — compagnie */}
-                  <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px' }}>
-                    <p style={{ fontSize: '9px', fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>{t('DE', 'FROM')}</p>
-                    <p style={{ fontSize: '13px', fontWeight: 800, color: '#111827', marginBottom: '3px' }}>{compName || 'Hailite Xteriors'}</p>
+                {/* ── FROM | BILL TO ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                  <div style={{ background: '#f9fafb', borderRadius: '6px', padding: '9px' }}>
+                    <p style={{ fontSize: '8px', fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>{t('DE / FROM', 'FROM')}</p>
+                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#111827', marginBottom: '2px' }}>{compName || 'Hailite Xteriors'}</p>
                     {compAddress && <p style={{ fontSize: '10px', color: '#6b7280' }}>{compAddress}</p>}
                     {(compCity || compProvince) && <p style={{ fontSize: '10px', color: '#6b7280' }}>{[compCity, compProvince, compPostal].filter(Boolean).join(' ')}</p>}
                     {compPhone && <p style={{ fontSize: '10px', color: '#6b7280' }}>📞 {compPhone}</p>}
                     {compEmail && <p style={{ fontSize: '10px', color: '#6b7280' }}>✉️ {compEmail}</p>}
-                    {compGST && <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '3px' }}>TPS/GST: {compGST}</p>}
-                    {compWCB && <p style={{ fontSize: '9px', color: '#9ca3af' }}>WCB: {compWCB}</p>}
+                    <div style={{ marginTop: '3px', display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {compGST && <span style={{ fontSize: '8px', color: '#9ca3af', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>GST: {compGST}</span>}
+                      {compWCB && <span style={{ fontSize: '8px', color: '#9ca3af', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>WCB: {compWCB}</span>}
+                      {compBN && <span style={{ fontSize: '8px', color: '#9ca3af', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>BN: {compBN}</span>}
+                    </div>
                   </div>
-                  {/* BILL TO — client */}
-                  <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px', borderLeft: `3px solid ${accentColor}` }}>
-                    <p style={{ fontSize: '9px', fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px' }}>{t('FACTURÉ À', 'BILL TO')}</p>
-                    {clientName ? (
-                      <>
-                        <p style={{ fontSize: '13px', fontWeight: 800, color: '#111827', marginBottom: '3px' }}>{clientName}</p>
-                        {clientAddress && <p style={{ fontSize: '10px', color: '#6b7280' }}>{clientAddress}</p>}
-                        {clientPhone && <p style={{ fontSize: '10px', color: '#6b7280' }}>📞 {clientPhone}</p>}
-                        {clientEmail && <p style={{ fontSize: '10px', color: '#6b7280' }}>✉️ {clientEmail}</p>}
-                      </>
-                    ) : (
-                      <p style={{ fontSize: '11px', color: '#d1d5db', fontStyle: 'italic' }}>{t('Aucun client sélectionné', 'No client selected')}</p>
-                    )}
+                  <div style={{ background: '#f9fafb', borderRadius: '6px', padding: '9px', borderLeft: `3px solid ${accentColor}` }}>
+                    <p style={{ fontSize: '8px', fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>{t('FACTURÉ À / BILL TO', 'BILL TO')}</p>
+                    {clientName ? <>
+                      <p style={{ fontSize: '12px', fontWeight: 800, color: '#111827', marginBottom: '2px' }}>{clientName}</p>
+                      {clientAddress && <p style={{ fontSize: '10px', color: '#6b7280' }}>{clientAddress}</p>}
+                      {siteAddress && siteAddress !== clientAddress && <p style={{ fontSize: '10px', color: '#6b7280' }}>🏗️ {siteAddress}</p>}
+                      {clientPhone && <p style={{ fontSize: '10px', color: '#6b7280' }}>📞 {clientPhone}</p>}
+                      {clientEmail && <p style={{ fontSize: '10px', color: '#6b7280' }}>✉️ {clientEmail}</p>}
+                    </> : <p style={{ fontSize: '10px', color: '#d1d5db', fontStyle: 'italic' }}>{t('Aucun client', 'No client')}</p>}
                   </div>
                 </div>
 
-                {/* ── TABLEAU DES LIGNES ── */}
+                {/* ── TABLEAU LIGNES ── */}
                 {lines.some(l => l.description || l.unitPrice > 0) && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                       <thead>
                         <tr style={{ background: '#f3f4f6', borderBottom: `2px solid ${accentColor}` }}>
                           {[
                             { label: t('Description', 'Description'), align: 'left', w: '45%' },
-                            { label: t('Qté', 'Qty'), align: 'center', w: '8%' },
-                            { label: t('Unité', 'Unit'), align: 'center', w: '12%' },
-                            { label: t('Prix unit.', 'Unit Price'), align: 'right', w: '17%' },
-                            { label: t('Total', 'Total'), align: 'right', w: '18%' },
+                            { label: t('Qté', 'Qty'), align: 'center', w: '7%' },
+                            { label: t('Unité', 'Unit'), align: 'center', w: '11%' },
+                            { label: t('Prix unit.', 'Unit Price'), align: 'right', w: '18%' },
+                            { label: t('Total', 'Total'), align: 'right', w: '19%' },
                           ].map(h => (
-                            <th key={h.label} style={{ padding: '7px 6px', textAlign: h.align as any, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', width: h.w }}>
+                            <th key={h.label} style={{ padding: '5px 5px', textAlign: h.align as any, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', width: h.w }}>
                               {h.label}
                             </th>
                           ))}
@@ -697,11 +721,11 @@ export default function DocumentDetailPage() {
                       <tbody>
                         {lines.filter(l => l.description || l.unitPrice > 0).map((line, i) => (
                           <tr key={line.id} style={{ background: i % 2 === 0 ? 'white' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '9px 6px', color: '#374151', fontWeight: 500 }}>{line.description}</td>
-                            <td style={{ padding: '9px 6px', textAlign: 'center', color: '#374151' }}>{line.qty}</td>
-                            <td style={{ padding: '9px 6px', textAlign: 'center', color: '#6b7280' }}>{line.unit}</td>
-                            <td style={{ padding: '9px 6px', textAlign: 'right', color: '#374151' }}>{fmt(line.unitPrice)}</td>
-                            <td style={{ padding: '9px 6px', textAlign: 'right', color: '#111827', fontWeight: 700 }}>{fmt(line.qty * line.unitPrice)}</td>
+                            <td style={{ padding: '7px 5px', color: '#374151', fontWeight: 500 }}>{line.description}</td>
+                            <td style={{ padding: '7px 5px', textAlign: 'center', color: '#374151' }}>{line.qty}</td>
+                            <td style={{ padding: '7px 5px', textAlign: 'center', color: '#6b7280' }}>{line.unit}</td>
+                            <td style={{ padding: '7px 5px', textAlign: 'right', color: '#374151' }}>{fmt(line.unitPrice)}</td>
+                            <td style={{ padding: '7px 5px', textAlign: 'right', color: '#111827', fontWeight: 700 }}>{fmt(line.qty * line.unitPrice)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -709,88 +733,98 @@ export default function DocumentDetailPage() {
                   </div>
                 )}
 
-                {/* ── TOTAUX — aligné à droite ── */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-                  <div style={{ minWidth: '240px', background: '#f9fafb', borderRadius: '10px', padding: '12px', border: '1px solid #e5e7eb' }}>
+                {/* ── TOTAUX ── */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                  <div style={{ minWidth: '220px', background: '#f9fafb', borderRadius: '8px', padding: '10px', border: '1px solid #e5e7eb' }}>
                     {[
                       { label: t('Sous-total', 'Subtotal'), value: fmt(subtotal) },
                       ...(discountPct > 0 ? [{ label: `${t('Remise', 'Discount')} (${discountPct}%)`, value: `-${fmt(discountAmt)}`, red: true }] : []),
                       { label: `GST (${taxRate}%)`, value: fmt(taxAmt) },
                     ].map((row, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #e5e7eb' }}>
-                        <p style={{ fontSize: '11px', color: '#6b7280' }}>{row.label}</p>
-                        <p style={{ fontSize: '11px', color: (row as any).red ? '#ef4444' : '#374151', fontWeight: 600 }}>{row.value}</p>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #e5e7eb' }}>
+                        <p style={{ fontSize: '10px', color: '#6b7280' }}>{row.label}</p>
+                        <p style={{ fontSize: '10px', color: (row as any).red ? '#ef4444' : '#374151', fontWeight: 600 }}>{row.value}</p>
                       </div>
                     ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', borderTop: '2px solid #e5e7eb', marginTop: '4px' }}>
-                      <p style={{ fontSize: '13px', fontWeight: 900, color: '#111827' }}>TOTAL</p>
-                      <p style={{ fontSize: '16px', fontWeight: 900, color: accentColor }}>{fmt(total)}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0 3px', borderTop: '2px solid #e5e7eb', marginTop: '3px' }}>
+                      <p style={{ fontSize: '12px', fontWeight: 900, color: '#111827' }}>TOTAL</p>
+                      <p style={{ fontSize: '14px', fontWeight: 900, color: accentColor }}>{fmt(total)}</p>
                     </div>
-                    {depositAmount > 0 && (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                          <p style={{ fontSize: '11px', color: '#6b7280' }}>{t('Dépôt reçu', 'Deposit Received')}</p>
-                          <p style={{ fontSize: '11px', color: '#22c55e', fontWeight: 600 }}>-{fmt(depositAmount)}</p>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', background: '#fef2f2', borderRadius: '8px', marginTop: '5px' }}>
-                          <p style={{ fontSize: '12px', fontWeight: 800, color: '#991b1b' }}>{t('SOLDE DÛ', 'BALANCE DUE')}</p>
-                          <p style={{ fontSize: '15px', fontWeight: 900, color: '#ef4444' }}>{fmt(balanceDue)}</p>
-                        </div>
-                      </>
+                    {holdbackPct > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #e5e7eb' }}>
+                        <p style={{ fontSize: '10px', color: '#6b7280' }}>🔒 {t('Retenue', 'Holdback')} ({holdbackPct}%)</p>
+                        <p style={{ fontSize: '10px', color: '#9a3412', fontWeight: 600 }}>{fmt(holdbackAmt)}</p>
+                      </div>
                     )}
+                    {depositAmount > 0 && <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                        <p style={{ fontSize: '10px', color: '#6b7280' }}>{t('Dépôt reçu', 'Deposit')}</p>
+                        <p style={{ fontSize: '10px', color: '#22c55e', fontWeight: 600 }}>-{fmt(depositAmount)}</p>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#fef2f2', borderRadius: '6px', marginTop: '4px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: 800, color: '#991b1b' }}>{t('SOLDE DÛ', 'BALANCE DUE')}</p>
+                        <p style={{ fontSize: '13px', fontWeight: 900, color: '#ef4444' }}>{fmt(balanceDue)}</p>
+                      </div>
+                    </>}
                   </div>
                 </div>
 
                 {/* ── NOTES ── */}
                 {notes && (
-                  <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '12px', marginBottom: '16px', borderLeft: `3px solid ${accentColor}` }}>
-                    <p style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>{t('Notes / Conditions', 'Notes / Terms')}</p>
-                    <p style={{ fontSize: '11px', color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{notes}</p>
+                  <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '9px', marginBottom: '10px', borderLeft: `3px solid ${accentColor}` }}>
+                    <p style={{ fontSize: '8px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{t('Notes / Conditions', 'Notes / Terms')}</p>
+                    <p style={{ fontSize: '10px', color: '#374151', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{notes}</p>
                   </div>
                 )}
+
+                {/* ── CONDITIONS LÉGALES COMPACTES ── */}
+                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '9px', marginBottom: '10px', fontSize: '9px', color: '#6b7280', lineHeight: 1.5 }}>
+                  <p style={{ fontWeight: 700, color: '#374151', marginBottom: '4px', fontSize: '10px' }}>⚖️ {t('Conditions légales — Alberta', 'Legal Terms — Alberta')}</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                    {lateInterestPct > 0 && <p>• {t(`Intérêts de retard : ${lateInterestPct}%/mois`, `Late interest: ${lateInterestPct}%/month`)}</p>}
+                    {holdbackPct > 0 && <p>• {t(`Retenue Builders' Lien Act : ${holdbackPct}%`, `Builders' Lien Act holdback: ${holdbackPct}%`)}</p>}
+                    {warrantyYears > 0 && <p>• {t(`Garantie pose : ${warrantyYears} an(s)`, `Workmanship warranty: ${warrantyYears} year(s)`)}</p>}
+                    {docType === 'quote' && quoteExpiryDate && <p>• {t(`Devis valide jusqu'au ${quoteExpiryDate}`, `Quote valid until ${quoteExpiryDate}`)}</p>}
+                    <p>• {t('Province : Alberta — GST 5% seulement', 'Province: Alberta — GST 5% only')}</p>
+                    {compWCB && <p>• WCB: {compWCB}</p>}
+                    {compGST && <p>• {t('N° GST:', 'GST#:')} {compGST}</p>}
+                    {compBN && <p>• {t('N° Entreprise:', 'BN:')} {compBN}</p>}
+                    <p>• {t('Droit applicable : lois de l\'Alberta, Canada', 'Governing law: Alberta, Canada')}</p>
+                    <p>• {t('Conservation des dossiers : 6 ans minimum', 'Record retention: 6 years minimum')}</p>
+                  </div>
+                </div>
 
                 {/* ── SIGNATURES ── */}
-                {docType !== 'contract' ? (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-                    <div style={{ minWidth: '200px', textAlign: 'right' }}>
-                      <div style={{ borderTop: `2px solid ${accentColor}`, paddingTop: '8px' }}>
-                        <p style={{ fontSize: '13px', fontWeight: 900, color: '#111827', fontFamily: 'Georgia, serif' }}>{ownerName}</p>
-                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{compName}</p>
-                        <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>{todayFormatted}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+                  {/* Gauche — Client */}
+                  <div>
+                    {clientSignature ? (
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden', marginBottom: '5px', height: '50px' }}>
+                        <img src={clientSignature} alt={t('Signature client', 'Client signature')} style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                       </div>
-                      <p style={{ fontSize: '9px', color: '#d1d5db', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Signature autorisée', 'Authorized Signature')}</p>
-                    </div>
+                    ) : (
+                      <div style={{ borderBottom: '1px solid #d1d5db', height: '45px', marginBottom: '5px' }} />
+                    )}
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: '#374151' }}>{clientName || '_______________'}</p>
+                    <p style={{ fontSize: '8px', color: '#9ca3af', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Signature du client · Date: ___________', 'Client Signature · Date: ___________')}</p>
                   </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
-                    <div>
-                      {clientSignature ? (
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px' }}>
-                          <img src={clientSignature} alt="Signature client" style={{ width: '100%', display: 'block' }} />
-                        </div>
-                      ) : (
-                        <div style={{ borderBottom: '1px solid #d1d5db', height: '50px', marginBottom: '8px' }} />
-                      )}
-                      <p style={{ fontSize: '11px', fontWeight: 700, color: '#374151' }}>{clientName || '___________________'}</p>
-                      <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Signature du client', 'Client Signature')}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ borderBottom: '1px solid #d1d5db', height: '50px', marginBottom: '8px' }} />
-                      <p style={{ fontSize: '13px', fontWeight: 900, color: '#111827', fontFamily: 'Georgia, serif' }}>{ownerName}</p>
-                      <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{compName}</p>
-                      <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>{todayFormatted}</p>
-                      <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Signature contracteur', 'Contractor Signature')}</p>
-                    </div>
+                  {/* Droite — Contracteur */}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ borderBottom: '1px solid #d1d5db', height: '45px', marginBottom: '5px' }} />
+                    <p style={{ fontSize: '12px', fontWeight: 900, color: '#111827', fontFamily: 'Georgia, serif' }}>{ownerName}</p>
+                    <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{compName}</p>
+                    <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '1px' }}>{todayFormatted}</p>
+                    <p style={{ fontSize: '8px', color: '#9ca3af', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Signature autorisée', 'Authorized Signature')}</p>
                   </div>
-                )}
+                </div>
 
                 {/* Pied de page */}
-                <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '16px', paddingTop: '10px', textAlign: 'center' }}>
-                  <p style={{ fontSize: '10px', color: '#9ca3af' }}>
+                <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '12px', paddingTop: '8px', textAlign: 'center' }}>
+                  <p style={{ fontSize: '9px', color: '#9ca3af' }}>
                     {compName} · {compPhone} · {compEmail}
-                    {compGST ? ` · TPS/GST: ${compGST}` : ''}
+                    {compGST ? ` · GST: ${compGST}` : ''}{compWCB ? ` · WCB: ${compWCB}` : ''}
                   </p>
-                  <p style={{ fontSize: '9px', color: '#d1d5db', marginTop: '4px' }}>
+                  <p style={{ fontSize: '8px', color: '#d1d5db', marginTop: '3px' }}>
                     {t('Généré par Gestion Chantier Pro — Hailite Xteriors', 'Generated by Gestion Chantier Pro — Hailite Xteriors')}
                   </p>
                 </div>
@@ -798,8 +832,8 @@ export default function DocumentDetailPage() {
               </div>
             </div>
 
-            {/* Boutons bas modal */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '12px 16px 24px' }}>
+            {/* Boutons bas */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '10px 16px 20px' }}>
               <button onClick={() => window.print()} style={{ padding: '14px', borderRadius: '12px', background: accentColor, border: 'none', color: 'white', fontSize: '14px', fontWeight: 800, cursor: 'pointer' }}>🖨️ {t('Imprimer / PDF', 'Print / PDF')}</button>
               <button onClick={() => setShowPdfPreview(false)} style={{ padding: '14px', borderRadius: '12px', background: '#374151', border: 'none', color: '#d1d5db', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>✕ {t('Fermer', 'Close')}</button>
             </div>
