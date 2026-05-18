@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [newRole, setNewRole]                     = useState<'admin' | 'employee'>('employee')
   const [newRate, setNewRate]                     = useState('')
   const [newWorkerType, setNewWorkerType]         = useState<'contractor' | 'salaried'>('contractor')
+  const [newWorkMode, setNewWorkMode]             = useState<'heure' | 'forfait' | 'surface'>('surface')
   // Coordonnées — tous
   const [newPhone, setNewPhone]                   = useState('')
   const [newEmail, setNewEmail]                   = useState('')
@@ -89,9 +90,16 @@ export default function SettingsPage() {
 
   const logoRef = useRef<HTMLInputElement>(null)
 
+  // ── Label taux selon mode de travail ─────────────────────────────────────
+  const getRateLabel = (mode: 'heure' | 'forfait' | 'surface') => {
+    if (mode === 'surface') return t('Taux pi² ($/pi²)', 'Rate ($/sqft)')
+    if (mode === 'forfait') return t('Montant forfait ($)', 'Flat Rate ($)')
+    return t('Taux horaire ($/h)', 'Hourly Rate ($/h)')
+  }
+
   const resetNewForm = () => {
     setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee')
-    setNewWorkerType('contractor')
+    setNewWorkerType('contractor'); setNewWorkMode('surface')
     setNewPhone(''); setNewEmail(''); setNewAddress(''); setNewCity('')
     setNewProvince('AB'); setNewPostalCode('')
     setNewEmergencyContact(''); setNewEmergencyPhone(''); setNewEmergencyRelation('')
@@ -107,7 +115,7 @@ export default function SettingsPage() {
       pin: newPin,
       role: newRole,
       hourlyRate: parseFloat(newRate) || 0,
-      workMode: 'heure',
+      workMode: newWorkerType === 'contractor' ? newWorkMode : 'heure',
       color: '#a855f7',
       active: true,
       workerType: newWorkerType,
@@ -173,7 +181,6 @@ export default function SettingsPage() {
     </div>
   )
 
-  // Bloc coordonnées de base — réutilisable add + edit
   const ContactFields = ({
     phone, setPhone, email, setEmail,
     address, setAddress, city, setCity,
@@ -224,7 +231,6 @@ export default function SettingsPage() {
           <input className={inputClass} value={postalCode} onChange={e => setPostalCode(e.target.value.toUpperCase())} placeholder="T2X 1A1" />
         </div>
       </div>
-
       {subHeader(`🚨 ${t('Contact d\'urgence', 'Emergency Contact')}`)}
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
@@ -279,17 +285,30 @@ export default function SettingsPage() {
           <div className={cardStyle}>
             {isDeco && <DecoCorners />}
             {sectionTitle(t('Informations compagnie', 'Company Information'))}
+
+            {/* Logo */}
             <div>
               <label className={labelClass}>{t('Logo compagnie', 'Company Logo')}</label>
               <div className="flex items-center gap-4">
-                {company.logoUrl ? <img src={company.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-white/20" /> : <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center text-2xl ${isDeco ? 'border-[#D6B25E]/30' : 'border-white/20'}`}>🏗️</div>}
+                {company.logoUrl
+                  ? <img src={company.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl border border-white/20" />
+                  : <div className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center text-2xl ${isDeco ? 'border-[#D6B25E]/30' : 'border-white/20'}`}>🏗️</div>
+                }
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => logoRef.current?.click()} className={`px-4 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-white/10 text-white'}`}>{t('📁 Choisir image', '📁 Choose image')}</button>
-                  {company.logoUrl && <button onClick={() => setCompany({ logoUrl: '' })} className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400">{t('🗑️ Supprimer', '🗑️ Remove')}</button>}
+                  <button onClick={() => logoRef.current?.click()} className={`px-4 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-white/10 text-white'}`}>
+                    {t('📁 Choisir image', '📁 Choose image')}
+                  </button>
+                  {company.logoUrl && (
+                    <button onClick={() => setCompany({ logoUrl: '' })} className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400">
+                      {t('🗑️ Supprimer', '🗑️ Remove')}
+                    </button>
+                  )}
                 </div>
                 <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
               </div>
             </div>
+
+            {/* Infos de base */}
             <div className="grid grid-cols-2 gap-3 mt-4">
               <div className="col-span-2"><label className={labelClass}>{t('Nom compagnie', 'Company Name')}</label><input className={inputClass} value={company.name} onChange={e => setCompany({ name: e.target.value })} placeholder="Hailite Xteriors" /></div>
               <div className="col-span-2"><label className={labelClass}>{t('Nom propriétaire', "Owner's Name")}</label><input className={inputClass} value={company.ownerName} onChange={e => setCompany({ ownerName: e.target.value })} placeholder="Patrick Bisaillon" /></div>
@@ -297,13 +316,120 @@ export default function SettingsPage() {
               <div><label className={labelClass}>{t('Ville', 'City')}</label><input className={inputClass} value={company.city} onChange={e => setCompany({ city: e.target.value })} placeholder="Calgary" /></div>
               <div><label className={labelClass}>{t('Province', 'Province')}</label><input className={inputClass} value={company.province} onChange={e => setCompany({ province: e.target.value })} placeholder="AB" /></div>
               <div><label className={labelClass}>{t('Code postal', 'Postal Code')}</label><input className={inputClass} value={company.postalCode} onChange={e => setCompany({ postalCode: e.target.value })} placeholder="T2X 1A1" /></div>
-              <div><label className={labelClass}>{t('Pays', 'Country')}</label><select className={inputClass} value={company.country} onChange={e => setCompany({ country: e.target.value })}><option value="CA">🇨🇦 Canada</option><option value="US">🇺🇸 USA</option></select></div>
+              <div><label className={labelClass}>{t('Pays', 'Country')}</label>
+                <select className={inputClass} value={company.country} onChange={e => setCompany({ country: e.target.value })}>
+                  <option value="CA">🇨🇦 Canada</option>
+                  <option value="US">🇺🇸 USA</option>
+                </select>
+              </div>
               <div><label className={labelClass}>{t('Téléphone', 'Phone')}</label><input className={inputClass} value={company.phone} onChange={e => setCompany({ phone: e.target.value })} placeholder="403-555-1234" /></div>
               <div><label className={labelClass}>{t('Courriel', 'Email')}</label><input className={inputClass} value={company.email} onChange={e => setCompany({ email: e.target.value })} placeholder="info@hailite.ca" /></div>
               <div className="col-span-2"><label className={labelClass}>{t('Site web', 'Website')}</label><input className={inputClass} value={company.website} onChange={e => setCompany({ website: e.target.value })} placeholder="www.hailite.ca" /></div>
               <div><label className={labelClass}>{t('N° TPS/GST', 'GST Number')}</label><input className={inputClass} value={company.gstNumber} onChange={e => setCompany({ gstNumber: e.target.value })} placeholder="123456789 RT0001" /></div>
               <div><label className={labelClass}>{t('N° WCB', 'WCB Number')}</label><input className={inputClass} value={company.wcbNumber} onChange={e => setCompany({ wcbNumber: e.target.value })} placeholder="WCB-XXXXXX" /></div>
             </div>
+
+            {/* ══ PARAMÈTRES PAIE SALARIÉS ══ */}
+            {subHeader(`💼 ${t('Paramètres paie salariés', 'Salaried Payroll Settings')}`)}
+            <p className={`text-xs mb-3 ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/30'}`}>
+              {t('Ces montants s\'appliquent automatiquement à tous les talons de paie.', 'These amounts apply automatically to all pay stubs.')}
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Vacances */}
+              <div className="col-span-2">
+                <label className={labelClass}>🏖️ {t('% Vacances', 'Vacation %')}
+                  <span className={`ml-1 text-xs normal-case font-normal ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+                    ({t('min. 6% construction AB', 'min. 6% AB construction')})
+                  </span>
+                </label>
+                <input className={inputClass} type="number" min="0" max="20" step="0.5"
+                  value={company.payrollVacationRate}
+                  onChange={e => setCompany({ payrollVacationRate: parseFloat(e.target.value) || 0 })}
+                  placeholder="6" />
+              </div>
+
+              {/* Assurances */}
+              <div>
+                <label className={labelClass}>🏥 {t('Assurance santé', 'Health Ins.')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollHealthInsurance || ''}
+                  onChange={e => setCompany({ payrollHealthInsurance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+              <div>
+                <label className={labelClass}>🦷 {t('Assurance dentaire', 'Dental Ins.')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollDentalInsurance || ''}
+                  onChange={e => setCompany({ payrollDentalInsurance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+              <div>
+                <label className={labelClass}>💛 {t('Assurance vie', 'Life Ins.')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollLifeInsurance || ''}
+                  onChange={e => setCompany({ payrollLifeInsurance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+              <div>
+                <label className={labelClass}>♿ {t('Invalidité LT', 'LTD')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollLTD || ''}
+                  onChange={e => setCompany({ payrollLTD: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+
+              {/* REER */}
+              <div>
+                <label className={labelClass}>💰 REER {t('collectif', 'Group')} % {t('du brut', 'of gross')}</label>
+                <input className={inputClass} type="number" min="0" max="18" step="0.1"
+                  value={company.payrollRRSP || ''}
+                  onChange={e => setCompany({ payrollRRSP: parseFloat(e.target.value) || 0 })}
+                  placeholder="0" />
+              </div>
+
+              {/* PAE */}
+              <div>
+                <label className={labelClass}>🧠 PAE $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollEAP || ''}
+                  onChange={e => setCompany({ payrollEAP: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+
+              {/* Custom 1 */}
+              <div>
+                <label className={labelClass}>➕ {t('Déduction custom 1 — Nom', 'Custom Deduction 1 — Name')}</label>
+                <input className={inputClass}
+                  value={company.payrollCustom1Name}
+                  onChange={e => setCompany({ payrollCustom1Name: e.target.value })}
+                  placeholder={t('Ex: Stationnement', 'Ex: Parking')} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('Montant', 'Amount')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollCustom1Amount || ''}
+                  onChange={e => setCompany({ payrollCustom1Amount: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+
+              {/* Custom 2 */}
+              <div>
+                <label className={labelClass}>➕ {t('Déduction custom 2 — Nom', 'Custom Deduction 2 — Name')}</label>
+                <input className={inputClass}
+                  value={company.payrollCustom2Name}
+                  onChange={e => setCompany({ payrollCustom2Name: e.target.value })}
+                  placeholder={t('Ex: Uniforme', 'Ex: Uniform')} />
+              </div>
+              <div>
+                <label className={labelClass}>{t('Montant', 'Amount')} $/période</label>
+                <input className={inputClass} type="number" min="0" step="0.01"
+                  value={company.payrollCustom2Amount || ''}
+                  onChange={e => setCompany({ payrollCustom2Amount: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00" />
+              </div>
+            </div>
+
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
@@ -318,19 +444,17 @@ export default function SettingsPage() {
                 {isDeco && <DecoCorners />}
                 {editingId === emp.id ? (
                   <div className="space-y-3">
-                    {/* Nom + taux */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
                         <label className={labelClass}>{t('Nom', 'Name')}</label>
                         <input className={inputClass} value={editName} onChange={e => setEditName(e.target.value)} />
                       </div>
                       <div className="col-span-2">
-                        <label className={labelClass}>{t('Taux horaire $/h', 'Hourly Rate $/h')}</label>
+                        <label className={labelClass}>{getRateLabel(emp.workMode as any || 'heure')}</label>
                         <input className={inputClass} value={editRate} onChange={e => setEditRate(e.target.value)} type="number" />
                       </div>
                     </div>
 
-                    {/* Type de travailleur */}
                     <div>
                       <label className={labelClass}>💼 {t('Type de travailleur', 'Worker Type')}</label>
                       <select className={inputClass} defaultValue={emp.workerType || 'contractor'}
@@ -339,6 +463,19 @@ export default function SettingsPage() {
                         <option value="salaried">💼 {t('Salarié (employé)', 'Salaried Employee')}</option>
                       </select>
                     </div>
+
+                    {/* Mode de travail — contracteurs */}
+                    {(emp.workerType === 'contractor' || !emp.workerType) && (
+                      <div>
+                        <label className={labelClass}>⚙️ {t('Mode de facturation', 'Billing Mode')}</label>
+                        <select className={inputClass} defaultValue={emp.workMode || 'surface'}
+                          onChange={e => updateEmployee(emp.id, { workMode: e.target.value as any })}>
+                          <option value="surface">🦶 {t('Pied carré ($/pi²)', 'Square foot ($/sqft)')}</option>
+                          <option value="heure">⏱️ {t('Heure ($/h)', 'Hourly ($/h)')}</option>
+                          <option value="forfait">💼 {t('À la job — forfait fixe', 'Fixed price — flat rate')}</option>
+                        </select>
+                      </div>
+                    )}
 
                     {/* Coordonnées */}
                     {subHeader(`📞 ${t('Coordonnées', 'Contact Info')}`)}
@@ -434,13 +571,9 @@ export default function SettingsPage() {
                         <div>
                           <label className={labelClass}>{t('Début semaine de paie', 'Pay Period Start')}</label>
                           <select className={inputClass} defaultValue={emp.payPeriodStart || 'monday'} onChange={e => updateEmployee(emp.id, { payPeriodStart: e.target.value as any })}>
-                            <option value="monday">{t('Lundi', 'Monday')}</option>
-                            <option value="tuesday">{t('Mardi', 'Tuesday')}</option>
-                            <option value="wednesday">{t('Mercredi', 'Wednesday')}</option>
-                            <option value="thursday">{t('Jeudi', 'Thursday')}</option>
-                            <option value="friday">{t('Vendredi', 'Friday')}</option>
-                            <option value="saturday">{t('Samedi', 'Saturday')}</option>
-                            <option value="sunday">{t('Dimanche', 'Sunday')}</option>
+                            {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map((d, i) => (
+                              <option key={d} value={d}>{['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'][i]}</option>
+                            ))}
                           </select>
                         </div>
                         <div>
@@ -473,9 +606,15 @@ export default function SettingsPage() {
                             {emp.workerType === 'salaried' ? '💼 Salarié' : '🔧 S-traitant'}
                           </span>
                         )}
+                        {emp.workerType === 'contractor' && emp.workMode && emp.workMode !== 'heure' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+                            {emp.workMode === 'surface' ? '🦶 pi²' : '💼 forfait'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-white/40 text-xs mt-1 flex flex-wrap gap-2">
-                        {emp.hourlyRate ? <span>${emp.hourlyRate}/h</span> : null}
+                        {emp.hourlyRate ? <span>${emp.hourlyRate}/{emp.workMode === 'surface' ? 'pi²' : emp.workMode === 'forfait' ? 'job' : 'h'}</span> : null}
+                        {emp.businessName && <span>🏢 {emp.businessName}</span>}
                         {emp.phone && <span>📞 {emp.phone}</span>}
                         {emp.email && <span>✉️ {emp.email}</span>}
                         {emp.city && <span>📍 {emp.city}</span>}
@@ -497,26 +636,49 @@ export default function SettingsPage() {
               </div>
             ))}
 
-            {/* Formulaire ajout */}
+            {/* ── Formulaire ajout employé ── */}
             <div className={cardStyle}>
               {isDeco && <DecoCorners />}
               {sectionTitle(t('➕ Ajouter employé', '➕ Add Employee'))}
               <div className="space-y-3">
 
-                {/* Base */}
                 <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('Prénom Nom *', 'First Last *')} />
                 <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g,'').slice(0,4))} type="password" maxLength={4} inputMode="numeric" placeholder={t('PIN 4 chiffres *', 'PIN 4 digits *')} />
-                <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)} type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
+
                 <select className={inputClass} value={newRole} onChange={e => setNewRole(e.target.value as any)}>
                   <option value="employee">👷 {t('Employé', 'Employee')}</option>
                   <option value="admin">👑 Admin</option>
                 </select>
-                <select className={inputClass} value={newWorkerType} onChange={e => setNewWorkerType(e.target.value as any)}>
+
+                <select className={inputClass} value={newWorkerType} onChange={e => { setNewWorkerType(e.target.value as any); setNewWorkMode('surface') }}>
                   <option value="contractor">🔧 {t('Sous-traitant autonome', 'Independent Contractor')}</option>
                   <option value="salaried">💼 {t('Salarié', 'Salaried Employee')}</option>
                 </select>
 
-                {/* Coordonnées + urgence — tous */}
+                {/* Mode de facturation — contracteurs */}
+                {newWorkerType === 'contractor' && (
+                  <div>
+                    <label className={labelClass}>⚙️ {t('Mode de facturation', 'Billing Mode')}</label>
+                    <select className={inputClass} value={newWorkMode} onChange={e => setNewWorkMode(e.target.value as any)}>
+                      <option value="surface">🦶 {t('Pied carré ($/pi²)', 'Square foot ($/sqft)')}</option>
+                      <option value="heure">⏱️ {t('Heure ($/h)', 'Hourly ($/h)')}</option>
+                      <option value="forfait">💼 {t('À la job — forfait fixe', 'Fixed price — flat rate')}</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Taux — label dynamique */}
+                <div>
+                  <label className={labelClass}>
+                    {newWorkerType === 'contractor' ? getRateLabel(newWorkMode) : t('Taux horaire ($/h)', 'Hourly Rate ($/h)')}
+                  </label>
+                  <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)} type="number"
+                    placeholder={newWorkerType === 'contractor'
+                      ? newWorkMode === 'surface' ? '$/pi²' : newWorkMode === 'forfait' ? '$' : '$/h'
+                      : '$/h'} />
+                </div>
+
+                {/* Coordonnées + urgence */}
                 <ContactFields
                   phone={newPhone} setPhone={setNewPhone}
                   email={newEmail} setEmail={setNewEmail}
@@ -529,13 +691,13 @@ export default function SettingsPage() {
                   emergencyRelation={newEmergencyRelation} setEmergencyRelation={setNewEmergencyRelation}
                 />
 
-                {/* Champs contractor */}
+                {/* Contractor */}
                 {newWorkerType === 'contractor' && (
                   <>
                     {subHeader(`🔧 ${t('Infos sous-traitant', 'Contractor Info')}`)}
                     <div>
                       <label className={labelClass}>🏢 {t("Nom d'entreprise", 'Business Name')}</label>
-                      <input className={inputClass} value={newBusinessName} onChange={e => setNewBusinessName(e.target.value)} placeholder={t('Optionnel', 'Optional')} />
+                      <input className={inputClass} value={newBusinessName} onChange={e => setNewBusinessName(e.target.value)} placeholder={t('Optionnel — ex: Toiture Leblanc Inc.', 'Optional — ex: Leblanc Roofing Inc.')} />
                     </div>
                     <div>
                       <label className={labelClass}>🇨🇦 {t('N° GST (si inscrit)', 'GST # (if registered)')}</label>
@@ -555,7 +717,7 @@ export default function SettingsPage() {
                   </>
                 )}
 
-                {/* Champs salarié */}
+                {/* Salarié */}
                 {newWorkerType === 'salaried' && (
                   <>
                     {subHeader(`💼 ${t('Infos paie', 'Payroll Info')}`)}
@@ -569,13 +731,9 @@ export default function SettingsPage() {
                       <option value="monthly">{t('Mensuel (173.33h)', 'Monthly (173.33h)')}</option>
                     </select>
                     <select className={inputClass} value={newPayPeriodStart} onChange={e => setNewPayPeriodStart(e.target.value as any)}>
-                      <option value="monday">📅 {t('Lundi', 'Monday')}</option>
-                      <option value="tuesday">📅 {t('Mardi', 'Tuesday')}</option>
-                      <option value="wednesday">📅 {t('Mercredi', 'Wednesday')}</option>
-                      <option value="thursday">📅 {t('Jeudi', 'Thursday')}</option>
-                      <option value="friday">📅 {t('Vendredi', 'Friday')}</option>
-                      <option value="saturday">📅 {t('Samedi', 'Saturday')}</option>
-                      <option value="sunday">📅 {t('Dimanche', 'Sunday')}</option>
+                      {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map((d, i) => (
+                        <option key={d} value={d}>📅 {['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'][i]}</option>
+                      ))}
                     </select>
                     <input className={inputClass} value={newAnnualSalary} onChange={e => setNewAnnualSalary(e.target.value)} type="number" placeholder={t('Salaire annuel $ (optionnel)', 'Annual Salary $ (optional)')} />
                   </>
