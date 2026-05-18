@@ -8,6 +8,8 @@ import { useClientStore } from '@/store/useClientStore'
 import { useDocumentStore } from '@/store/useDocumentStore'
 import { useEmployeeInvoiceStore } from '@/store/useEmployeeInvoiceStore'
 import { useCommandeStore } from '@/store/useCommandeStore'
+import type { EmployeeInvoice } from '@/store/useEmployeeInvoiceStore'
+import type { Commande } from '@/store/useCommandeStore'
 import {
   SEED_EMPLOYEES, SEED_COMPANY, SEED_CLIENTS, SEED_DOCUMENTS,
   SEED_DAY_DETAILS, SEED_EMPLOYEE_INVOICES, SEED_COMMANDES,
@@ -15,13 +17,13 @@ import {
 } from '@/lib/seedData'
 
 const CATEGORIES = [
-  { key: 'company',   emoji: '🏢', label: 'Compagnie',             desc: 'Hailite Xteriors — Patrick Bisaillon' },
-  { key: 'employees', emoji: '👥', label: 'Employés (7)',           desc: '1 admin · 3 contracteurs · 3 salariés' },
-  { key: 'clients',   emoji: '👤', label: 'Clients (3)',            desc: 'Martin Côté, Jennifer Walsh, Robert Chen' },
-  { key: 'documents', emoji: '📄', label: 'Documents (5)',          desc: '3 factures · 1 devis · 1 contrat' },
-  { key: 'punch',     emoji: '⏱️', label: 'Punch data (30j-emp)',   desc: '10 jours × 3 contracteurs — heures réalistes' },
-  { key: 'invoices',  emoji: '🧾', label: 'Invoices contracteurs',  desc: '2 invoices × 3 contracteurs — sem. 1+2' },
-  { key: 'commandes', emoji: '📦', label: 'Commandes PO (3)',       desc: 'Reçue · Envoyée · Brouillon' },
+  { key: 'company',   emoji: '🏢', label: 'Compagnie',            desc: 'Hailite Xteriors — Patrick Bisaillon' },
+  { key: 'employees', emoji: '👥', label: 'Employés (7)',          desc: '1 admin · 3 contracteurs · 3 salariés' },
+  { key: 'clients',   emoji: '👤', label: 'Clients (3)',           desc: 'Martin Côté, Jennifer Walsh, Robert Chen' },
+  { key: 'documents', emoji: '📄', label: 'Documents (5)',         desc: '3 factures · 1 devis · 1 contrat' },
+  { key: 'punch',     emoji: '⏱️', label: 'Punch data (30j-emp)', desc: '10 jours × 3 contracteurs — heures réalistes' },
+  { key: 'invoices',  emoji: '🧾', label: 'Invoices contracteurs', desc: '2 invoices × 3 contracteurs — sem. 1+2' },
+  { key: 'commandes', emoji: '📦', label: 'Commandes PO (3)',      desc: 'Reçue · Envoyée · Brouillon' },
 ] as const
 
 type CategoryKey = typeof CATEGORIES[number]['key']
@@ -80,16 +82,18 @@ export default function DevTools() {
     }
 
     if (sel.invoices) {
+      // Cast needed — status literals inferred as string by TypeScript
       useEmployeeInvoiceStore.setState(state => ({
         ...state,
-        invoices: SEED_EMPLOYEE_INVOICES,
+        invoices: SEED_EMPLOYEE_INVOICES as unknown as EmployeeInvoice[],
       }))
     }
 
     if (sel.commandes) {
+      // Cast needed — status literals inferred as string by TypeScript
       useCommandeStore.setState(state => ({
         ...state,
-        commandes: SEED_COMMANDES,
+        commandes: SEED_COMMANDES as unknown as Commande[],
         nextNumber: SEED_COMMANDES.length + 1,
       }))
     }
