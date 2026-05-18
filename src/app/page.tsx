@@ -285,7 +285,7 @@ export default function HomePage() {
                   <p style={{ color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '15px', fontWeight: 700 }}>{emp.name}</p>
                   {isXP ? (<div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}><span style={{ fontSize: '10px', background: 'rgba(168,85,247,0.3)', color: '#a855f7', padding: '2px 7px', borderRadius: '5px', fontWeight: 800 }}>Nv.{empGoal.level}</span><span style={{ fontSize: '10px', color: '#6b7280' }}>{empGoal.xpPoints} XP</span>{empGoal.streak > 0 && <span style={{ fontSize: '10px', color: '#f59e0b' }}>🔥{empGoal.streak}j</span>}</div>) : (<p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>{emp.role === 'admin' ? '👑 Admin' : `⏱ ${emp.workMode}`}</p>)}
                 </div>
-                {activeSessions[emp.id] && <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e', flexShrink: 0, position: 'relative', zIndex: 1 }}/>}
+                <div style={{ width: "9px", height: "9px", borderRadius: "50%", flexShrink: 0, position: "relative", zIndex: 1, background: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? "#f59e0b" : "#22c55e" : "#ef4444", boxShadow: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? "0 0 8px #f59e0b" : "0 0 8px #22c55e" : "0 0 8px #ef4444" }}/>
               </button>
             )
           })}
