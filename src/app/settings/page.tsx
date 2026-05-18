@@ -50,34 +50,63 @@ export default function SettingsPage() {
   const TABS = lang === 'fr' ? TABS_FR : TABS_EN
   const [activeTab, setActiveTab] = useState(0)
 
-  // Employee
-  const [newName, setNewName] = useState('')
-  const [newPin, setNewPin] = useState('')
-  const [newRole, setNewRole] = useState<'admin' | 'employee'>('employee')
-  const [newRate, setNewRate] = useState('')
-  const [newWorkerType, setNewWorkerType] = useState<'contractor' | 'salaried'>('contractor')
-  const [newProvince, setNewProvince] = useState('AB')
-  const [newPayFrequency, setNewPayFrequency] = useState<'weekly' | 'biweekly' | 'semimonthly' | 'monthly'>('biweekly')
+  // ── Formulaire nouvel employé ─────────────────────────────────────────────
+  const [newName, setNewName]                   = useState('')
+  const [newPin, setNewPin]                     = useState('')
+  const [newRole, setNewRole]                   = useState<'admin' | 'employee'>('employee')
+  const [newRate, setNewRate]                   = useState('')
+  const [newWorkerType, setNewWorkerType]       = useState<'contractor' | 'salaried'>('contractor')
+  const [newProvince, setNewProvince]           = useState('AB')
+  const [newPayFrequency, setNewPayFrequency]   = useState<'weekly' | 'biweekly' | 'semimonthly' | 'monthly'>('biweekly')
   const [newPayPeriodStart, setNewPayPeriodStart] = useState<'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday'>('monday')
-  const [newAnnualSalary, setNewAnnualSalary] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editRate, setEditRate] = useState('')
-  const [editName, setEditName] = useState('')
-  const [showResetPin, setShowResetPin] = useState(false)
-  const [resetPinVal, setResetPinVal] = useState('')
+  const [newAnnualSalary, setNewAnnualSalary]   = useState('')
+  // Nouveaux champs communs
+  const [newAddress, setNewAddress]             = useState('')
+  // Nouveaux champs contractor
+  const [newBusinessName, setNewBusinessName]   = useState('')
+  const [newGstNumber, setNewGstNumber]         = useState('')
+  const [newSin, setNewSin]                     = useState('')
 
-  // Client form
-  const [newClientName, setNewClientName] = useState('')
+  // ── Édition employé existant ──────────────────────────────────────────────
+  const [editingId, setEditingId]   = useState<string | null>(null)
+  const [editRate, setEditRate]     = useState('')
+  const [editName, setEditName]     = useState('')
+
+  // ── Client form ───────────────────────────────────────────────────────────
+  const [newClientName, setNewClientName]   = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
   const [newClientEmail, setNewClientEmail] = useState('')
-  const [newClientCity, setNewClientCity] = useState('')
+  const [newClientCity, setNewClientCity]   = useState('')
 
   const logoRef = useRef<HTMLInputElement>(null)
 
   const handleAddEmployee = () => {
     if (!newName.trim() || newPin.length < 4) return
-    addEmployee({ name: newName.trim(), pin: newPin, role: newRole, hourlyRate: parseFloat(newRate) || 0, workMode: 'heure', color: '#a855f7', active: true, workerType: newWorkerType, employeeProvince: newWorkerType === 'salaried' ? newProvince : undefined, payFrequency: newWorkerType === 'salaried' ? newPayFrequency : undefined, payPeriodStart: newWorkerType === 'salaried' ? newPayPeriodStart : undefined, annualSalary: newWorkerType === 'salaried' && newAnnualSalary ? parseFloat(newAnnualSalary) : undefined })
-    setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee'); setNewWorkerType('contractor'); setNewProvince('AB'); setNewPayFrequency('biweekly'); setNewPayPeriodStart('monday'); setNewAnnualSalary('')
+    addEmployee({
+      name: newName.trim(),
+      pin: newPin,
+      role: newRole,
+      hourlyRate: parseFloat(newRate) || 0,
+      workMode: 'heure',
+      color: '#a855f7',
+      active: true,
+      workerType: newWorkerType,
+      address: newAddress.trim() || undefined,
+      // Salarié
+      employeeProvince:  newWorkerType === 'salaried' ? newProvince : undefined,
+      payFrequency:      newWorkerType === 'salaried' ? newPayFrequency : undefined,
+      payPeriodStart:    newWorkerType === 'salaried' ? newPayPeriodStart : undefined,
+      annualSalary:      newWorkerType === 'salaried' && newAnnualSalary ? parseFloat(newAnnualSalary) : undefined,
+      // Contractor
+      businessName:      newWorkerType === 'contractor' && newBusinessName.trim() ? newBusinessName.trim() : undefined,
+      gstNumber:         newWorkerType === 'contractor' && newGstNumber.trim() ? newGstNumber.trim() : undefined,
+      sin:               newWorkerType === 'contractor' && newSin.trim() ? newSin.trim() : undefined,
+    })
+    // Reset
+    setNewName(''); setNewPin(''); setNewRate(''); setNewRole('employee')
+    setNewWorkerType('contractor'); setNewProvince('AB')
+    setNewPayFrequency('biweekly'); setNewPayPeriodStart('monday'); setNewAnnualSalary('')
+    setNewAddress(''); setNewBusinessName(''); setNewGstNumber(''); setNewSin('')
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,6 +138,116 @@ export default function SettingsPage() {
       {isDeco && <DecoOrnament />}
       <h3 className={`text-base font-bold uppercase tracking-wider ${isDeco ? 'text-[#D6B25E]' : isQuantum ? 'text-violet-300' : 'text-white'}`}>{title}</h3>
       {isDeco && <DecoOrnament />}
+    </div>
+  )
+
+  // Bloc champs contractor réutilisé (ajout + édition)
+  const ContractorFields = ({
+    address, setAddress,
+    businessName, setBusinessName,
+    gstNumber, setGstNumber,
+    sin, setSin,
+  }: {
+    address: string; setAddress: (v: string) => void
+    businessName: string; setBusinessName: (v: string) => void
+    gstNumber: string; setGstNumber: (v: string) => void
+    sin: string; setSin: (v: string) => void
+  }) => (
+    <div className="space-y-3 mt-1">
+      {/* Séparateur visuel */}
+      <div className={`text-xs font-bold uppercase tracking-widest pt-1 ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/30'}`}>
+        🔧 {t('Infos sous-traitant', 'Contractor Info')}
+      </div>
+      <div>
+        <label className={labelClass}>📍 {t('Adresse complète', 'Full Address')}</label>
+        <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)}
+          placeholder="123 Rue Principale, Calgary AB T2X 1A1" />
+      </div>
+      <div>
+        <label className={labelClass}>🏢 {t("Nom d'entreprise", 'Business Name')}</label>
+        <input className={inputClass} value={businessName} onChange={e => setBusinessName(e.target.value)}
+          placeholder={t('Toiture Leblanc Inc. (optionnel)', 'Leblanc Roofing Inc. (optional)')} />
+      </div>
+      <div>
+        <label className={labelClass}>🇨🇦 {t('N° GST (si inscrit)', 'GST # (if registered)')}</label>
+        <input className={inputClass} value={gstNumber} onChange={e => setGstNumber(e.target.value)}
+          placeholder="123456789 RT0001" />
+        <p className={`text-xs mt-1 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+          {gstNumber.trim()
+            ? `✅ ${t('GST applicable → vous lui payez la taxe', 'GST applies → you pay the tax')}`
+            : `⚠️ ${t('Sans GST → T4A requis si > 500$/an', 'No GST → T4A required if > $500/yr')}`}
+        </p>
+      </div>
+      {!gstNumber.trim() && (
+        <div>
+          <label className={labelClass}>🪪 {t('NAS (si pas de GST)', 'SIN (if no GST)')}</label>
+          <input className={inputClass} value={sin} onChange={e => setSin(e.target.value.replace(/\D/g, '').slice(0, 9))}
+            placeholder="123 456 789" inputMode="numeric" />
+          <p className={`text-xs mt-1 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+            {t('Requis pour émettre le feuillet T4A en fin d\'année', 'Required to issue T4A slip at year-end')}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+
+  // Bloc champs salarié
+  const SalariedFields = ({
+    province, setProvince,
+    payFrequency, setPayFrequency,
+    payPeriodStart, setPayPeriodStart,
+    annualSalary, setAnnualSalary,
+    address, setAddress,
+  }: {
+    province: string; setProvince: (v: string) => void
+    payFrequency: string; setPayFrequency: (v: any) => void
+    payPeriodStart: string; setPayPeriodStart: (v: any) => void
+    annualSalary: string; setAnnualSalary: (v: string) => void
+    address: string; setAddress: (v: string) => void
+  }) => (
+    <div className="space-y-3 mt-1">
+      <div className={`text-xs font-bold uppercase tracking-widest pt-1 ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/30'}`}>
+        💼 {t('Infos salarié', 'Employee Info')}
+      </div>
+      <div>
+        <label className={labelClass}>📍 {t('Adresse', 'Address')}</label>
+        <input className={inputClass} value={address} onChange={e => setAddress(e.target.value)}
+          placeholder="123 Rue Principale, Calgary AB T2X 1A1" />
+      </div>
+      <div>
+        <label className={labelClass}>📍 {t('Province', 'Province')}</label>
+        <select className={inputClass} value={province} onChange={e => setProvince(e.target.value)}>
+          {['AB','BC','ON','QC','MB','SK','NS','NB','NL','PE','NT','NU','YT'].map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>📅 {t('Fréquence de paie', 'Pay Frequency')}</label>
+        <select className={inputClass} value={payFrequency} onChange={e => setPayFrequency(e.target.value)}>
+          <option value="weekly">{t('Hebdomadaire (40h)', 'Weekly (40h)')}</option>
+          <option value="biweekly">{t('Aux 2 semaines (80h)', 'Biweekly (80h)')}</option>
+          <option value="semimonthly">{t('2x/mois (86.67h)', 'Semi-monthly (86.67h)')}</option>
+          <option value="monthly">{t('Mensuel (173.33h)', 'Monthly (173.33h)')}</option>
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>📅 {t('Début semaine de paie', 'Pay Period Start')}</label>
+        <select className={inputClass} value={payPeriodStart} onChange={e => setPayPeriodStart(e.target.value)}>
+          <option value="monday">{t('Lundi → Dimanche', 'Monday → Sunday')}</option>
+          <option value="tuesday">{t('Mardi → Lundi', 'Tuesday → Monday')}</option>
+          <option value="wednesday">{t('Mercredi → Mardi', 'Wednesday → Tuesday')}</option>
+          <option value="thursday">{t('Jeudi → Mercredi', 'Thursday → Wednesday')}</option>
+          <option value="friday">{t('Vendredi → Jeudi', 'Friday → Thursday')}</option>
+          <option value="saturday">{t('Samedi → Vendredi', 'Saturday → Friday')}</option>
+          <option value="sunday">{t('Dimanche → Samedi', 'Sunday → Saturday')}</option>
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>💵 {t('Salaire annuel $ (optionnel)', 'Annual Salary $ (optional)')}</label>
+        <input className={inputClass} type="number" value={annualSalary} onChange={e => setAnnualSalary(e.target.value)}
+          placeholder="Ex: 52000" />
+      </div>
     </div>
   )
 
@@ -180,6 +319,8 @@ export default function SettingsPage() {
         {/* ─── TAB 1 : EMPLOYÉS ─── */}
         {activeTab === 1 && (
           <div className="space-y-4">
+
+            {/* Liste des employés existants */}
             {employees.map(emp => (
               <div key={emp.id} className={cardStyle}>
                 {isDeco && <DecoCorners />}
@@ -187,16 +328,68 @@ export default function SettingsPage() {
                   <div className="space-y-3">
                     <input className={inputClass} value={editName} onChange={e => setEditName(e.target.value)} placeholder={t('Nom', 'Name')} />
                     <input className={inputClass} value={editRate} onChange={e => setEditRate(e.target.value)} type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
+
                     <div>
                       <label className={labelClass}>💼 {t('Type de travailleur', 'Worker Type')}</label>
                       <select className={inputClass} defaultValue={emp.workerType || 'contractor'}
                         onChange={e => updateEmployee(emp.id, { workerType: e.target.value as any })}>
-                        <option value="contractor">📋 {t('Contracteur autonome', 'Independent Contractor')}</option>
+                        <option value="contractor">🔧 {t('Sous-traitant autonome', 'Independent Contractor')}</option>
                         <option value="salaried">💼 {t('Salarié (employé)', 'Salaried Employee')}</option>
                       </select>
                     </div>
+
+                    {/* Champs contractor en édition */}
+                    {(emp.workerType === 'contractor' || !emp.workerType) && (
+                      <div className="space-y-3">
+                        <div className={`text-xs font-bold uppercase tracking-widest pt-1 ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/30'}`}>
+                          🔧 {t('Infos sous-traitant', 'Contractor Info')}
+                        </div>
+                        <div>
+                          <label className={labelClass}>📍 {t('Adresse', 'Address')}</label>
+                          <input className={inputClass} defaultValue={emp.address || ''}
+                            onChange={e => updateEmployee(emp.id, { address: e.target.value })}
+                            placeholder="123 Rue Principale, Calgary AB T2X 1A1" />
+                        </div>
+                        <div>
+                          <label className={labelClass}>🏢 {t("Nom d'entreprise", 'Business Name')}</label>
+                          <input className={inputClass} defaultValue={emp.businessName || ''}
+                            onChange={e => updateEmployee(emp.id, { businessName: e.target.value || undefined })}
+                            placeholder={t('Optionnel', 'Optional')} />
+                        </div>
+                        <div>
+                          <label className={labelClass}>🇨🇦 {t('N° GST', 'GST #')}</label>
+                          <input className={inputClass} defaultValue={emp.gstNumber || ''}
+                            onChange={e => updateEmployee(emp.id, { gstNumber: e.target.value || undefined })}
+                            placeholder="123456789 RT0001" />
+                          <p className={`text-xs mt-1 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+                            {emp.gstNumber
+                              ? `✅ ${t('GST applicable', 'GST applies')}`
+                              : `⚠️ ${t('Sans GST → T4A si > 500$/an', 'No GST → T4A if > $500/yr')}`}
+                          </p>
+                        </div>
+                        {!emp.gstNumber && (
+                          <div>
+                            <label className={labelClass}>🪪 {t('NAS (si pas de GST)', 'SIN (if no GST)')}</label>
+                            <input className={inputClass} defaultValue={emp.sin || ''}
+                              onChange={e => updateEmployee(emp.id, { sin: e.target.value.replace(/\D/g, '').slice(0,9) || undefined })}
+                              placeholder="123 456 789" inputMode="numeric" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Champs salarié en édition */}
                     {emp.workerType === 'salaried' && (
-                      <>
+                      <div className="space-y-3">
+                        <div className={`text-xs font-bold uppercase tracking-widest pt-1 ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/30'}`}>
+                          💼 {t('Infos salarié', 'Employee Info')}
+                        </div>
+                        <div>
+                          <label className={labelClass}>📍 {t('Adresse', 'Address')}</label>
+                          <input className={inputClass} defaultValue={emp.address || ''}
+                            onChange={e => updateEmployee(emp.id, { address: e.target.value })}
+                            placeholder="123 Rue Principale, Calgary AB T2X 1A1" />
+                        </div>
                         <div>
                           <label className={labelClass}>📍 {t('Province', 'Province')}</label>
                           <select className={inputClass} defaultValue={emp.employeeProvince || 'AB'}
@@ -230,71 +423,111 @@ export default function SettingsPage() {
                           </select>
                         </div>
                         <div>
-                          <label className={labelClass}>💵 {t('Salaire annuel $ (optionnel)', 'Annual Salary $ (optional)')}</label>
+                          <label className={labelClass}>💵 {t('Salaire annuel $', 'Annual Salary $')}</label>
                           <input className={inputClass} type="number"
                             defaultValue={emp.annualSalary || ''}
                             onChange={e => updateEmployee(emp.id, { annualSalary: parseFloat(e.target.value) || undefined })}
                             placeholder="Ex: 52000" />
                         </div>
-                      </>
+                      </div>
                     )}
-                    <div className="flex gap-2">
-                      <button onClick={() => { updateEmployee(emp.id, { name: editName, hourlyRate: parseFloat(editRate) || 0 }); setEditingId(null) }} className={`flex-1 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>✅ {t('Sauvegarder', 'Save')}</button>
-                      <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">✕ {t('Annuler', 'Cancel')}</button>
+
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => {
+                        updateEmployee(emp.id, { name: editName, hourlyRate: parseFloat(editRate) || 0 })
+                        setEditingId(null)
+                      }} className={`flex-1 py-2 rounded-xl text-xs font-bold ${isDeco ? 'bg-[#D6B25E] text-[#0d0a00]' : 'bg-emerald-500 text-white'}`}>
+                        ✅ {t('Sauvegarder', 'Save')}
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-white/10 text-white">
+                        ✕ {t('Annuler', 'Cancel')}
+                      </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className={`font-bold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{emp.name} <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${emp.role === 'admin' ? isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 text-white/60'}`}>{emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}</span></div>
-                      <div className="text-white/50 text-xs mt-0.5">{emp.hourlyRate ? `$${emp.hourlyRate}/h` : t('Taux non défini', 'Rate not set')}</div>
+                      <div className={`font-bold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
+                        {emp.name}
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${emp.role === 'admin' ? isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 text-white/60'}`}>
+                          {emp.role === 'admin' ? '👑 Admin' : '👷 Employé'}
+                        </span>
+                        {/* Badge type de travailleur */}
+                        {emp.workerType && (
+                          <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${emp.workerType === 'salaried' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                            {emp.workerType === 'salaried' ? '💼 Salarié' : '🔧 S-traitant'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-white/50 text-xs mt-0.5">
+                        {emp.hourlyRate ? `$${emp.hourlyRate}/h` : t('Taux non défini', 'Rate not set')}
+                        {emp.workerType === 'contractor' && emp.gstNumber && <span className="ml-2 text-emerald-400/70">· GST ✓</span>}
+                        {emp.workerType === 'contractor' && !emp.gstNumber && emp.sin && <span className="ml-2 text-amber-400/70">· T4A requis</span>}
+                        {emp.address && <span className="ml-2 text-white/30">· 📍</span>}
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setEditingId(emp.id); setEditName(emp.name); setEditRate(String(emp.hourlyRate || '')) }} className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">✏️</button>
-                      {emp.role !== 'admin' && <button onClick={() => deleteEmployee(emp.id)} className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 text-sm flex items-center justify-center">🗑️</button>}
+                      <button onClick={() => { setEditingId(emp.id); setEditName(emp.name); setEditRate(String(emp.hourlyRate || '')) }}
+                        className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">✏️</button>
+                      {emp.role !== 'admin' && (
+                        <button onClick={() => deleteEmployee(emp.id)}
+                          className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 text-sm flex items-center justify-center">🗑️</button>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             ))}
+
+            {/* Formulaire ajout employé */}
             <div className={cardStyle}>
               {isDeco && <DecoCorners />}
               {sectionTitle(t('➕ Ajouter employé', '➕ Add Employee'))}
               <div className="space-y-3">
-                <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('Prénom Nom', 'First Last')} />
-                <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0,4))} type="password" maxLength={4} inputMode="numeric" placeholder={t('PIN (4 chiffres)', 'PIN (4 digits)')} />
-                <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)} type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
-                <select className={inputClass} value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'employee')}><option value="employee">👷 {t('Employé', 'Employee')}</option><option value="admin">👑 Admin</option></select>
+                <input className={inputClass} value={newName} onChange={e => setNewName(e.target.value)}
+                  placeholder={t('Prénom Nom', 'First Last')} />
+                <input className={inputClass} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0,4))}
+                  type="password" maxLength={4} inputMode="numeric" placeholder={t('PIN (4 chiffres)', 'PIN (4 digits)')} />
+                <input className={inputClass} value={newRate} onChange={e => setNewRate(e.target.value)}
+                  type="number" placeholder={t('Taux horaire $/h', 'Hourly Rate $/h')} />
+                <select className={inputClass} value={newRole} onChange={e => setNewRole(e.target.value as 'admin' | 'employee')}>
+                  <option value="employee">👷 {t('Employé', 'Employee')}</option>
+                  <option value="admin">👑 Admin</option>
+                </select>
                 <select className={inputClass} value={newWorkerType} onChange={e => setNewWorkerType(e.target.value as any)}>
-                  <option value="contractor">📋 {t('Contracteur autonome', 'Independent Contractor')}</option>
+                  <option value="contractor">🔧 {t('Sous-traitant autonome', 'Independent Contractor')}</option>
                   <option value="salaried">💼 {t('Salarié', 'Salaried Employee')}</option>
                 </select>
-                {newWorkerType === 'salaried' && (
-                  <>
-                    <select className={inputClass} value={newProvince} onChange={e => setNewProvince(e.target.value)}>
-                      {['AB','BC','ON','QC','MB','SK','NS','NB','NL','PE'].map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                    <select className={inputClass} value={newPayFrequency} onChange={e => setNewPayFrequency(e.target.value as any)}>
-                      <option value="weekly">{t('Hebdomadaire (40h)', 'Weekly (40h)')}</option>
-                      <option value="biweekly">{t('Aux 2 semaines (80h)', 'Biweekly (80h)')}</option>
-                      <option value="semimonthly">{t('2x/mois (86.67h)', 'Semi-monthly (86.67h)')}</option>
-                      <option value="monthly">{t('Mensuel (173.33h)', 'Monthly (173.33h)')}</option>
-                    </select>
-                    <select className={inputClass} value={newPayPeriodStart} onChange={e => setNewPayPeriodStart(e.target.value as any)}>
-                      <option value="monday">📅 {t('Lundi → Dimanche', 'Monday → Sunday')}</option>
-                      <option value="tuesday">📅 {t('Mardi → Lundi', 'Tuesday → Monday')}</option>
-                      <option value="wednesday">📅 {t('Mercredi → Mardi', 'Wednesday → Tuesday')}</option>
-                      <option value="thursday">📅 {t('Jeudi → Mercredi', 'Thursday → Wednesday')}</option>
-                      <option value="friday">📅 {t('Vendredi → Jeudi', 'Friday → Thursday')}</option>
-                      <option value="saturday">📅 {t('Samedi → Vendredi', 'Saturday → Friday')}</option>
-                      <option value="sunday">📅 {t('Dimanche → Samedi', 'Sunday → Saturday')}</option>
-                    </select>
-                    <input className={inputClass} value={newAnnualSalary} onChange={e => setNewAnnualSalary(e.target.value)} type="number" placeholder={t('Salaire annuel $ (optionnel)', 'Annual Salary $ (optional)')} />
-                  </>
+
+                {/* Champs contractor */}
+                {newWorkerType === 'contractor' && (
+                  <ContractorFields
+                    address={newAddress} setAddress={setNewAddress}
+                    businessName={newBusinessName} setBusinessName={setNewBusinessName}
+                    gstNumber={newGstNumber} setGstNumber={setNewGstNumber}
+                    sin={newSin} setSin={setNewSin}
+                  />
                 )}
-                <button onClick={handleAddEmployee} className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>{t('✅ Ajouter', '✅ Add')}</button>
+
+                {/* Champs salarié */}
+                {newWorkerType === 'salaried' && (
+                  <SalariedFields
+                    province={newProvince} setProvince={setNewProvince}
+                    payFrequency={newPayFrequency} setPayFrequency={setNewPayFrequency}
+                    payPeriodStart={newPayPeriodStart} setPayPeriodStart={setNewPayPeriodStart}
+                    annualSalary={newAnnualSalary} setAnnualSalary={setNewAnnualSalary}
+                    address={newAddress} setAddress={setNewAddress}
+                  />
+                )}
+
+                <button onClick={handleAddEmployee}
+                  className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>
+                  ✅ {t('Ajouter', 'Add')}
+                </button>
               </div>
             </div>
+
+            {/* Reset PIN */}
             <div className={cardStyle}>
               {isDeco && <DecoCorners />}
               {sectionTitle(t('🔐 Reset PIN', '🔐 Reset PIN'))}
@@ -304,10 +537,7 @@ export default function SettingsPage() {
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: emp.color, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>{emp.name[0]}</div>
                     <p className={`flex-1 text-sm font-bold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{emp.name}</p>
                     <input
-                      type="password"
-                      maxLength={4}
-                      inputMode="numeric"
-                      placeholder="PIN"
+                      type="password" maxLength={4} inputMode="numeric" placeholder="PIN"
                       className={`${inputClass} w-24 text-center`}
                       onChange={e => {
                         const val = e.target.value.replace(/\D/g, '').slice(0,4)
@@ -334,7 +564,8 @@ export default function SettingsPage() {
             {sectionTitle(t('🎨 Choisir un thème', '🎨 Choose a Theme'))}
             <div className="grid grid-cols-2 gap-3">
               {THEMES.map(th => (
-                <button key={th.id} onClick={() => setTheme(th.id as any)} className={`p-4 rounded-2xl flex flex-col items-center gap-2 font-bold text-sm transition-all ${themeId === th.id ? 'ring-2 ring-white/60 scale-105 shadow-xl' : 'opacity-80'} bg-gradient-to-br ${th.colors} text-white`}>
+                <button key={th.id} onClick={() => setTheme(th.id as any)}
+                  className={`p-4 rounded-2xl flex flex-col items-center gap-2 font-bold text-sm transition-all ${themeId === th.id ? 'ring-2 ring-white/60 scale-105 shadow-xl' : 'opacity-80'} bg-gradient-to-br ${th.colors} text-white`}>
                   <span className="text-2xl">{th.label.split(' ')[0]}</span>
                   <span>{th.label.split(' ').slice(1).join(' ')}</span>
                   {themeId === th.id && <span className="text-xs">✅ {t('Actif', 'Active')}</span>}
@@ -352,7 +583,8 @@ export default function SettingsPage() {
             {sectionTitle(t('🌐 Langue / Language', '🌐 Language / Langue'))}
             <div className="grid grid-cols-2 gap-4">
               {[{ code: 'fr', flag: '🇫🇷', label: 'Français' }, { code: 'en', flag: '🇺🇸', label: 'English' }].map(l => (
-                <button key={l.code} onClick={() => setLang(l.code as 'fr' | 'en')} className={`p-5 rounded-2xl flex flex-col items-center gap-2 font-bold text-lg transition-all ${lang === l.code ? isDeco ? 'bg-[#D6B25E] text-[#0d0a00] scale-105' : isQuantum ? 'bg-violet-600 text-white scale-105' : 'bg-white/20 text-white scale-105' : 'bg-white/5 text-white/60'}`}>
+                <button key={l.code} onClick={() => setLang(l.code as 'fr' | 'en')}
+                  className={`p-5 rounded-2xl flex flex-col items-center gap-2 font-bold text-lg transition-all ${lang === l.code ? isDeco ? 'bg-[#D6B25E] text-[#0d0a00] scale-105' : isQuantum ? 'bg-violet-600 text-white scale-105' : 'bg-white/20 text-white scale-105' : 'bg-white/5 text-white/60'}`}>
                   <span className="text-4xl">{l.flag}</span>
                   <span className="text-sm">{l.label}</span>
                   {lang === l.code && <span className="text-xs">✅ {t('Actif', 'Active')}</span>}
@@ -388,7 +620,8 @@ export default function SettingsPage() {
                 <div className={`font-semibold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{t('Rappels activés', 'Reminders Enabled')}</div>
                 <div className="text-white/40 text-xs mt-0.5">{t('Rappels vocaux progressifs', 'Progressive voice reminders')}</div>
               </div>
-              <button onClick={() => setVoiceEnabled(!voiceEnabled)} className={`relative w-14 h-7 rounded-full transition-all duration-300 ${voiceEnabled ? isDeco ? 'bg-[#D6B25E]' : isQuantum ? 'bg-violet-500' : 'bg-emerald-500' : 'bg-white/20'}`}>
+              <button onClick={() => setVoiceEnabled(!voiceEnabled)}
+                className={`relative w-14 h-7 rounded-full transition-all duration-300 ${voiceEnabled ? isDeco ? 'bg-[#D6B25E]' : isQuantum ? 'bg-violet-500' : 'bg-emerald-500' : 'bg-white/20'}`}>
                 <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 ${voiceEnabled ? 'left-8' : 'left-1'}`} />
               </button>
             </div>
@@ -398,7 +631,10 @@ export default function SettingsPage() {
                   <label className={labelClass}>{t('Volume', 'Volume')} : {Math.round(voiceVolume * 100)}%</label>
                   <input type="range" min="0" max="1" step="0.05" value={voiceVolume} onChange={e => setVoiceVolume(parseFloat(e.target.value))} className="w-full accent-violet-500" />
                 </div>
-                <button onClick={() => { const u = new SpeechSynthesisUtterance(lang === 'fr' ? 'Test rappel vocal!' : 'Voice reminder test!'); u.volume = voiceVolume; u.lang = lang === 'fr' ? 'fr-CA' : 'en-CA'; speechSynthesis.speak(u) }} className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : isQuantum ? 'bg-violet-500/20 text-violet-300' : 'bg-white/10 text-white'}`}>🔊 {t('Tester', 'Test')}</button>
+                <button onClick={() => { const u = new SpeechSynthesisUtterance(lang === 'fr' ? 'Test rappel vocal!' : 'Voice reminder test!'); u.volume = voiceVolume; u.lang = lang === 'fr' ? 'fr-CA' : 'en-CA'; speechSynthesis.speak(u) }}
+                  className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : isQuantum ? 'bg-violet-500/20 text-violet-300' : 'bg-white/10 text-white'}`}>
+                  🔊 {t('Tester', 'Test')}
+                </button>
               </>
             )}
             {isDeco && <DecoDiamondRow />}
@@ -420,13 +656,14 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className={labelClass}>{t('Notes par défaut', 'Default Notes')}</label>
-              <textarea className={`${inputClass} min-h-[100px] resize-none`} value={company.defaultNotes} onChange={e => setCompany({ defaultNotes: e.target.value })} placeholder={t('Merci pour votre confiance...', 'Thank you for your business...')} />
+              <textarea className={`${inputClass} min-h-[100px] resize-none`} value={company.defaultNotes} onChange={e => setCompany({ defaultNotes: e.target.value })}
+                placeholder={t('Merci pour votre confiance...', 'Thank you for your business...')} />
             </div>
             {isDeco && <DecoDiamondRow />}
           </div>
         )}
 
-        {/* ─── TAB 7 : CLIENTS ✅ NOUVEAU ─── */}
+        {/* ─── TAB 7 : CLIENTS ─── */}
         {activeTab === 7 && (
           <div className="space-y-4">
             <div className={cardStyle}>
@@ -437,7 +674,10 @@ export default function SettingsPage() {
                 <input className={inputClass} value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} placeholder={t('Téléphone', 'Phone')} />
                 <input className={inputClass} value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} placeholder="Email" />
                 <input className={inputClass} value={newClientCity} onChange={e => setNewClientCity(e.target.value)} placeholder={t('Ville', 'City')} />
-                <button onClick={handleAddClient} className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>✅ {t('Ajouter client', 'Add Client')}</button>
+                <button onClick={handleAddClient}
+                  className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>
+                  ✅ {t('Ajouter client', 'Add Client')}
+                </button>
               </div>
             </div>
             <div className={cardStyle}>
@@ -461,14 +701,15 @@ export default function SettingsPage() {
                   ))}
                 </div>
               )}
-              <button onClick={() => router.push('/clients')} className={`w-full mt-3 py-2 rounded-xl text-xs font-bold border ${isDeco ? 'border-[#D6B25E]/40 text-[#D6B25E]' : 'border-white/20 text-white/60'}`}>
+              <button onClick={() => router.push('/clients')}
+                className={`w-full mt-3 py-2 rounded-xl text-xs font-bold border ${isDeco ? 'border-[#D6B25E]/40 text-[#D6B25E]' : 'border-white/20 text-white/60'}`}>
                 {t('→ Voir page clients complète', '→ View full clients page')}
               </button>
             </div>
           </div>
         )}
 
-        {/* ─── TAB 8 : CATALOGUE ✅ NOUVEAU ─── */}
+        {/* ─── TAB 8 : CATALOGUE ─── */}
         {activeTab === 8 && (
           <div className="space-y-4">
             <div className={cardStyle}>
@@ -493,20 +734,22 @@ export default function SettingsPage() {
                   {materials.length > 10 && <p className="text-white/40 text-xs text-center">+{materials.length - 10} {t('autres', 'more')}</p>}
                 </div>
               )}
-              <button onClick={() => router.push('/catalogue')} className={`w-full mt-3 py-3 rounded-xl text-sm font-bold border ${isDeco ? 'border-[#D6B25E]/40 text-[#D6B25E]' : 'border-white/20 text-white/60'}`}>
+              <button onClick={() => router.push('/catalogue')}
+                className={`w-full mt-3 py-3 rounded-xl text-sm font-bold border ${isDeco ? 'border-[#D6B25E]/40 text-[#D6B25E]' : 'border-white/20 text-white/60'}`}>
                 {t('→ Gérer le catalogue complet', '→ Manage full catalog')}
               </button>
             </div>
           </div>
         )}
 
-        {/* ─── TAB 9 : COMPTABILITÉ ✅ NOUVEAU ─── */}
+        {/* ─── TAB 9 : COMPTABILITÉ ─── */}
         {activeTab === 9 && (
           <div className={cardStyle}>
             {isDeco && <DecoCorners />}
             {sectionTitle(t('📊 Comptabilité', '📊 Accounting'))}
             <p className="text-white/50 text-sm mb-4">{t('Accédez à la page comptabilité complète pour voir les revenus, salaires et graphiques.', 'Access the full accounting page for revenues, wages and charts.')}</p>
-            <button onClick={() => router.push('/comptabilite')} className={`w-full py-4 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-blue-600 to-violet-600 text-white'}`}>
+            <button onClick={() => router.push('/comptabilite')}
+              className={`w-full py-4 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-blue-600 to-violet-600 text-white'}`}>
               📊 {t('Ouvrir la comptabilité', 'Open Accounting')}
             </button>
             {isDeco && <DecoDiamondRow />}
@@ -521,7 +764,10 @@ export default function SettingsPage() {
             <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20' : 'bg-white/5 border border-white/10'}`}>
               <div className={`font-semibold mb-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{t('🗑️ Vider le cache local', '🗑️ Clear Local Cache')}</div>
               <div className="text-white/50 text-xs mb-3">{t('Efface toutes les données. Action irréversible.', 'Clears all data. Cannot be undone.')}</div>
-              <button onClick={() => { if (confirm(t('Certain?', 'Sure?'))) { localStorage.clear(); window.location.reload() } }} className="w-full py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400">🗑️ {t('Vider le cache', 'Clear Cache')}</button>
+              <button onClick={() => { if (confirm(t('Certain?', 'Sure?'))) { localStorage.clear(); window.location.reload() } }}
+                className="w-full py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400">
+                🗑️ {t('Vider le cache', 'Clear Cache')}
+              </button>
             </div>
             <div className={`p-4 rounded-xl ${isDeco ? 'bg-[#D6B25E]/10 border border-[#D6B25E]/20' : 'bg-white/5 border border-white/10'}`}>
               <div className={`font-semibold mb-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>📱 PWA</div>
