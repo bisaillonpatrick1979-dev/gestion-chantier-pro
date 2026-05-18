@@ -18,6 +18,349 @@ import {
 
 type Screen = 'select' | 'pin' | 'dashboard'
 
+// ── Calculs paie Alberta ──────────────────────────────────────────────────────
+function calcPayslip(grossPay: number, province: string = 'AB') {
+  // CPP 2024 : 5.95% jusqu'à 68 500$ annuel, exemption 3 500$
+  // EI 2024  : 1.66% jusqu'à 63 200$ annuel
+  // Fédéral  : tranches simplifiées 2024
+  // Alberta  : pas d'impôt provincial sur le revenu (flat 10% au-dessus de 148 269$, simplifié ici)
+
+  const cpp = Math.min(grossPay * 0.0595, (68500 - 3500) / 52 * 0.0595)
+  const ei  = Math.min(grossPay * 0.0166, 63200 / 52 * 0.0166)
+
+  // Impôt fédéral approximé (sur la paie hebdomadaire annualisée)
+  const annualized = grossPay * 52
+  let fedRate = 0
+  if (annualized <= 55867)      fedRate = 0.15
+  else if (annualized <= 111733) fedRate = 0.205
+  else if (annualized <= 154906) fedRate = 0.26
+  else                           fedRate = 0.29
+  const fedTax = (grossPay * fedRate) - (15705 / 52 * fedRate) // crédit personnel de base
+  const fedTaxFinal = Math.max(0, fedTax)
+
+  // Alberta : pas d'imposition sur la paie pour les bas salaires, ~10% annualisé
+  const abTax = province === 'AB' ? Math.max(0, (grossPay * 52 > 21003 ? grossPay * 0.10 - (21003 / 52 * 0.10) : 0)) : 0
+
+  const totalDeductions = cpp + ei + fedTaxFinal + abTax
+  const netPay = grossPay - totalDeductions
+
+  return {
+    grossPay,
+    cpp: Math.max(0, cpp),
+    ei: Math.max(0, ei),
+    fedTax: fedTaxFinal,
+    abTax: Math.max(0, abTax),
+    totalDeductions: Math.max(0, totalDeductions),
+    netPay: Math.max(0, netPay),
+  }
+}
+
+// ── Modal Slip de paye ────────────────────────────────────────────────────────
+function PayslipModal({
+  employee, dayDetails, isXP, isDeco, onClose, t
+}: {
+  employee: any
+  dayDetails: Record<string, any>
+  isXP: boolean
+  isDeco: boolean
+  onClose: () => void
+  t: (fr: string, en: string) => string
+}) {
+  const accentColor = isXP ? '#a855f7' : isDeco ? '#D6B25E' : '#3b82f6'
+  const bgCard      = isXP ? 'rgba(17,7,40,0.98)' : isDeco ? '#0d0a00' : '#1e293b'
+  const borderColor = isXP ? 'rgba(168,85,247,0.4)' : isDeco ? 'rgba(214,178,94,0.3)' : 'rgba(255,255,255,0.1)'
+  const textMain    = isXP ? '#e9d5ff' : isDeco ? '#D6B25E' : '#f1f5f9'
+  const textMuted   = isXP ? '#6b21a8' : isDeco ? 'rgba(214,178,94,0.6)' : '#94a3b8'
+
+  // Calculer la paie pour la semaine courante
+  const today    = new Date()
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() - today.getDay() + i)
+    return d.toISOString().split('T')[0]
+  })
+
+  let totalHours   = 0
+  let totalRevenue = 0
+  weekDays.forEach(date => {
+    const key    = `${employee.id}-${date}`
+    const detail = dayDetails[key]
+    if (detail) {
+      totalHours   += detail.totalHours
+      totalRevenue += detail.totalRevenue
+    }
+  })
+
+  // Paie brute selon type
+  const isSalaried   = employee.workerType === 'salaried'
+  const freqLabel    = employee.payFrequency === 'biweekly' ? t('aux 2 sem.', 'bi-weekly') : t('hebdo', 'weekly')
+  const weeksPerYear = employee.payFrequency === 'biweekly' ? 26 : 52
+  const grossPay     = isSalaried
+    ? (employee.annualSalary || 0) / weeksPerYear
+    : totalRevenue
+
+  const slip = calcPayslip(grossPay, employee.employeeProvince || 'AB')
+
+  const fmt2 = (n: number) =>
+    new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(n)
+
+  const weekLabel = `${weekDays[0]} → ${weekDays[6]}`
+
+  const Row = ({ label, value, bold, red, green, big }: {
+    label: string; value: string
+    bold?: boolean; red?: boolean; green?: boolean; big?: boolean
+  }) => (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: big ? '10px 0' : '7px 0',
+      borderBottom: `1px solid ${borderColor}`,
+    }}>
+      <span style={{
+        fontSize: big ? '13px' : '11px',
+        fontWeight: bold || big ? 800 : 500,
+        color: big ? textMain : textMuted,
+      }}>{label}</span>
+      <span style={{
+        fontSize: big ? '16px' : '12px',
+        fontWeight: bold || big ? 900 : 600,
+        color: red ? '#ef4444' : green ? '#22c55e' : big ? accentColor : textMain,
+      }}>{value}</span>
+    </div>
+  )
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+      zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      fontFamily: 'system-ui, sans-serif',
+    }}>
+      <div style={{
+        background: bgCard, border: `1px solid ${borderColor}`,
+        borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px',
+        maxHeight: '92vh', overflowY: 'auto',
+        padding: '0 0 32px',
+      }}>
+        {/* En-tête */}
+        <div style={{
+          position: 'sticky', top: 0, background: bgCard,
+          borderRadius: '20px 20px 0 0', padding: '20px 20px 14px',
+          borderBottom: `1px solid ${borderColor}`, zIndex: 10,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <p style={{ color: accentColor, fontSize: '16px', fontWeight: 900, letterSpacing: '1px' }}>
+              💵 {t('SLIP DE PAYE', 'PAY STUB')}
+            </p>
+            <p style={{ color: textMuted, fontSize: '11px', marginTop: '3px' }}>{employee.name}</p>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.08)', border: 'none',
+            borderRadius: '50%', width: '36px', height: '36px',
+            color: textMuted, fontSize: '18px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Badge type + période */}
+          <div style={{
+            display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap',
+          }}>
+            <span style={{
+              padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 800,
+              background: isSalaried ? 'rgba(34,197,94,0.15)' : 'rgba(251,146,60,0.15)',
+              color: isSalaried ? '#22c55e' : '#fb923c',
+              border: `1px solid ${isSalaried ? 'rgba(34,197,94,0.3)' : 'rgba(251,146,60,0.3)'}`,
+            }}>
+              {isSalaried ? `💼 ${t('Salarié', 'Salaried')}` : `🔧 ${t('Sous-traitant', 'Contractor')}`}
+            </span>
+            <span style={{ color: textMuted, fontSize: '11px' }}>
+              📅 {weekLabel}
+            </span>
+          </div>
+
+          {/* Infos employé */}
+          <div style={{
+            background: `${accentColor}0f`, borderRadius: '12px',
+            padding: '12px 14px', border: `1px solid ${borderColor}`,
+          }}>
+            <p style={{ color: textMuted, fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px' }}>
+              {t('Informations', 'Employee Info')}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              {[
+                { label: t('Taux horaire', 'Hourly Rate'), value: `${fmt2(employee.hourlyRate || 0)}/h` },
+                { label: t('Mode de paye', 'Pay Mode'), value: isSalaried ? freqLabel : t('À la tâche', 'Per job') },
+                { label: t('Province', 'Province'), value: employee.employeeProvince || 'AB' },
+                ...(isSalaried ? [{ label: t('Salaire annuel', 'Annual Salary'), value: fmt2(employee.annualSalary || 0) }] : []),
+              ].map((item, i) => (
+                <div key={i}>
+                  <p style={{ color: textMuted, fontSize: '9px', fontWeight: 700, marginBottom: '2px' }}>{item.label}</p>
+                  <p style={{ color: textMain, fontSize: '12px', fontWeight: 700 }}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Heures travaillées cette semaine */}
+          <div style={{
+            background: `${accentColor}0f`, borderRadius: '12px',
+            padding: '12px 14px', border: `1px solid ${borderColor}`,
+          }}>
+            <p style={{ color: textMuted, fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px' }}>
+              ⏱ {t('Heures — semaine courante', 'Hours — current week')}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              <div>
+                <p style={{ color: textMuted, fontSize: '9px', marginBottom: '2px' }}>{t('Heures travaillées', 'Hours worked')}</p>
+                <p style={{ color: accentColor, fontSize: '22px', fontWeight: 900 }}>{totalHours.toFixed(2)}h</p>
+              </div>
+              <div>
+                <p style={{ color: textMuted, fontSize: '9px', marginBottom: '2px' }}>{t('Revenus bruts terrain', 'Gross field revenue')}</p>
+                <p style={{ color: '#22c55e', fontSize: '22px', fontWeight: 900 }}>{fmt2(totalRevenue)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Détail de la paie */}
+          <div style={{
+            background: `${accentColor}0f`, borderRadius: '12px',
+            padding: '12px 14px', border: `1px solid ${borderColor}`,
+          }}>
+            <p style={{ color: textMuted, fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '10px' }}>
+              🇨🇦 {t('Détail de la paie — Alberta', 'Pay Detail — Alberta')}
+            </p>
+
+            <Row label={t('💰 Paie brute', '💰 Gross Pay')} value={fmt2(slip.grossPay)} bold />
+
+            <div style={{ margin: '6px 0 2px' }}>
+              <p style={{ color: textMuted, fontSize: '9px', fontWeight: 700, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                {t('Déductions', 'Deductions')}
+              </p>
+            </div>
+
+            <Row
+              label={`RPC/CPP (5.95%)`}
+              value={`-${fmt2(slip.cpp)}`}
+              red
+            />
+            <Row
+              label={`AE/EI (1.66%)`}
+              value={`-${fmt2(slip.ei)}`}
+              red
+            />
+            <Row
+              label={t('Impôt fédéral (approx.)', 'Federal Tax (approx.)')}
+              value={`-${fmt2(slip.fedTax)}`}
+              red
+            />
+            {slip.abTax > 0 && (
+              <Row
+                label={t('Impôt provincial AB (10%)', 'AB Provincial Tax (10%)')}
+                value={`-${fmt2(slip.abTax)}`}
+                red
+              />
+            )}
+
+            <div style={{ height: '6px' }} />
+            <Row
+              label={t('Total déductions', 'Total Deductions')}
+              value={`-${fmt2(slip.totalDeductions)}`}
+              bold red
+            />
+
+            {/* Net */}
+            <div style={{
+              marginTop: '10px',
+              background: 'rgba(34,197,94,0.12)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: '10px', padding: '12px 14px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <p style={{ color: '#22c55e', fontSize: '13px', fontWeight: 800 }}>
+                ✅ {t('PAIE NETTE', 'NET PAY')}
+              </p>
+              <p style={{ color: '#22c55e', fontSize: '24px', fontWeight: 900 }}>
+                {fmt2(slip.netPay)}
+              </p>
+            </div>
+
+            <p style={{ color: textMuted, fontSize: '9px', marginTop: '10px', lineHeight: 1.5 }}>
+              ⚠️ {t(
+                'Calculs approximatifs basés sur les tranches fédérales 2024 et le crédit personnel de base. Consultez un comptable pour la production officielle.',
+                'Approximate calculations based on 2024 federal brackets and basic personal amount. Consult an accountant for official payroll.'
+              )}
+            </p>
+          </div>
+
+          {/* Sous-traitant — pas de déductions */}
+          {!isSalaried && (
+            <div style={{
+              background: 'rgba(251,146,60,0.08)', borderRadius: '12px',
+              padding: '12px 14px', border: '1px solid rgba(251,146,60,0.2)',
+            }}>
+              <p style={{ color: '#fb923c', fontSize: '12px', fontWeight: 800, marginBottom: '6px' }}>
+                🔧 {t('Sous-traitant autonome', 'Self-employed Contractor')}
+              </p>
+              <p style={{ color: textMuted, fontSize: '11px', lineHeight: 1.6 }}>
+                {t(
+                  'Aucune déduction à la source. Ce travailleur facture Hailite Xteriors et est responsable de ses propres remises fiscales, TPS (si inscrit), et cotisations.',
+                  'No source deductions. This worker invoices Hailite Xteriors and is responsible for their own tax remittances, GST (if registered), and contributions.'
+                )}
+              </p>
+              <div style={{ marginTop: '10px', background: 'rgba(251,146,60,0.12)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between' }}>
+                <p style={{ color: '#fb923c', fontSize: '13px', fontWeight: 800 }}>{t('Montant à facturer', 'Amount to Invoice')}</p>
+                <p style={{ color: '#fb923c', fontSize: '20px', fontWeight: 900 }}>{fmt2(totalRevenue)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Bouton fermer */}
+          <button onClick={onClose} style={{
+            width: '100%', padding: '16px', borderRadius: '14px',
+            background: accentColor, border: 'none', color: 'white',
+            fontSize: '15px', fontWeight: 900, cursor: 'pointer',
+            marginTop: '4px',
+          }}>
+            {t('Fermer', 'Close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Badge type de travailleur ─────────────────────────────────────────────────
+function WorkerTypeBadge({ workerType, isXP, isDeco }: {
+  workerType?: 'salaried' | 'contractor'
+  isXP: boolean
+  isDeco: boolean
+}) {
+  if (!workerType) return null
+  const isSalaried = workerType === 'salaried'
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '1px 7px',
+      borderRadius: '6px',
+      fontSize: '9px',
+      fontWeight: 800,
+      marginLeft: '6px',
+      background: isSalaried
+        ? 'rgba(34,197,94,0.18)'
+        : 'rgba(251,146,60,0.18)',
+      color: isSalaried ? '#22c55e' : '#fb923c',
+      border: `1px solid ${isSalaried ? 'rgba(34,197,94,0.35)' : 'rgba(251,146,60,0.35)'}`,
+      verticalAlign: 'middle',
+    }}>
+      {isSalaried ? '💼 Salarié' : '🔧 S-traitant'}
+    </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function XPRobot({ percent, message }: { percent: number; message: string }) {
   const happy = percent >= 80; const ok = percent >= 40
   const eyeColor = happy ? '#22d3ee' : ok ? '#a855f7' : '#6b7280'
@@ -130,6 +473,7 @@ function getLevelTitle(level: number): string {
   return 'Nouvelle Recrue'
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
 export default function HomePage() {
   const { employees, currentEmployeeId, activeSessions, dayDetails, setCurrentEmployee, verifyPin, punchIn, punchOut, startBreak, endBreak, updateEmployee } = useEmployeeStore()
   const { themeId } = useThemeStore()
@@ -160,6 +504,10 @@ export default function HomePage() {
   const [editingGoal, setEditingGoal]     = useState(false)
   const [tempGoal, setTempGoal]           = useState('')
   const [showCelebration, setShowCelebration] = useState(false)
+
+  // ── Nouveau : slip de paye ────────────────────────────────────────────────
+  const [payslipEmployeeId, setPayslipEmployeeId] = useState<string | null>(null)
+
   const prevRevenueRef = useRef(0)
 
   const currentEmployee  = employees.find(e => e.id === currentEmployeeId)
@@ -273,24 +621,90 @@ export default function HomePage() {
           <><DecoOrnament opacity={0.12}/><div style={{ textAlign: 'center' }}><h1 className="metal-text" style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '4px' }}>HAILITE XTERIORS</h1><DecoDiamondRow count={5} opacity={0.3}/></div></>
         )}
         <DecoSeparator opacity={isXP ? 0.1 : 0.25}/>
+
         <div style={{ display: 'grid', gridTemplateColumns: employees.filter(e => e.active).length > 3 ? '1fr 1fr' : '1fr', gap: '10px' }}>
           {employees.filter(e => e.active).map((emp, idx) => {
             const empGoal = getGoal(emp.id)
             return (
-              <button key={emp.id} className={`ec ${!isXP ? cardClass : ''}`} onClick={() => handleSelectEmployee(emp.id)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '16px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.35)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', textAlign: 'left' as const, position: 'relative', overflow: 'hidden', animation: `fUp 0.4s ease ${idx * 0.1}s both` }}>
+              <button key={emp.id} className={`ec ${!isXP ? cardClass : ''}`}
+                onClick={() => handleSelectEmployee(emp.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '16px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.35)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', textAlign: 'left' as const, position: 'relative', overflow: 'hidden', animation: `fUp 0.4s ease ${idx * 0.1}s both` }}>
                 {!isXP && <DecoBackground/>}{!isXP && <DecoCorners opacity={0.3}/>}
                 {isXP && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 50%, rgba(168,85,247,0.08), transparent 60%)', pointerEvents: 'none' }}/>}
+
+                {/* Avatar */}
                 <div style={{ width: '48px', height: '48px', borderRadius: isXP ? '12px' : '50%', flexShrink: 0, background: isXP ? `linear-gradient(135deg, ${emp.color}, #a855f7)` : `radial-gradient(circle at 40% 35%, ${emp.color}99, ${emp.color})`, boxShadow: isXP ? `0 0 18px ${emp.color}66` : `0 0 18px ${emp.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 800, color: 'white', position: 'relative', zIndex: 1 }}>{emp.name[0].toUpperCase()}</div>
-                <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
-                  <p style={{ color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '15px', fontWeight: 700 }}>{emp.name}</p>
-                  {isXP ? (<div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}><span style={{ fontSize: '10px', background: 'rgba(168,85,247,0.3)', color: '#a855f7', padding: '2px 7px', borderRadius: '5px', fontWeight: 800 }}>Nv.{empGoal.level}</span><span style={{ fontSize: '10px', color: '#6b7280' }}>{empGoal.xpPoints} XP</span>{empGoal.streak > 0 && <span style={{ fontSize: '10px', color: '#f59e0b' }}>🔥{empGoal.streak}j</span>}</div>) : (<p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>{emp.role === 'admin' ? '👑 Admin' : `⏱ ${emp.workMode}`}</p>)}
+
+                {/* Nom + badge type */}
+                <div style={{ flex: 1, position: 'relative', zIndex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px' }}>
+                    <p style={{ color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '15px', fontWeight: 700, lineHeight: 1.2 }}>{emp.name}</p>
+                    {/* ── BADGE SALARIÉ / SOUS-TRAITANT ── */}
+                    {emp.workerType && (
+                      <WorkerTypeBadge workerType={emp.workerType} isXP={isXP} isDeco={isDeco} />
+                    )}
+                  </div>
+
+                  {isXP ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                      <span style={{ fontSize: '10px', background: 'rgba(168,85,247,0.3)', color: '#a855f7', padding: '2px 7px', borderRadius: '5px', fontWeight: 800 }}>Nv.{empGoal.level}</span>
+                      <span style={{ fontSize: '10px', color: '#6b7280' }}>{empGoal.xpPoints} XP</span>
+                      {empGoal.streak > 0 && <span style={{ fontSize: '10px', color: '#f59e0b' }}>🔥{empGoal.streak}j</span>}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>
+                      {emp.role === 'admin' ? '👑 Admin' : `⏱ ${emp.workMode}`}
+                    </p>
+                  )}
                 </div>
-                <div style={{ width: "9px", height: "9px", borderRadius: "50%", flexShrink: 0, position: "relative", zIndex: 1, background: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? "#f59e0b" : "#22c55e" : "#ef4444", boxShadow: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? "0 0 8px #f59e0b" : "0 0 8px #22c55e" : "0 0 8px #ef4444" }}/>
+
+                {/* Point de statut + bouton slip de paye */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 1, flexShrink: 0 }}>
+                  <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? '#f59e0b' : '#22c55e' : '#ef4444', boxShadow: activeSessions[emp.id] ? activeSessions[emp.id].isOnBreak ? '0 0 8px #f59e0b' : '0 0 8px #22c55e' : '0 0 8px #ef4444' }}/>
+                  {/* ── BOUTON SLIP DE PAYE ── */}
+                  <button
+                    onClick={e => { e.stopPropagation(); setPayslipEmployeeId(emp.id) }}
+                    style={{
+                      background: 'rgba(255,255,255,0.07)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '6px',
+                      padding: '3px 6px',
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      color: isXP ? '#a855f7' : isDeco ? '#D6B25E' : '#94a3b8',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    💵 Paye
+                  </button>
+                </div>
               </button>
             )
           })}
         </div>
-        {isXP ? (<p style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '2px', color: '#4c1d95', fontWeight: 700 }}>🎮 CHOISISSEZ VOTRE PERSONNAGE</p>) : (<><DecoSeparator opacity={0.2}/><div style={{ display: 'flex', justifyContent: 'center', gap: '20px', opacity: 0.2 }}><DecoFlower size={35} opacity={1}/><DecoFlower size={50} opacity={1}/><DecoFlower size={35} opacity={1}/></div></>)}
+
+        {isXP ? (
+          <p style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '2px', color: '#4c1d95', fontWeight: 700 }}>🎮 CHOISISSEZ VOTRE PERSONNAGE</p>
+        ) : (
+          <><DecoSeparator opacity={0.2}/><div style={{ display: 'flex', justifyContent: 'center', gap: '20px', opacity: 0.2 }}><DecoFlower size={35} opacity={1}/><DecoFlower size={50} opacity={1}/><DecoFlower size={35} opacity={1}/></div></>
+        )}
+
+        {/* ── Modal slip de paye ── */}
+        {payslipEmployeeId && (() => {
+          const emp = employees.find(e => e.id === payslipEmployeeId)
+          if (!emp) return null
+          return (
+            <PayslipModal
+              employee={emp}
+              dayDetails={dayDetails}
+              isXP={isXP}
+              isDeco={isDeco}
+              onClose={() => setPayslipEmployeeId(null)}
+              t={t}
+            />
+          )
+        })()}
       </div>
     )
   }
@@ -299,7 +713,6 @@ export default function HomePage() {
   if (screen === 'pin') {
     const emp = employees.find(e => e.id === selectedId)
     return (
-      // ✅ FIX : paddingBottom: '120px' pour que le pad dépasse pas sous la BottomNav
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', paddingTop: '16px', paddingBottom: '120px' }}>
         <button onClick={() => setScreen('select')} style={{ alignSelf: 'flex-start', color: isXP ? '#a855f7' : 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}>← {t('Retour', 'Back')}</button>
         {isXP ? (<><div style={{ width: '76px', height: '76px', borderRadius: '18px', background: `linear-gradient(135deg, ${emp?.color}, #a855f7)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', fontWeight: 800, color: 'white', boxShadow: `0 0 30px ${emp?.color}66, 0 0 60px rgba(168,85,247,0.3)` }}>{emp?.name[0].toUpperCase()}</div><div style={{ textAlign: 'center' }}><p style={{ color: '#e9d5ff', fontSize: '17px', fontWeight: 800, letterSpacing: '2px' }}>{emp?.name}</p><p style={{ color: '#6b21a8', fontSize: '11px', letterSpacing: '1px', marginTop: '2px' }}>ENTREZ VOTRE CODE</p></div></>) : (<><DecoOrnament opacity={0.12}/><div style={{ width: '70px', height: '70px', borderRadius: '50%', background: `radial-gradient(circle at 40% 35%, ${emp?.color}99, ${emp?.color})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 800, color: 'white', boxShadow: `0 0 30px ${emp?.color}66` }}>{emp?.name[0].toUpperCase()}</div><p style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 700, letterSpacing: '2px' }}>{emp?.name}</p><DecoDiamondRow count={5} opacity={0.3}/></>)}
@@ -307,13 +720,10 @@ export default function HomePage() {
           {[0,1,2,3].map(i => (<div key={i} style={{ width: '20px', height: '20px', borderRadius: isXP ? '5px' : '50%', background: pin.length > i ? pinError ? '#ef4444' : (isXP ? '#a855f7' : 'var(--primary)') : (isXP ? 'rgba(168,85,247,0.12)' : 'var(--surface)'), border: `2px solid ${pinError ? '#ef4444' : isXP ? 'rgba(168,85,247,0.4)' : 'var(--border)'}`, transition: 'all 0.2s', boxShadow: pin.length > i ? isXP ? '0 0 14px rgba(168,85,247,0.8)' : '0 0 12px var(--primary)' : 'none' }}/>))}
         </div>
         {pinError && <p style={{ color: '#ef4444', fontSize: '13px' }}>{t('PIN incorrect', 'Incorrect PIN')}</p>}
-
-        {/* ✅ FIX : grille 3x4 correctement centrée avec 0 au milieu en bas */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', width: '100%', maxWidth: '280px' }}>
           {['1','2','3','4','5','6','7','8','9'].map((d) => (
             <button key={d} onClick={() => handlePinDigit(d)} style={{ height: '66px', borderRadius: isXP ? '12px' : '10px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.2)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '24px', fontWeight: 700, boxShadow: isXP ? '0 0 8px rgba(168,85,247,0.12)' : 'none' }}>{d}</button>
           ))}
-          {/* Rangée du bas : vide | 0 | ⌫ */}
           <div/>
           <button onClick={() => handlePinDigit('0')} style={{ height: '66px', borderRadius: isXP ? '12px' : '10px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.2)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '24px', fontWeight: 700, boxShadow: isXP ? '0 0 8px rgba(168,85,247,0.12)' : 'none' }}>0</button>
           <button onClick={() => setPin(p => p.slice(0, -1))} style={{ height: '66px', borderRadius: isXP ? '12px' : '10px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.2)' : '1px solid var(--border)', background: isXP ? 'rgba(17,7,40,0.9)' : 'var(--card)', color: isXP ? '#e9d5ff' : 'var(--text)', fontSize: '20px', fontWeight: 700, boxShadow: isXP ? '0 0 8px rgba(168,85,247,0.12)' : 'none' }}>⌫</button>
@@ -350,19 +760,54 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Header employé connecté */}
       <div className={cardClass} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isXP ? 'rgba(17,7,40,0.95)' : 'var(--card)', border: isXP ? '1px solid rgba(168,85,247,0.4)' : '1px solid var(--border)' }}>
         {!isXP && <DecoBackground/>}{!isXP && <DecoCorners opacity={0.25}/>}
         {isXP && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 50%, rgba(168,85,247,0.08), transparent)', pointerEvents: 'none' }}/>}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', zIndex: 1 }}>
           <div style={{ width: '42px', height: '42px', borderRadius: isXP ? '11px' : '50%', flexShrink: 0, background: isXP ? `linear-gradient(135deg, ${currentEmployee?.color}, #a855f7)` : `radial-gradient(circle at 40% 35%, ${currentEmployee?.color}99, ${currentEmployee?.color})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800, color: 'white', boxShadow: isXP ? `0 0 18px ${currentEmployee?.color}55, 0 0 32px rgba(168,85,247,0.3)` : `0 0 14px ${currentEmployee?.color}55` }}>{currentEmployee?.name[0].toUpperCase()}</div>
           <div>
-            <p style={{ fontSize: '13px', fontWeight: 800, color: isXP ? '#e9d5ff' : 'var(--text)' }}>{currentEmployee?.name}{currentEmployee?.role === 'admin' && ' 👑'}</p>
-            {isXP && goal ? (<div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}><span style={{ fontSize: '9px', background: 'rgba(168,85,247,0.3)', color: '#a855f7', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>Nv.{goal.level}</span><span style={{ fontSize: '9px', color: '#6b7280' }}>{goal.xpPoints} XP</span>{goal.streak > 0 && <span style={{ fontSize: '9px', color: '#f59e0b' }}>🔥{goal.streak}j</span>}</div>) : (<p style={{ fontSize: '10px', color: 'var(--primary)', letterSpacing: '1px', fontWeight: 700 }}>{activeSession ? (isOnBreak ? '☕ EN PAUSE' : '🟢 EN SERVICE') : '⏸ HORS SERVICE'}</p>)}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+              <p style={{ fontSize: '13px', fontWeight: 800, color: isXP ? '#e9d5ff' : 'var(--text)' }}>
+                {currentEmployee?.name}{currentEmployee?.role === 'admin' && ' 👑'}
+              </p>
+              {/* Badge dans le dashboard aussi */}
+              {currentEmployee?.workerType && (
+                <WorkerTypeBadge workerType={currentEmployee.workerType} isXP={isXP} isDeco={isDeco} />
+              )}
+            </div>
+            {isXP && goal ? (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span style={{ fontSize: '9px', background: 'rgba(168,85,247,0.3)', color: '#a855f7', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>Nv.{goal.level}</span>
+                <span style={{ fontSize: '9px', color: '#6b7280' }}>{goal.xpPoints} XP</span>
+                {goal.streak > 0 && <span style={{ fontSize: '9px', color: '#f59e0b' }}>🔥{goal.streak}j</span>}
+              </div>
+            ) : (
+              <p style={{ fontSize: '10px', color: 'var(--primary)', letterSpacing: '1px', fontWeight: 700 }}>
+                {activeSession ? (isOnBreak ? '☕ EN PAUSE' : '🟢 EN SERVICE') : '⏸ HORS SERVICE'}
+              </p>
+            )}
           </div>
         </div>
-        <button onClick={handleLogout} style={{ padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.3)' : '1px solid var(--border)', background: 'transparent', color: isXP ? '#a855f7' : 'var(--text-muted)', fontSize: '11px', fontWeight: 700, position: 'relative', zIndex: 1 }}>{t('SORTIR', 'LOGOUT')}</button>
+        <div style={{ display: 'flex', gap: '8px', position: 'relative', zIndex: 1 }}>
+          {/* Bouton slip de paye dans le dashboard */}
+          {currentEmployee && (
+            <button
+              onClick={() => setPayslipEmployeeId(currentEmployee.id)}
+              style={{
+                padding: '7px 10px', borderRadius: '8px', cursor: 'pointer',
+                border: isXP ? '1px solid rgba(168,85,247,0.3)' : '1px solid var(--border)',
+                background: 'transparent',
+                color: isXP ? '#a855f7' : 'var(--text-muted)',
+                fontSize: '11px', fontWeight: 700,
+              }}
+            >💵</button>
+          )}
+          <button onClick={handleLogout} style={{ padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', border: isXP ? '1px solid rgba(168,85,247,0.3)' : '1px solid var(--border)', background: 'transparent', color: isXP ? '#a855f7' : 'var(--text-muted)', fontSize: '11px', fontWeight: 700 }}>{t('SORTIR', 'LOGOUT')}</button>
+        </div>
       </div>
 
+      {/* Le reste du dashboard est identique à l'original */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         <div className={cardClass} style={{ ...card }}>
           {!isXP && <DecoBackground/>}{!isXP && <DecoCorners opacity={0.2}/>}
@@ -505,14 +950,8 @@ export default function HomePage() {
       )}
 
       {showPunchConfirm && (
-        <PunchOutConfirmModal
-          elapsed={activeSession?.elapsed || 0}
-          revenue={activeSession?.revenue || 0}
-          onConfirm={handlePunchOutConfirmed}
-          onCancel={() => setShowPunchConfirm(false)}
-        />
+        <PunchOutConfirmModal elapsed={activeSession?.elapsed || 0} revenue={activeSession?.revenue || 0} onConfirm={handlePunchOutConfirmed} onCancel={() => setShowPunchConfirm(false)}/>
       )}
-
       {showPunchModal && currentEmployee && (
         <PunchInModal employeeId={currentEmployee.id} employeeName={currentEmployee.name} employeeHourlyRate={currentEmployee.hourlyRate ?? 45} mode={punchModalMode} onComplete={handlePunchModalComplete} onCancel={() => setShowPunchModal(false)}/>
       )}
@@ -621,6 +1060,22 @@ export default function HomePage() {
               )}
             </div>
           </div>
+        )
+      })()}
+
+      {/* ── Modal slip de paye (dashboard) ── */}
+      {payslipEmployeeId && (() => {
+        const emp = employees.find(e => e.id === payslipEmployeeId)
+        if (!emp) return null
+        return (
+          <PayslipModal
+            employee={emp}
+            dayDetails={dayDetails}
+            isXP={isXP}
+            isDeco={isDeco}
+            onClose={() => setPayslipEmployeeId(null)}
+            t={t}
+          />
         )
       })()}
     </div>
