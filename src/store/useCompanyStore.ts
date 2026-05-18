@@ -15,6 +15,7 @@ export interface CompanyInfo {
   website: string
   gstNumber: string
   wcbNumber: string
+  bnNumber: string
   logoUrl: string
   // Paiement
   bankName: string
@@ -24,7 +25,7 @@ export interface CompanyInfo {
   etransferEmail: string
   // Notes / conditions par défaut
   defaultNotes: string
-  defaultPaymentTerms: string // ex: "Net 30"
+  defaultPaymentTerms: string
   defaultDuedays: number
 }
 
@@ -47,6 +48,7 @@ const defaultCompany: CompanyInfo = {
   website: '',
   gstNumber: '',
   wcbNumber: '',
+  bnNumber: '',
   logoUrl: '',
   bankName: '',
   bankTransit: '',
