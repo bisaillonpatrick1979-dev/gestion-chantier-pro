@@ -102,6 +102,20 @@ export default function DocumentDetailPage() {
   const [tab, setTab]                   = useState<'info' | 'lines' | 'total' | 'sign'>('info')
   const [showPdfPreview, setShowPdfPreview] = useState(false)
 
+  // ── Redessiner la signature sur le canvas après chaque re-render ────────────
+  useEffect(() => {
+    if (!clientSignature || !sigRef.current) return
+    const canvas = sigRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const img = new Image()
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    }
+    img.src = clientSignature
+  }, [clientSignature, tab])
+
   const todayFormatted = new Date().toLocaleDateString(
     lang === 'fr' ? 'fr-CA' : 'en-CA',
     { year: 'numeric', month: 'long', day: 'numeric' }
@@ -608,7 +622,7 @@ export default function DocumentDetailPage() {
           ══════════════════════════════════════════════════════════════════════ */}
       {showPdfPreview && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 300, display: 'flex', alignItems: 'flex-end', fontFamily: 'system-ui, sans-serif' }}>
-          <div style={{ background: '#f3f4f6', borderRadius: '20px 20px 0 0', width: '100%', maxHeight: '96vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#f3f4f6', borderRadius: '20px 20px 0 0', width: '100%', height: '96vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
             {/* Header modal */}
             <div style={{ position: 'sticky', top: 0, background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
