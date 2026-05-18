@@ -149,28 +149,29 @@ export default function DocumentDetailPage() {
     router.push('/documents')
   }
 
-  const getCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  // Extrait les coordonnées peu importe Pointer ou Touch
+  const getXY = (clientX: number, clientY: number) => {
     const canvas = sigRef.current!
     const r = canvas.getBoundingClientRect()
     return {
-      x: (e.clientX - r.left) * (canvas.width / r.width),
-      y: (e.clientY - r.top)  * (canvas.height / r.height),
+      x: (clientX - r.left) * (canvas.width / r.width),
+      y: (clientY - r.top)  * (canvas.height / r.height),
     }
   }
 
-  const startDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const startDraw = (clientX: number, clientY: number) => {
     setDrawing(true)
     const ctx = sigRef.current?.getContext('2d')
     if (!ctx) return
-    const { x, y } = getCoords(e)
+    const { x, y } = getXY(clientX, clientY)
     ctx.beginPath(); ctx.moveTo(x, y)
   }
 
-  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const continueDraw = (clientX: number, clientY: number) => {
     if (!drawing) return
     const ctx = sigRef.current?.getContext('2d')
     if (!ctx) return
-    const { x, y } = getCoords(e)
+    const { x, y } = getXY(clientX, clientY)
     ctx.strokeStyle = isDeco ? '#D6B25E' : '#a855f7'
     ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.lineTo(x, y); ctx.stroke()
@@ -474,15 +475,36 @@ export default function DocumentDetailPage() {
             {isDeco && <DecoCorners />}
             {docType !== 'contract' && (
               <div>
-                <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${isDeco ? 'text-[#D6B25E]/70' : isQuantum ? 'text-violet-400/70' : 'text-white/50'}`}>✍️ {t('Signature autorisée', 'Authorized Signature')}</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <div style={{ minWidth: '220px', borderTop: `2px solid ${accentColor}`, paddingTop: '10px', textAlign: 'right' }}>
-                    <p style={{ color: accentColor, fontSize: '15px', fontWeight: 800, fontFamily: 'Georgia, serif' }}>{ownerName}</p>
-                    <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.5)', fontSize: '11px', marginTop: '4px' }}>{compName}</p>
-                    <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.4)', fontSize: '10px', marginTop: '2px' }}>{todayFormatted}</p>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${isDeco ? 'text-[#D6B25E]/70' : isQuantum ? 'text-violet-400/70' : 'text-white/50'}`}>✍️ {t('Signatures', 'Signatures')}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {/* Gauche — Signature client (canvas) */}
+                  <div>
+                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>👤 {t('Client', 'Client')}</p>
+                    <div className={`rounded-xl overflow-hidden border ${isDeco ? 'border-[#D6B25E]/30 bg-[#0a0700]' : 'border-white/20 bg-black/30'}`}>
+                      <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair"
+                        style={{ display: 'block', touchAction: 'none' }}
+                        onPointerDown={e => startDraw(e.clientX, e.clientY)}
+                        onPointerMove={e => continueDraw(e.clientX, e.clientY)}
+                        onPointerUp={endDraw}
+                        onPointerLeave={endDraw}
+                      />
+                    </div>
+                    <button onClick={clearSig} className="w-full mt-2 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">🗑️ {t('Effacer', 'Clear')}</button>
+                    {clientSignature && <p className="text-center text-xs mt-1 text-emerald-400 font-bold">✅ {t('Signée', 'Signed')}</p>}
+                  </div>
+                  {/* Droite — Signature contracteur (statique) */}
+                  <div>
+                    <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>🏢 {t('Contracteur', 'Contractor')}</p>
+                    <div style={{ height: '120px', border: `1px solid ${accentBorder}`, borderRadius: '12px', background: accentBg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px' }}>
+                      <div style={{ borderTop: `1px solid ${accentColor}`, paddingTop: '8px' }}>
+                        <p style={{ color: accentColor, fontSize: '13px', fontWeight: 800, fontFamily: 'Georgia, serif' }}>{ownerName}</p>
+                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '2px' }}>{compName}</p>
+                        <p style={{ color: isDeco ? '#D6B25E' : 'rgba(255,255,255,0.4)', fontSize: '9px', marginTop: '1px' }}>{todayFormatted}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <p className={`text-xs mt-4 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>💡 {t('La signature contracteur provient des Réglages → Compagnie → Nom du propriétaire', 'Contractor signature comes from Settings → Company → Owner Name')}</p>
+                <p className={`text-xs mt-3 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>💡 {t('Signature contracteur : Réglages → Compagnie → Nom du propriétaire', 'Contractor signature: Settings → Company → Owner Name')}</p>
               </div>
             )}
             {docType === 'contract' && (
@@ -492,11 +514,12 @@ export default function DocumentDetailPage() {
                   <div>
                     <p className={`text-xs font-bold mb-2 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>👤 {t('Client', 'Client')}</p>
                     <div className={`rounded-xl overflow-hidden border ${isDeco ? 'border-[#D6B25E]/30 bg-[#0a0700]' : 'border-white/20 bg-black/30'}`}>
-                      <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair" style={{ display: 'block', touchAction: 'none' }}
-                        onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw}
-                        onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; const pe = { clientX: t.clientX, clientY: t.clientY } as any; startDraw(pe) }}
-                        onTouchMove={e => { e.preventDefault(); const t = e.touches[0]; const pe = { clientX: t.clientX, clientY: t.clientY } as any; draw(pe) }}
-                        onTouchEnd={e => { e.preventDefault(); endDraw() }}
+                      <canvas ref={sigRef} width={300} height={120} className="w-full cursor-crosshair"
+                        style={{ display: 'block', touchAction: 'none' }}
+                        onPointerDown={e => startDraw(e.clientX, e.clientY)}
+                        onPointerMove={e => continueDraw(e.clientX, e.clientY)}
+                        onPointerUp={endDraw}
+                        onPointerLeave={endDraw}
                       />
                     </div>
                     <button onClick={clearSig} className="w-full mt-2 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all">🗑️ {t('Effacer', 'Clear')}</button>
