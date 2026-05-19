@@ -11,6 +11,8 @@ import PunchInModal from '@/components/PunchInModal'
 import PunchButton from '@/components/PunchButton'
 import PunchOutConfirmModal from '@/components/PunchOutConfirmModal'
 import { useVoiceReminder } from '@/hooks/useVoiceReminder'
+import { usePayrollRulesStore } from '@/store/usePayrollRulesStore'
+import { useHREngine } from '@/hooks/useHREngine'
 import {
   DecoSeparator, DecoCorners, DecoTitle, DecoOrnament,
   DecoBackground, DecoDiamondRow, DecoFlower, DecoStarRow,
