@@ -6,6 +6,7 @@ import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useThemeStore } from '@/store/useThemeStore'
 import { useGoalStore } from '@/store/useGoalStore'
 import { useLangStore } from '@/store/useLangStore'
+import { usePayrollRulesStore } from '@/store/usePayrollRulesStore'
 
 function IcoAccueil({ c, glow }: { c: string; glow?: boolean }) {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={glow ? { filter: `drop-shadow(0 0 6px ${c}) drop-shadow(0 0 3px ${c})` } : {}}>
@@ -74,12 +75,42 @@ function IcoXP({ active }: { active: boolean }) {
   </svg>
 }
 
+// ── Badge alerte RH ────────────────────────────────────────────────────────
+function HRAlertBadge({ count }: { count: number }) {
+  if (count === 0) return null
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '-2px',
+      right: '-2px',
+      minWidth: '16px',
+      height: '16px',
+      borderRadius: '8px',
+      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+      border: '2px solid #0a0a0a',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '9px',
+      fontWeight: 900,
+      color: 'white',
+      padding: '0 3px',
+      boxShadow: '0 0 8px rgba(239,68,68,0.8), 0 0 16px rgba(239,68,68,0.4)',
+      zIndex: 10,
+      animation: 'hrBadgePulse 2s ease-in-out infinite',
+    }}>
+      {count > 9 ? '9+' : count}
+    </div>
+  )
+}
+
 export default function BottomNav() {
   const pathname = usePathname()
   const { employees, currentEmployeeId } = useEmployeeStore()
   const { themeId, theme } = useThemeStore()
   const { getGoal } = useGoalStore()
-  const { lang } = useLangStore()   // ← FIX : écoute les changements de langue en temps réel
+  const { lang } = useLangStore()
+  const { getActiveAlerts, getCriticalAlerts } = usePayrollRulesStore()
 
   const t = (fr: string, en: string) => lang === 'fr' ? fr : en
 
@@ -90,7 +121,14 @@ export default function BottomNav() {
   const isQuantum  = themeId === 'quantum'
   const goal       = currentEmployeeId ? getGoal(currentEmployeeId) : null
 
-  // ── Labels bilingues ───────────────────────────────────────────────────────
+  // ── Alertes RH — admin seulement ──────────────────────────────────────────
+  const criticalAlertCount = isAdmin ? getCriticalAlerts().length : 0
+  const activeAlertCount   = isAdmin ? getActiveAlerts().length   : 0
+  // Badge = critiques en priorité, sinon toutes les actives
+  const badgeCount = criticalAlertCount > 0 ? criticalAlertCount : activeAlertCount
+
+  const t2 = (fr: string, en: string) => lang === 'fr' ? fr : en
+
   const adminItems = [
     { href: '/',          label: isXP ? 'Base'                       : t('Accueil',   'Home'),     Icon: IcoAccueil   },
     { href: '/invoice',   label:                                        t('Factures',  'Invoices'), Icon: IcoFacture   },
@@ -98,7 +136,7 @@ export default function BottomNav() {
     { href: '/documents', label:                                        t('Docs',      'Docs'),     Icon: IcoDocument  },
     { href: '/commandes', label: isXP ? 'PO'                          : t('Commandes','Orders'),   Icon: IcoCommandes },
     { href: '/stats',     label: isXP ? t('Stats XP', 'XP Stats')    : 'Stats',                   Icon: IcoStats     },
-    { href: '/settings',  label: isXP ? t('Config',   'Config')      : t('Réglages', 'Settings'), Icon: IcoReglages  },
+    { href: '/settings',  label: isXP ? t('Config',   'Config')      : t('Réglages', 'Settings'), Icon: IcoReglages, hasBadge: true },
   ]
 
   const employeeItems = [
@@ -144,6 +182,7 @@ export default function BottomNav() {
         @keyframes indicatorPulse{0%,100%{opacity:0.7}50%{opacity:1.0}}
         .nav-indicator{animation:indicatorPulse 2s ease-in-out infinite}
         .nav-link:active{opacity:0.6 !important}
+        @keyframes hrBadgePulse{0%,100%{box-shadow:0 0 8px rgba(239,68,68,0.8),0 0 16px rgba(239,68,68,0.4)}50%{box-shadow:0 0 14px rgba(239,68,68,1),0 0 28px rgba(239,68,68,0.7)}}
       `}</style>
 
       <nav style={{
@@ -186,6 +225,7 @@ export default function BottomNav() {
 
             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
             const color = isActive ? activeColor : inactiveColor
+            const showBadge = isAdmin && (item as { hasBadge?: boolean }).hasBadge && badgeCount > 0
 
             return (
               <Link key={item.href} href={item.href} className="nav-link" style={{
@@ -204,8 +244,11 @@ export default function BottomNav() {
                     borderRadius:'0 0 2px 2px', margin:'0 auto',
                   }}/>
                 )}
-                <div className={isActive ? (isXP ? '' : 'nav-active-glow') : 'nav-inactive-glow'}>
+                {/* Icône avec badge RH */}
+                <div style={{ position: 'relative', display: 'inline-flex' }}
+                  className={isActive ? (isXP ? '' : 'nav-active-glow') : 'nav-inactive-glow'}>
                   <item.Icon c={color} glow={isActive}/>
+                  {showBadge && <HRAlertBadge count={badgeCount} />}
                 </div>
                 <span style={{
                   fontSize:'7px', fontWeight: isActive ? 800 : 600, color,
@@ -225,4 +268,4 @@ export default function BottomNav() {
       </nav>
     </>
   )
-}
+          }
