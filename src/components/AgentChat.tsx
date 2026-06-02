@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
+import { useAIConfigStore } from '@/store/useAIConfigStore'
 
 type Role = 'user' | 'agent'
 
@@ -119,6 +120,11 @@ function parseSSEChunk(chunk: string): string {
       // Managed Agents format
       else if (type === 'assistant' || type === 'text') {
         result += (event.text ?? event.content ?? '') as string
+      }
+      // OpenAI chat completions streaming format
+      else if (event.choices) {
+        const choices = event.choices as Array<{ delta?: { content?: string } }>
+        result += choices[0]?.delta?.content ?? ''
       } else if (typeof event.text === 'string') {
         result += event.text
       }
@@ -144,6 +150,7 @@ export default function AgentChat() {
 
   const { employees, currentEmployeeId } = useEmployeeStore()
   const currentEmployee = employees.find((e) => e.id === currentEmployeeId)
+  const { provider, apiKey, model } = useAIConfigStore()
 
   const scrollBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -198,6 +205,7 @@ export default function AgentChat() {
               (currentEmployee as { name?: string } | undefined)?.name ?? 'Administrateur',
             page: typeof window !== 'undefined' ? window.location.pathname : undefined,
           },
+          aiConfig: apiKey ? { provider, apiKey, model } : undefined,
         }),
       })
 

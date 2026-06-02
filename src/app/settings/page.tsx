@@ -11,6 +11,7 @@ import { useClientStore } from '@/store/useClientStore'
 import { usePayrollRulesStore } from '@/store/usePayrollRulesStore'
 import { useHREngine } from '@/hooks/useHREngine'
 import { useCatalogueStore } from '@/store/useCatalogueStore'
+import { useAIConfigStore, ANTHROPIC_MODELS, OPENAI_MODELS } from '@/store/useAIConfigStore'
 import type { Category } from '@/store/useCatalogueStore'
 import {
   DecoCorners, DecoTitle, DecoOrnament,
@@ -26,8 +27,8 @@ const THEMES = [
   { id: 'carbon',  label: '🪙 Carbon',  colors: 'from-zinc-600 to-zinc-400' },
   ]
 
-const TABS_FR = ['🏢 Compagnie','👤 Employés','🎨 Thème','🌐 Langue','💳 Paiement','🔔 Rappels','📋 Conditions','👥 Clients','📦 Catalogue','📊 Comptab.','📍 Géofenc.','🚨 RH']
-const TABS_EN = ['🏢 Company','👤 Employees','🎨 Theme','🌐 Language','💳 Payment','🔔 Reminders','📋 Terms','👥 Clients','📦 Catalog','📊 Accounting','📍 Geofenc.','🚨 HR']
+const TABS_FR = ['🏢 Compagnie','👤 Employés','🎨 Thème','🌐 Langue','💳 Paiement','🔔 Rappels','📋 Conditions','👥 Clients','📦 Catalogue','📊 Comptab.','📍 Géofenc.','🚨 RH','🤖 Agent IA']
+const TABS_EN = ['🏢 Company','👤 Employees','🎨 Theme','🌐 Language','💳 Payment','🔔 Reminders','📋 Terms','👥 Clients','📦 Catalog','📊 Accounting','📍 Geofenc.','🚨 HR','🤖 AI Agent']
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -58,6 +59,43 @@ export default function SettingsPage() {
   const TABS = lang === 'fr' ? TABS_FR : TABS_EN
   const [activeTab, setActiveTab] = useState(0)
   const [companySaved, setCompanySaved] = useState(false)
+
+  // ── Agent IA config ───────────────────────────────────────────────────────
+  const { provider, apiKey, model, setProvider, setApiKey, setModel } = useAIConfigStore()
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [aiTestMsg, setAiTestMsg] = useState('')
+
+  const handleTestAI = async () => {
+    if (!apiKey.trim()) {
+      setAiTestStatus('error')
+      setAiTestMsg(t('Entrez une clé API avant de tester.', 'Enter an API key before testing.'))
+      return
+    }
+    setAiTestStatus('loading')
+    setAiTestMsg('')
+    try {
+      const res = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Réponds juste "OK" pour confirmer que tu fonctionnes.',
+          aiConfig: { provider, apiKey, model },
+        }),
+      })
+      if (res.ok) {
+        setAiTestStatus('ok')
+        setAiTestMsg(t('Connexion réussie ✅', 'Connection successful ✅'))
+      } else {
+        const data = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
+        setAiTestStatus('error')
+        setAiTestMsg(data.error ?? res.statusText)
+      }
+    } catch (e) {
+      setAiTestStatus('error')
+      setAiTestMsg(String(e))
+    }
+  }
 
   // ── Géofencing UI state ───────────────────────────────────────────────────
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -931,7 +969,145 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* ─── TAB 12 : AGENT IA ─── */}
+        {activeTab === 12 && (
+          <div className="space-y-4">
+            <div className={cardStyle}>
+              {isDeco && <DecoCorners />}
+              {sectionTitle(t('🤖 Configuration Agent IA', '🤖 AI Agent Configuration'))}
+
+              <p className={`text-xs mb-4 leading-relaxed ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/40'}`}>
+                {t(
+                  'Choisissez votre fournisseur IA et entrez votre clé API. La clé est stockée localement sur cet appareil.',
+                  'Choose your AI provider and enter your API key. The key is stored locally on this device.'
+                )}
+              </p>
+
+              {/* Provider selector */}
+              <div className="mb-4">
+                <label className={labelClass}>{t('Fournisseur', 'Provider')}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: 'anthropic', label: '🟠 Anthropic (Claude)', sublabel: 'claude.ai' },
+                    { id: 'openai',    label: '🟢 OpenAI (GPT)',       sublabel: 'openai.com' },
+                  ] as const).map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setProvider(p.id)}
+                      className={`rounded-xl p-3 text-left border transition-all ${
+                        provider === p.id
+                          ? isDeco
+                            ? 'bg-[#D6B25E]/20 border-[#D6B25E]/60'
+                            : 'bg-white/15 border-white/40'
+                          : isDeco
+                          ? 'bg-[#D6B25E]/5 border-[#D6B25E]/15'
+                          : 'bg-white/5 border-white/10'
+                      }`}
+                    >
+                      <p className={`text-sm font-bold ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{p.label}</p>
+                      <p className={`text-xs mt-0.5 ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>{p.sublabel}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Model selector */}
+              <div className="mb-4">
+                <label className={labelClass}>{t('Modèle', 'Model')}</label>
+                <select
+                  className={inputClass}
+                  value={model}
+                  onChange={e => setModel(e.target.value)}
+                >
+                  {(provider === 'anthropic' ? ANTHROPIC_MODELS : OPENAI_MODELS).map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* API Key input */}
+              <div className="mb-4">
+                <label className={labelClass}>
+                  {t('Clé API', 'API Key')}
+                  <span className={`ml-1 normal-case font-normal ${isDeco ? 'text-[#D6B25E]/40' : 'text-white/30'}`}>
+                    {provider === 'anthropic' ? '(sk-ant-...)' : '(sk-...)'}
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    className={`${inputClass} pr-12`}
+                    type={showApiKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={e => setApiKey(e.target.value)}
+                    placeholder={provider === 'anthropic' ? 'sk-ant-api03-...' : 'sk-proj-...'}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(v => !v)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm ${isDeco ? 'text-[#D6B25E]/50' : 'text-white/40'}`}
+                  >
+                    {showApiKey ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {apiKey && (
+                  <p className={`text-xs mt-1 ${isDeco ? 'text-[#D6B25E]/30' : 'text-white/25'}`}>
+                    {apiKey.slice(0, 8)}{'•'.repeat(Math.min(24, apiKey.length - 8))}
+                  </p>
+                )}
+              </div>
+
+              {/* Test button */}
+              <button
+                onClick={handleTestAI}
+                disabled={aiTestStatus === 'loading' || !apiKey.trim()}
+                className={`w-full py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-40 ${
+                  isDeco
+                    ? 'bg-[#D6B25E]/20 text-[#D6B25E] border border-[#D6B25E]/30'
+                    : 'bg-white/10 text-white border border-white/20 hover:bg-white/15'
+                }`}
+              >
+                {aiTestStatus === 'loading'
+                  ? t('⏳ Test en cours…', '⏳ Testing…')
+                  : t('🔌 Tester la connexion', '🔌 Test connection')}
+              </button>
+
+              {aiTestStatus !== 'idle' && aiTestStatus !== 'loading' && (
+                <div className={`mt-3 rounded-xl px-4 py-3 text-sm font-medium ${
+                  aiTestStatus === 'ok'
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                    : 'bg-red-500/15 border border-red-500/30 text-red-400'
+                }`}>
+                  {aiTestMsg}
+                </div>
+              )}
+
+              {/* Info note */}
+              <div className={`mt-4 rounded-xl p-3 text-xs leading-relaxed ${isDeco ? 'bg-[#D6B25E]/5 border border-[#D6B25E]/10 text-[#D6B25E]/40' : 'bg-white/5 border border-white/10 text-white/30'}`}>
+                💡 {t(
+                  'Si aucune clé n\'est configurée ici, l\'agent utilisera la variable d\'environnement ANTHROPIC_API_KEY configurée sur le serveur.',
+                  'If no key is configured here, the agent will use the ANTHROPIC_API_KEY environment variable set on the server.'
+                )}
+              </div>
+            </div>
+
+            {/* Clear key button */}
+            {apiKey && (
+              <div className={cardStyle}>
+                {isDeco && <DecoCorners />}
+                <button
+                  onClick={() => { setApiKey(''); setAiTestStatus('idle'); setAiTestMsg('') }}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all"
+                >
+                  🗑️ {t('Supprimer la clé API', 'Remove API key')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
-      } 
+      }

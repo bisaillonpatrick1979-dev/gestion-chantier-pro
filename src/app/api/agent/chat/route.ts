@@ -2,8 +2,9 @@ import type { NextRequest } from 'next/server'
 import { fetchAgentContext, buildSystemPrompt } from '@/lib/agentContext'
 
 const ANTHROPIC_API = 'https://api.anthropic.com'
+const OPENAI_API = 'https://api.openai.com'
 
-function baseHeaders(apiKey: string, json = true) {
+function anthropicHeaders(apiKey: string, json = true) {
   return {
     ...(json ? { 'Content-Type': 'application/json' } : {}),
     'x-api-key': apiKey,
@@ -13,9 +14,17 @@ function baseHeaders(apiKey: string, json = true) {
 
 function managedHeaders(apiKey: string, json = true) {
   return {
-    ...baseHeaders(apiKey, json),
+    ...anthropicHeaders(apiKey, json),
     'anthropic-beta': 'managed-agents-2026-04-01',
   }
+}
+
+type AIProvider = 'anthropic' | 'openai'
+
+type AIConfig = {
+  provider: AIProvider
+  apiKey: string
+  model: string
 }
 
 type UserContext = {
@@ -49,24 +58,93 @@ async function createManagedSession(
   return data.id
 }
 
-export async function POST(request: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  const agentId = process.env.ANTHROPIC_AGENT_ID
-  const environmentId = process.env.ANTHROPIC_ENVIRONMENT_ID
-  const vaultId = process.env.ANTHROPIC_VAULT_ID
+async function streamOpenAI(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+): Promise<Response> {
+  const stream = await fetch(`${OPENAI_API}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 2048,
+      stream: true,
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+    }),
+  })
 
-  if (!apiKey) {
-    return Response.json(
-      { error: 'ANTHROPIC_API_KEY requis dans Vercel → Project Settings → Environment Variables.' },
-      { status: 500 }
-    )
+  if (!stream.ok || !stream.body) {
+    const err = await stream.text().catch(() => 'Erreur API OpenAI')
+    let detail = err
+    try {
+      const parsed = JSON.parse(err) as { error?: { message?: string } }
+      detail = parsed?.error?.message ?? err
+    } catch { /* keep raw */ }
+    return Response.json({ error: detail }, { status: stream.status || 500 })
   }
 
+  return new Response(stream.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'X-Session-Id': `openai-${Date.now()}`,
+    },
+  })
+}
+
+async function streamAnthropic(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+): Promise<Response> {
+  const stream = await fetch(`${ANTHROPIC_API}/v1/messages`, {
+    method: 'POST',
+    headers: anthropicHeaders(apiKey),
+    body: JSON.stringify({
+      model,
+      max_tokens: 2048,
+      stream: true,
+      system: systemPrompt,
+      messages,
+    }),
+  })
+
+  if (!stream.ok || !stream.body) {
+    const err = await stream.text().catch(() => 'Erreur API Claude')
+    let detail = err
+    try {
+      const parsed = JSON.parse(err) as { error?: { message?: string } }
+      detail = parsed?.error?.message ?? err
+    } catch { /* keep raw */ }
+    return Response.json({ error: detail }, { status: stream.status || 500 })
+  }
+
+  return new Response(stream.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      'X-Session-Id': `direct-${Date.now()}`,
+    },
+  })
+}
+
+export async function POST(request: NextRequest) {
   let body: {
     message: string
     sessionId?: string
     userContext?: UserContext
     history?: ChatMessage[]
+    aiConfig?: AIConfig
   }
 
   try {
@@ -75,19 +153,34 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Corps de requête invalide' }, { status: 400 })
   }
 
-  const { message, sessionId, userContext, history = [] } = body
+  const { message, sessionId, userContext, history = [], aiConfig } = body
+
+  // Client-provided config takes priority over environment variables
+  const provider: AIProvider = aiConfig?.provider ?? 'anthropic'
+  const apiKey =
+    aiConfig?.apiKey ||
+    (provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY) ||
+    ''
+  const model = aiConfig?.model || (provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o')
+
+  if (!apiKey) {
+    const providerLabel = provider === 'anthropic' ? 'Anthropic' : 'OpenAI'
+    return Response.json(
+      {
+        error: `Clé API ${providerLabel} manquante. Configurez-la dans ⚙️ Réglages → 🤖 Agent IA.`,
+      },
+      { status: 500 }
+    )
+  }
 
   if (!message?.trim()) {
     return Response.json({ error: 'Message vide' }, { status: 400 })
   }
 
-  // Préfixe de contexte utilisateur (rôle, nom, page actuelle)
   const userCtxPrefix = userContext
     ? `[${userContext.role === 'admin' ? '👑 Admin' : '👷 Employé'}${
         userContext.name ? ` — ${userContext.name}` : ''
-      }${
-        userContext.page ? ` — Page: ${userContext.page}` : ''
-      }]\n`
+      }${userContext.page ? ` — Page: ${userContext.page}` : ''}]\n`
     : ''
 
   const fullMessage = userCtxPrefix + message.trim()
@@ -95,63 +188,65 @@ export async function POST(request: NextRequest) {
   // ─────────────────────────────────────────────────────────
   // MODE 1: Anthropic Managed Agents (si ANTHROPIC_AGENT_ID configuré)
   // ─────────────────────────────────────────────────────────
-  if (agentId) {
-    try {
-      let sid = sessionId
-      if (!sid) {
-        sid = await createManagedSession(apiKey, agentId, environmentId, vaultId)
-      }
+  if (provider === 'anthropic') {
+    const agentId = process.env.ANTHROPIC_AGENT_ID
+    const environmentId = process.env.ANTHROPIC_ENVIRONMENT_ID
+    const vaultId = process.env.ANTHROPIC_VAULT_ID
 
-      const evtRes = await fetch(`${ANTHROPIC_API}/v1/sessions/${sid}/events`, {
-        method: 'POST',
-        headers: managedHeaders(apiKey),
-        body: JSON.stringify({ events: [{ type: 'user', text: fullMessage }] }),
-      })
-
-      if (!evtRes.ok) {
-        const err = await evtRes.text()
-        // Si erreur 4xx (session expirée, etc.) → fallback au mode direct
-        if (evtRes.status >= 400 && evtRes.status < 500) {
-          console.warn('[agent/chat] Managed Agents error, falling back to direct API:', err)
-          // passthrough au mode direct ci-dessous
-        } else {
-          return Response.json({ error: `Erreur agent: ${err}` }, { status: evtRes.status })
+    if (agentId) {
+      try {
+        let sid = sessionId
+        if (!sid) {
+          sid = await createManagedSession(apiKey, agentId, environmentId, vaultId)
         }
-      } else {
-        const stream = await fetch(`${ANTHROPIC_API}/v1/sessions/${sid}/events/stream`, {
-          headers: { ...managedHeaders(apiKey, false), Accept: 'text/event-stream' },
+
+        const evtRes = await fetch(`${ANTHROPIC_API}/v1/sessions/${sid}/events`, {
+          method: 'POST',
+          headers: managedHeaders(apiKey),
+          body: JSON.stringify({ events: [{ type: 'user', text: fullMessage }] }),
         })
 
-        if (stream.ok && stream.body) {
-          return new Response(stream.body, {
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache, no-transform',
-              'Connection': 'keep-alive',
-              'X-Accel-Buffering': 'no',
-              'X-Session-Id': sid,
-            },
+        if (!evtRes.ok) {
+          const err = await evtRes.text()
+          if (evtRes.status >= 400 && evtRes.status < 500) {
+            console.warn('[agent/chat] Managed Agents error, falling back to direct API:', err)
+          } else {
+            return Response.json({ error: `Erreur agent: ${err}` }, { status: evtRes.status })
+          }
+        } else {
+          const stream = await fetch(`${ANTHROPIC_API}/v1/sessions/${sid}/events/stream`, {
+            headers: { ...managedHeaders(apiKey, false), Accept: 'text/event-stream' },
           })
+
+          if (stream.ok && stream.body) {
+            return new Response(stream.body, {
+              headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache, no-transform',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no',
+                'X-Session-Id': sid,
+              },
+            })
+          }
         }
+      } catch (err) {
+        console.warn('[agent/chat] Managed Agents failed, falling back to direct API:', err)
       }
-    } catch (err) {
-      console.warn('[agent/chat] Managed Agents failed, falling back to direct API:', err)
     }
   }
 
   // ─────────────────────────────────────────────────────────
-  // MODE 2: Direct Claude API (fallback ou mode par défaut)
-  // Utilise le contexte Supabase comme system prompt
+  // MODE 2: Direct API (Anthropic ou OpenAI)
   // ─────────────────────────────────────────────────────────
   try {
     const ctx = await fetchAgentContext()
     const systemPrompt = buildSystemPrompt(ctx)
 
-    // Convertit l'historique AgentChat → format Messages API
     const apiMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
       ...history
         .filter((m) => m.content.trim().length > 0)
-        .slice(-20) // max 20 messages d'historique
+        .slice(-20)
         .map((m) => ({
           role: (m.role === 'agent' ? 'assistant' : 'user') as 'user' | 'assistant',
           content: m.content,
@@ -159,37 +254,11 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: fullMessage },
     ]
 
-    const stream = await fetch(`${ANTHROPIC_API}/v1/messages`, {
-      method: 'POST',
-      headers: baseHeaders(apiKey),
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        stream: true,
-        system: systemPrompt,
-        messages: apiMessages,
-      }),
-    })
-
-    if (!stream.ok || !stream.body) {
-      const err = await stream.text().catch(() => 'Erreur API Claude')
-      let detail = err
-      try {
-        const parsed = JSON.parse(err) as { error?: { message?: string } }
-        detail = parsed?.error?.message ?? err
-      } catch { /* keep raw */ }
-      return Response.json({ error: detail }, { status: stream.status || 500 })
+    if (provider === 'openai') {
+      return streamOpenAI(apiKey, model, systemPrompt, apiMessages)
     }
 
-    return new Response(stream.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-        'X-Session-Id': `direct-${Date.now()}`,
-      },
-    })
+    return streamAnthropic(apiKey, model, systemPrompt, apiMessages)
   } catch (err) {
     return Response.json({ error: String(err) }, { status: 500 })
   }
