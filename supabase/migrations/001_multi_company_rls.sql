@@ -58,7 +58,7 @@ alter table public.company_info enable row level security;
 alter table public.payroll_records enable row level security;
 alter table public.projects enable row level security;
 
--- TODO: worker-level policies stricter before public SaaS.
+-- Worker-level stricter policies are applied in 002_worker_rls_strict.sql.
 
 do $$
 begin
