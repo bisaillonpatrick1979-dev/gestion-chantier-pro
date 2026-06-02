@@ -5,7 +5,7 @@ import { useThemeStore } from '@/store/useThemeStore'
 import { hailiteGlassTheme } from '@/lib/hailiteGlassTheme'
 
 export default function HailiteGlassThemeControl() {
-  const { themeId, setTheme } = useThemeStore()
+  const { themeId } = useThemeStore()
 
   useEffect(() => {
     if (themeId !== 'hailite-glass') return
@@ -44,28 +44,5 @@ export default function HailiteGlassThemeControl() {
     style.textContent = hailiteGlassTheme.globalCSS ?? ''
   }, [themeId])
 
-  return (
-    <button
-      type="button"
-      onClick={() => setTheme('hailite-glass')}
-      aria-label="Activer le thème Hailite Glass"
-      style={{
-        position: 'fixed',
-        right: 14,
-        bottom: 92,
-        zIndex: 80,
-        width: 48,
-        height: 48,
-        borderRadius: 18,
-        border: '1px solid rgba(115,198,255,.55)',
-        background: themeId === 'hailite-glass' ? 'linear-gradient(135deg,#168BFF,#7B2CFF)' : 'rgba(7,9,20,.72)',
-        color: '#fff',
-        fontSize: 22,
-        boxShadow: '0 14px 40px rgba(22,139,255,.34)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      💎
-    </button>
-  )
+  return null
 }
