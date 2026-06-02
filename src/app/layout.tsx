@@ -9,6 +9,7 @@ import PayrollComplianceFloatingLink from '@/components/PayrollComplianceFloatin
 import PayrollManifestWatcher from '@/components/PayrollManifestWatcher'
 import PWARegister from '@/components/PWARegister'
 import ThemeInjector from '@/components/ThemeInjector'
+import HailiteGlassThemeControl from '@/components/HailiteGlassThemeControl'
 import DevTools from '@/components/DevTools'
 import SyncManager from '@/components/SyncManager'
 import AgentChat from '@/components/AgentChat'
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen overflow-x-hidden">
         <ThemeInjector />
+        <HailiteGlassThemeControl />
         <OnboardingGuard />
         <LegalConsentGate />
         <StartupConsentGate />
