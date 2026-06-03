@@ -22,6 +22,7 @@
 html,
 body {
   min-height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -29,6 +30,111 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Global readability pass: larger tap targets, less visual noise, better mobile legibility. */
+main {
+  font-size: 17px;
+}
+
+main p,
+main span,
+main label,
+main small,
+main li {
+  line-height: 1.38;
+}
+
+main h1 { font-size: clamp(30px, 7vw, 42px) !important; }
+main h2 { font-size: clamp(24px, 5.5vw, 32px) !important; }
+main h3 { font-size: clamp(20px, 4.8vw, 26px) !important; }
+
+.big-field,
+main input,
+main select,
+main textarea {
+  min-height: 54px !important;
+  font-size: 17px !important;
+  border-radius: 15px !important;
+  padding: 13px 15px !important;
+}
+
+.big-button,
+main button,
+main a[role="button"] {
+  min-height: 50px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+main :where(.rounded-2xl, .rounded-3xl) {
+  overflow-wrap: anywhere;
+}
+
+/* Performance mode: remove costly glow/blur effects across the app. */
+* {
+  animation-duration: .001ms;
+  animation-iteration-count: 1;
+}
+
+main :where(.shadow, .shadow-lg, .shadow-xl, .shadow-2xl),
+main :where([style*="box-shadow"]),
+nav :where([style*="box-shadow"]) {
+  box-shadow: none !important;
+}
+
+main :where([class*="backdrop-blur"]),
+main :where([style*="backdrop-filter"]) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Bigger bottom navigation icons/text. */
+nav a,
+nav button,
+[class*="BottomNav"] a,
+[class*="BottomNav"] button {
+  min-height: 58px !important;
+  font-size: 14px !important;
+}
+
+nav svg,
+nav img,
+nav a > span:first-child,
+nav button > span:first-child {
+  font-size: 23px !important;
+  width: 26px;
+  height: 26px;
+}
+
+/* Calendar readability helpers used by calendar pages/components. */
+.calendar-grid,
+[aria-label*="calendar"],
+[aria-label*="calendrier"] {
+  gap: 8px !important;
+}
+
+.calendar-cell,
+.day-cell,
+[data-calendar-day] {
+  min-height: 86px !important;
+  padding: 10px !important;
+  font-size: 16px !important;
+}
+
+.calendar-cell .day-icon,
+.day-cell .day-icon,
+[data-calendar-day] .day-icon {
+  font-size: 28px !important;
+  line-height: 1 !important;
+}
+
+.day-icon-coffee::before { content: "☕"; }
+.day-icon-short::before { content: "🔧"; }
+.day-icon-normal::before { content: "✅"; }
+.day-icon-big::before { content: "💪"; }
+.day-icon-huge::before { content: "🔥"; }
+.day-icon-explosive::before { content: "💥"; }
+.day-icon-off::before { content: "🌙"; }
 
 /* Settings tabs visual order. */
 main .scrollbar-hide > button:nth-child(1) { order: 1; }
@@ -129,92 +235,44 @@ main h2 {
 }
 
 /* ============================================================
-   THEME INFERNAL
+   THEME INFERNAL — lighter performance version
    ============================================================ */
 
 body[data-theme="inferno"] {
   --background: #050505;
   --foreground: #fff4df;
-  --surface: transparent;
-  --card: transparent;
-  --card-alt: transparent;
-  --border: rgba(255, 110, 35, 0.42);
-  --border-strong: rgba(255, 145, 45, 0.78);
+  --surface: rgba(0,0,0,0.16);
+  --card: rgba(0,0,0,0.14);
+  --card-alt: rgba(0,0,0,0.12);
+  --border: rgba(255, 110, 35, 0.34);
+  --border-strong: rgba(255, 145, 45, 0.58);
   --text: #fff4df;
-  --text-muted: rgba(255, 205, 150, 0.76);
-  --text-weak: rgba(255, 174, 104, 0.52);
-  --primary: #ff5a14;
+  --text-muted: rgba(255, 220, 180, 0.82);
+  --text-weak: rgba(255, 190, 130, 0.62);
+  --primary: #ff7a14;
   --primary-light: #ffd36a;
   --secondary: #b91c1c;
   --secondary-light: #ff7a14;
-  --glow1: rgba(255, 90, 20, 0.42);
-  --glow2: rgba(255, 170, 55, 0.20);
-  --nav-bg: transparent;
-  --nav-border: rgba(255, 110, 35, 0.34);
-  --nav-active: #ff7a14;
-  --nav-inactive: rgba(255, 210, 170, 0.52);
+  --glow1: transparent;
+  --glow2: transparent;
+  --nav-bg: rgba(0,0,0,0.34);
+  --nav-border: rgba(255, 110, 35, 0.28);
+  --nav-active: #ffb454;
+  --nav-inactive: rgba(255, 230, 210, 0.64);
 
   color: #fff4df !important;
   background:
-    radial-gradient(ellipse at 50% 9%, rgba(255, 126, 26, 0.18) 0%, transparent 38%),
-    radial-gradient(ellipse at 15% 72%, rgba(255, 56, 0, 0.34) 0%, transparent 36%),
-    radial-gradient(ellipse at 85% 72%, rgba(255, 86, 10, 0.36) 0%, transparent 38%),
-    radial-gradient(ellipse at 50% 104%, rgba(255, 126, 26, 0.22) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 10%, rgba(255, 126, 26, 0.13) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 104%, rgba(255, 126, 26, 0.13) 0%, transparent 55%),
     linear-gradient(180deg, #070403 0%, #090403 42%, #030303 100%) !important;
   background-attachment: fixed !important;
 }
 
-body[data-theme="inferno"]::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 80%, rgba(255, 151, 32, 0.55) 0 1px, transparent 2px),
-    radial-gradient(circle at 21% 64%, rgba(255, 67, 0, 0.46) 0 1px, transparent 2px),
-    radial-gradient(circle at 38% 55%, rgba(255, 118, 18, 0.32) 0 1px, transparent 2px),
-    radial-gradient(circle at 68% 50%, rgba(255, 135, 30, 0.38) 0 1px, transparent 2px),
-    radial-gradient(circle at 84% 76%, rgba(255, 69, 0, 0.50) 0 1px, transparent 2px),
-    linear-gradient(115deg, transparent 0%, rgba(255, 65, 0, 0.10) 19%, transparent 32%, rgba(255, 118, 21, 0.09) 64%, transparent 84%);
-  background-size: 260px 260px, 340px 340px, 420px 420px, 320px 320px, 390px 390px, 100% 100%;
-  opacity: 0.95;
-  mix-blend-mode: screen;
-  animation: infernalEmbersFloat 18s linear infinite;
-}
-
+body[data-theme="inferno"]::before,
 body[data-theme="inferno"]::after {
-  content: "";
-  position: fixed;
-  left: -5vw;
-  right: -5vw;
-  bottom: -10vh;
-  height: 54vh;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 6% 88%, rgba(255, 178, 42, 0.46), transparent 16%),
-    radial-gradient(ellipse at 18% 76%, rgba(255, 74, 0, 0.42), transparent 25%),
-    radial-gradient(ellipse at 31% 92%, rgba(255, 120, 18, 0.20), transparent 22%),
-    radial-gradient(ellipse at 68% 92%, rgba(255, 104, 14, 0.20), transparent 23%),
-    radial-gradient(ellipse at 82% 80%, rgba(255, 116, 10, 0.44), transparent 25%),
-    radial-gradient(ellipse at 96% 86%, rgba(255, 44, 0, 0.40), transparent 17%),
-    linear-gradient(90deg, transparent, rgba(255, 60, 0, 0.13), transparent 48%, rgba(255, 88, 0, 0.15), transparent);
-  filter: blur(16px) saturate(1.45) contrast(1.18);
-  mix-blend-mode: screen;
-  opacity: 0.95;
-  animation: infernalHeatWave 6.5s ease-in-out infinite alternate;
-}
-
-@keyframes infernalEmbersFloat {
-  0% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center; }
-  100% { background-position: 80px -260px, -110px -340px, 90px -420px, -70px -320px, 95px -390px, center; }
-}
-
-@keyframes infernalHeatWave {
-  0% { transform: translate3d(-1.5%, 0, 0) scaleX(1.02) scaleY(1); opacity: 0.70; }
-  50% { transform: translate3d(0, -1.7vh, 0) scaleX(1.07) scaleY(1.05); opacity: 0.98; }
-  100% { transform: translate3d(1.5%, -0.6vh, 0) scaleX(1.03) scaleY(1.02); opacity: 0.82; }
+  animation: none !important;
+  opacity: 0.32 !important;
+  filter: none !important;
 }
 
 body[data-theme="inferno"] main,
@@ -224,50 +282,28 @@ body[data-theme="inferno"] aside,
 body[data-theme="inferno"] header,
 body[data-theme="inferno"] footer,
 body[data-theme="inferno"] nav {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[class*="rounded"],
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[class*="card"],
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="var(--card)"],
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="var(--surface)"],
-body[data-theme="inferno"] .bg-white\/5,
-body[data-theme="inferno"] .bg-white\/10,
-body[data-theme="inferno"] .bg-white\/20,
-body[data-theme="inferno"] .bg-black\/20,
-body[data-theme="inferno"] .bg-black\/30,
-body[data-theme="inferno"] .bg-black\/40 {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
 body[data-theme="inferno"] :where(div, section, article, aside)[class*="rounded"],
 body[data-theme="inferno"] :where(div, section, article, aside)[class*="card"],
 body[data-theme="inferno"] .inferno-card-glow {
-  border-color: rgba(255, 110, 35, 0.42) !important;
-  box-shadow:
-    0 0 0 1px rgba(255, 160, 55, 0.07) inset,
-    0 0 20px rgba(255, 80, 15, 0.16),
-    0 10px 28px rgba(0, 0, 0, 0.34) !important;
+  border-color: rgba(255, 110, 35, 0.34) !important;
+  box-shadow: none !important;
 }
 
 body[data-theme="inferno"] button,
 body[data-theme="inferno"] input,
 body[data-theme="inferno"] select,
 body[data-theme="inferno"] textarea {
-  border-color: rgba(255, 110, 35, 0.42) !important;
+  border-color: rgba(255, 110, 35, 0.36) !important;
   color: #fff4df !important;
 }
 
 body[data-theme="inferno"] input,
 body[data-theme="inferno"] select,
 body[data-theme="inferno"] textarea {
-  background: transparent !important;
-  background-color: transparent !important;
+  background: rgba(0,0,0,0.18) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -283,9 +319,7 @@ body[data-theme="inferno"] button,
 body[data-theme="inferno"] input,
 body[data-theme="inferno"] select,
 body[data-theme="inferno"] textarea {
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.88),
-    0 0 10px rgba(255, 94, 25, 0.22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.78);
 }
 
 body[data-theme="inferno"] .metal-text {
