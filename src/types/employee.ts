@@ -1,6 +1,6 @@
 export type EmployeeRole           = 'admin' | 'employee' | 'accountant' | 'secretary'
 export type EmployeeWorkMode       = 'heure' | 'forfait' | 'surface'
-export type EmployeeWorkerType     = 'contractor' | 'self_employed' | 'salaried' | 'office'
+export type EmployeeWorkerType     = 'contractor' | 'salaried'
 export type EmployeeCountry        = 'CA' | 'US'
 export type EmployeePayFrequency   = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 export type EmployeePayPeriodStart =
@@ -47,6 +47,9 @@ export interface Employee {
   emergencyRelation?: string
 
   // ── Type de travailleur et paie ──────────────────────────────────────────
+  // Compatibilité UI existante: workerType reste limité aux deux types déjà
+  // utilisés par les badges et calculs. Les nouveaux profils précis sont
+  // portés par accessProfile + role + permissions.
   workerType?: EmployeeWorkerType
   employeeCountry?: EmployeeCountry
   employeeProvince?: string
