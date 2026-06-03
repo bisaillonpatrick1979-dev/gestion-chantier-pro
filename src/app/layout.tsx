@@ -16,7 +16,6 @@ import StatsWorkerGroupPanel from '@/components/StatsWorkerGroupPanel'
 import PayrollAdminControlPanel from '@/components/PayrollAdminControlPanel'
 import ProjectProfitabilityPanel from '@/components/ProjectProfitabilityPanel'
 import CommandSupplierPanel from '@/components/CommandSupplierPanel'
-import MotivationQuickAccess from '@/components/MotivationQuickAccess'
 import DraggableAdminTools from '@/components/DraggableAdminTools'
 import AdminHomeWorkspace from '@/components/AdminHomeWorkspace'
 import AppErrorBoundary from '@/components/AppErrorBoundary'
@@ -73,7 +72,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppErrorBoundary label="Panneau paies"><PayrollAdminControlPanel /></AppErrorBoundary>
         <AppErrorBoundary label="Panneau rentabilité"><ProjectProfitabilityPanel /></AppErrorBoundary>
         <AppErrorBoundary label="Panneau commandes fournisseurs"><CommandSupplierPanel /></AppErrorBoundary>
-        <AppErrorBoundary label="Motivation"><MotivationQuickAccess /></AppErrorBoundary>
         <AppErrorBoundary label="Outils admin"><DraggableAdminTools /></AppErrorBoundary>
         <AppErrorBoundary label="Navigation"><BottomNav /></AppErrorBoundary>
         <AppErrorBoundary label="Agent IA"><AgentChat /></AppErrorBoundary>
