@@ -18,6 +18,7 @@ import ProjectProfitabilityPanel from '@/components/ProjectProfitabilityPanel'
 import CommandSupplierPanel from '@/components/CommandSupplierPanel'
 import MotivationQuickAccess from '@/components/MotivationQuickAccess'
 import DraggableAdminTools from '@/components/DraggableAdminTools'
+import AdminHomeWorkspace from '@/components/AdminHomeWorkspace'
 import AppErrorBoundary from '@/components/AppErrorBoundary'
 
 export const metadata: Metadata = {
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SyncManager />
         <Navbar />
         <AppErrorBoundary label="Page principale"><main className="pt-16" style={{ paddingBottom: 80 }}>{children}</main></AppErrorBoundary>
+        <AppErrorBoundary label="Accueil admin"><AdminHomeWorkspace /></AppErrorBoundary>
         <AppErrorBoundary label="Panneaux statistiques"><StatsMoneyPanelMount /><StatsWorkerGroupPanel /></AppErrorBoundary>
         <AppErrorBoundary label="Panneau paies"><PayrollAdminControlPanel /></AppErrorBoundary>
         <AppErrorBoundary label="Panneau rentabilité"><ProjectProfitabilityPanel /></AppErrorBoundary>
