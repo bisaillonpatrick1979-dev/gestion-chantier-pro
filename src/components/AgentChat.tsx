@@ -12,7 +12,10 @@ type ChatMessage = {
   imageUrl?: string
 }
 
+type Pos = { x: number; y: number }
+
 const WELCOME = 'Bonjour ! Je suis l’agent IA de Gestion Chantier Pro. Tu peux écrire, parler, ou joindre une photo de chantier pour demander conseil.'
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
 function parseSSEChunk(chunk: string): string {
   let result = ''
@@ -44,10 +47,24 @@ export default function AgentChat() {
   const [image, setImage] = useState<AgentImage | null>(null)
   const [loading, setLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [pos, setPos] = useState<Pos>({ x: 0, y: 0 })
+  const [ready, setReady] = useState(false)
+  const dragRef = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { employees, currentEmployeeId } = useEmployeeStore()
   const currentEmployee = employees.find(e => e.id === currentEmployeeId)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ai-button-pos-v1')
+      if (raw) setPos(JSON.parse(raw))
+      else setPos({ x: Math.max(16, window.innerWidth - 72), y: Math.max(90, window.innerHeight - 170) })
+    } catch {
+      setPos({ x: 16, y: 140 })
+    }
+    setReady(true)
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -55,6 +72,30 @@ export default function AgentChat() {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [open, messages, image])
+
+  function savePos(next: Pos) {
+    setPos(next)
+    try { localStorage.setItem('ai-button-pos-v1', JSON.stringify(next)) } catch {}
+  }
+
+  function pointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y, moved: false }
+  }
+
+  function pointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const d = dragRef.current
+    if (!d || !ready) return
+    const next = { x: clamp(e.clientX - d.dx, 8, window.innerWidth - 66), y: clamp(e.clientY - d.dy, 72, window.innerHeight - 82) }
+    if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) d.moved = true
+    savePos(next)
+  }
+
+  function pointerUp() {
+    const moved = dragRef.current?.moved
+    dragRef.current = null
+    if (!moved) setOpen(o => !o)
+  }
 
   function closeChat() {
     stopSpeech()
@@ -145,11 +186,13 @@ export default function AgentChat() {
   }
 
   const unreadDot = !open && messages.length > 1
+  const panelLeft = ready ? clamp(pos.x - 320, 8, Math.max(8, window.innerWidth - Math.min(380, window.innerWidth - 32) - 8)) : 8
+  const panelTop = ready ? clamp(pos.y - 570, 72, Math.max(72, window.innerHeight - Math.min(560, window.innerHeight - 140) - 88)) : 90
 
   return (
     <>
-      <button onClick={() => setOpen(o => !o)} aria-label={open ? "Fermer l'agent IA" : "Ouvrir l'agent IA"} className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 focus:outline-none" style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%)', boxShadow: open ? '0 0 0 3px rgba(251,191,36,0.4), 0 8px 24px rgba(251,191,36,0.35)' : '0 4px 20px rgba(251,191,36,0.4)' }}><span className="select-none text-2xl">{open ? '✕' : '✨'}</span>{unreadDot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-black" />}</button>
-      {open && <div className="fixed z-50 flex flex-col rounded-3xl border border-amber-400/20 backdrop-blur-xl" style={{ bottom: '6rem', right: '1rem', width: 'min(380px, calc(100vw - 2rem))', height: 'min(560px, calc(100vh - 12rem))', background: 'rgba(12, 12, 22, 0.97)', boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)' }}>
+      <button onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} aria-label={open ? "Fermer l'agent IA" : "Ouvrir l'agent IA"} className="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 focus:outline-none" style={{ left: ready ? pos.x : undefined, top: ready ? pos.y : undefined, right: ready ? undefined : '1rem', bottom: ready ? undefined : '6rem', background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%)', boxShadow: open ? '0 0 0 3px rgba(251,191,36,0.4), 0 8px 24px rgba(251,191,36,0.35)' : '0 4px 20px rgba(251,191,36,0.4)', touchAction: 'none' }}><span className="select-none text-2xl">{open ? '✕' : '✨'}</span>{unreadDot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-black" />}</button>
+      {open && <div className="fixed z-50 flex flex-col rounded-3xl border border-amber-400/20 backdrop-blur-xl" style={{ left: panelLeft, top: panelTop, width: 'min(380px, calc(100vw - 2rem))', height: 'min(560px, calc(100vh - 12rem))', background: 'rgba(12, 12, 22, 0.97)', boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)' }}>
         <div className="flex flex-shrink-0 items-center gap-2 rounded-t-3xl border-b border-amber-400/15 px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.13), rgba(217,119,6,0.06))' }}><div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>🤖</div><div className="min-w-0 flex-1"><p className="text-sm font-black leading-none text-amber-300">Agent Chantier Pro</p><p className="mt-0.5 truncate text-xs text-slate-400">{currentEmployee ? `Bonjour ${currentEmployee.name ?? 'employé'}` : 'Espace administrateur'}</p></div><button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🔊</button><button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🗑️</button><button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 text-sm font-black text-white hover:bg-white/10">✕</button></div>
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">{messages.map(m => <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className="max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-relaxed" style={m.role === 'user' ? { background: 'linear-gradient(135deg, rgba(251,191,36,0.22), rgba(217,119,6,0.15))', border: '1px solid rgba(251,191,36,0.28)', color: '#fef3c7' } : { background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)', color: '#e2e8f0' }}>{m.imageUrl && <img src={m.imageUrl} alt="Photo envoyée à l’agent" className="mb-2 max-h-44 rounded-xl object-cover" />}{m.content ? renderText(m.content) : loading ? <span className="text-amber-300">Analyse...</span> : null}</div></div>)}<div ref={bottomRef} /></div>
         {image && <div className="mx-3 mb-2 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-white/[0.05] p-2"><img src={image.previewUrl} alt="Aperçu" className="h-12 w-12 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-amber-200">{image.name}</p><p className="text-[11px] text-slate-400">Photo prête à envoyer</p></div><button onClick={() => setImage(null)} className="rounded-lg px-2 text-slate-300 hover:bg-white/10">✕</button></div>}
