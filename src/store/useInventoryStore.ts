@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useAccountingStore } from './useAccountingStore'
 
 export type InventoryUnit = 'pcs' | 'box' | 'bundle' | 'roll' | 'pail' | 'tube' | 'sqft' | 'linear_ft'
 export type InventoryCategory = 'siding' | 'soffit' | 'fascia' | 'roofing' | 'fasteners' | 'sealants' | 'tools' | 'safety' | 'other'
@@ -30,6 +31,8 @@ export type InventoryMovement = {
   itemName: string
   type: InventoryMovementType
   quantity: number
+  unitCost?: number
+  totalCost?: number
   jobName?: string
   employeeName?: string
   note?: string
@@ -47,6 +50,13 @@ type InventoryStore = {
 
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const now = () => new Date().toISOString()
+const today = () => new Date().toISOString().slice(0, 10)
+
+function expenseCategoryForInventory(category: InventoryCategory): 'materials' | 'tools' | 'other' {
+  if (category === 'tools') return 'tools'
+  if (category === 'safety' || category === 'other') return 'other'
+  return 'materials'
+}
 
 export const useInventoryStore = create<InventoryStore>()(
   persist(
@@ -65,8 +75,41 @@ export const useInventoryStore = create<InventoryStore>()(
         if (data.type === 'out') quantity = Math.max(0, quantity - data.quantity)
         if (data.type === 'reserved') reserved += data.quantity
         if (data.type === 'adjust') quantity = data.quantity
-        const movement: InventoryMovement = { id: uid(), itemId: item.id, itemName: item.name, type: data.type, quantity: data.quantity, jobName: data.jobName, employeeName: data.employeeName, note: data.note, createdAt: now() }
-        set({ items: get().items.map(i => i.id === item.id ? { ...i, quantity, reserved, updatedAt: now() } : i), movements: [movement, ...get().movements] })
+
+        const unitCost = item.unitCost || 0
+        const totalCost = Math.round(data.quantity * unitCost * 100) / 100
+        const movementId = uid()
+        const movement: InventoryMovement = {
+          id: movementId,
+          itemId: item.id,
+          itemName: item.name,
+          type: data.type,
+          quantity: data.quantity,
+          unitCost,
+          totalCost,
+          jobName: data.jobName,
+          employeeName: data.employeeName,
+          note: data.note,
+          createdAt: now(),
+        }
+
+        set({
+          items: get().items.map(i => i.id === item.id ? { ...i, quantity, reserved, updatedAt: now() } : i),
+          movements: [movement, ...get().movements],
+        })
+
+        if (data.type === 'out' && totalCost > 0) {
+          useAccountingStore.getState().addExpense({
+            vendor: item.supplier || 'Inventaire entrepôt',
+            category: expenseCategoryForInventory(item.category),
+            projectName: data.jobName || 'Sortie inventaire sans projet',
+            amount: totalCost,
+            taxAmount: 0,
+            date: today(),
+            status: 'paid',
+            note: `Sortie inventaire: ${data.quantity} ${item.unit} × ${item.name}. Mouvement ${movementId}.${data.note ? ` Note: ${data.note}` : ''}`,
+          })
+        }
       },
     }),
     { name: 'inventory-store-v1' }
