@@ -10,7 +10,7 @@ import ThemeInjector from '@/components/ThemeInjector'
 import HailiteGlassThemeControl from '@/components/HailiteGlassThemeControl'
 import DevTools from '@/components/DevTools'
 import SyncManager from '@/components/SyncManager'
-import AgentChat from '@/components/AgentChat'
+import SafeAgentMount from '@/components/SafeAgentMount'
 import StatsMoneyPanelMount from '@/components/StatsMoneyPanelMount'
 import StatsWorkerGroupPanel from '@/components/StatsWorkerGroupPanel'
 import PayrollAdminControlPanel from '@/components/PayrollAdminControlPanel'
@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppErrorBoundary label="Panneau commandes fournisseurs"><CommandSupplierPanel /></AppErrorBoundary>
         <AppErrorBoundary label="Outils admin"><DraggableAdminTools /></AppErrorBoundary>
         <AppErrorBoundary label="Navigation"><BottomNav /></AppErrorBoundary>
-        <AppErrorBoundary label="Agent IA"><AgentChat /></AppErrorBoundary>
+        <AppErrorBoundary label="Agent IA"><SafeAgentMount /></AppErrorBoundary>
         <AppErrorBoundary label="DevTools"><DevTools /></AppErrorBoundary>
       </body>
     </html>
