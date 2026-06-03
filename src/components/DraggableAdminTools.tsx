@@ -14,7 +14,7 @@ export default function DraggableAdminTools() {
   const canSee = employees.length === 0 || current?.role === 'admin' || current?.role === 'accountant' || current?.role === 'secretary'
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<Pos>({ x: 16, y: 160 })
-  const dragRef = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
+  const dragRef = useRef<{ startX: number; startY: number; dx: number; dy: number; moved: boolean } | null>(null)
 
   useEffect(() => {
     try {
@@ -32,23 +32,26 @@ export default function DraggableAdminTools() {
 
   function down(e: React.PointerEvent<HTMLButtonElement>) {
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y, moved: false }
+    dragRef.current = { startX: e.clientX, startY: e.clientY, dx: e.clientX - pos.x, dy: e.clientY - pos.y, moved: false }
   }
   function move(e: React.PointerEvent<HTMLButtonElement>) {
     const d = dragRef.current
     if (!d) return
+    const distance = Math.hypot(e.clientX - d.startX, e.clientY - d.startY)
+    if (distance < 8) return
     d.moved = true
     save({ x: clamp(e.clientX - d.dx, 8, window.innerWidth - 70), y: clamp(e.clientY - d.dy, 70, window.innerHeight - 150) })
   }
-  function up() {
+  function up(e: React.PointerEvent<HTMLButtonElement>) {
+    try { ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch {}
     const moved = dragRef.current?.moved
     dragRef.current = null
     if (!moved) setOpen(v => !v)
   }
 
   return <div style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 9998 }}>
-    <button onPointerDown={down} onPointerMove={move} onPointerUp={up} style={{ width: 58, height: 58, borderRadius: 999, border: '1px solid rgba(250,204,21,.6)', background: 'linear-gradient(135deg,#b45309,#7c3aed)', color: 'white', fontSize: 24, fontWeight: 950, boxShadow: '0 0 22px rgba(250,204,21,.45),0 12px 28px rgba(0,0,0,.55)', touchAction: 'none' }}>⚡</button>
-    {open && <div style={{ position: 'absolute', left: 0, top: 66, width: 240, borderRadius: 18, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(15,23,42,.97)', padding: 10, boxShadow: '0 18px 45px rgba(0,0,0,.7)' }}>
+    <button onPointerDown={down} onPointerMove={move} onPointerUp={up} onClick={e => e.preventDefault()} style={{ width: 58, height: 58, borderRadius: 999, border: '1px solid rgba(250,204,21,.6)', background: 'linear-gradient(135deg,#b45309,#7c3aed)', color: 'white', fontSize: 24, fontWeight: 950, boxShadow: '0 0 22px rgba(250,204,21,.45),0 12px 28px rgba(0,0,0,.55)', touchAction: 'none' }}>⚡</button>
+    {open && <div style={{ position: 'absolute', left: 0, top: 66, width: 240, maxHeight: 'min(70vh,520px)', overflowY: 'auto', borderRadius: 18, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(15,23,42,.97)', padding: 10, boxShadow: '0 18px 45px rgba(0,0,0,.7)' }}>
       <b style={{ color: 'white', fontSize: 15 }}>Outils admin</b>
       <Tool href="/motivation" label="🏆 Motivation" />
       <Tool href="/suppliers" label="🏬 Fournisseurs" />
