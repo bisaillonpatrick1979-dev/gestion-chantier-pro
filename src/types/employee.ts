@@ -80,6 +80,10 @@ export interface EmployeeSession {
   breakElapsed: number
   revenue: number
   workMode: EmployeeWorkMode
+  projectName?: string
+  clientName?: string
+  jobAddress?: string
+  assignmentId?: string
   materials?: MaterialEntry[]
   isOnBreak: boolean
 }
@@ -99,6 +103,10 @@ export interface DayDetail {
   totalHours: number
   totalRevenue: number
   totalBreak: number
+  projectName?: string
+  clientName?: string
+  jobAddress?: string
+  assignmentId?: string
   materials?: MaterialEntry[]
   notes: string
 }
