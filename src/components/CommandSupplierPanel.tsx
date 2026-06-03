@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSupplierStore } from '@/store/useSupplierStore'
 import { useCommandeStore } from '@/store/useCommandeStore'
@@ -11,7 +11,7 @@ type Mode = 'livraison' | 'cueillette'
 
 export default function CommandSupplierPanel() {
   const pathname = usePathname()
-  const suppliers = useSupplierStore(s => s.suppliers.filter(x => x.active))
+  const allSuppliers = useSupplierStore(s => s.suppliers)
   const addCommande = useCommandeStore(s => s.addCommande)
   const [supplierId, setSupplierId] = useState('')
   const [mode, setMode] = useState<Mode>('livraison')
@@ -21,8 +21,9 @@ export default function CommandSupplierPanel() {
   const [notes, setNotes] = useState('')
   const [created, setCreated] = useState('')
 
+  const suppliers = useMemo(() => (allSuppliers || []).filter(x => x.active), [allSuppliers])
+  const selected = useMemo(() => suppliers.find(s => s.id === supplierId), [suppliers, supplierId])
   if (pathname !== '/commandes') return null
-  const selected = suppliers.find(s => s.id === supplierId)
 
   function createPO() {
     if (!selected) return
