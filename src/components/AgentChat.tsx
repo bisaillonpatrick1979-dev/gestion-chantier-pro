@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import AgentVoiceControls, { speakText, stopSpeech } from './AgentVoiceControls'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 
 type ChatMessage = {
@@ -18,8 +19,9 @@ function parseSSEChunk(chunk: string): string {
     const data = line.slice(6).trim()
     if (!data || data === '[DONE]') continue
     try {
-      const event = JSON.parse(data) as Record<string, any>
-      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') result += event.delta.text || ''
+      const event = JSON.parse(data) as Record<string, unknown>
+      const delta = event.delta as { type?: string; text?: string } | undefined
+      if (event.type === 'content_block_delta' && delta?.type === 'text_delta') result += delta.text || ''
       else if (typeof event.text === 'string') result += event.text
       else if (typeof event.content === 'string') result += event.content
     } catch {
@@ -52,12 +54,19 @@ export default function AgentChat() {
   }, [open, messages])
 
   function closeChat() {
+    stopSpeech()
     setOpen(false)
   }
 
   function clearConversation() {
+    stopSpeech()
     setMessages([{ id: 'welcome', role: 'agent', content: WELCOME }])
     setSessionId(null)
+  }
+
+  function speakLastAnswer() {
+    const last = [...messages].reverse().find(m => m.role === 'agent' && m.content.trim())
+    if (last) speakText(last.content)
   }
 
   async function sendMessage() {
@@ -156,12 +165,13 @@ export default function AgentChat() {
             boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)',
           }}
         >
-          <div className="flex flex-shrink-0 items-center gap-3 rounded-t-3xl border-b border-amber-400/15 px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.13), rgba(217,119,6,0.06))' }}>
+          <div className="flex flex-shrink-0 items-center gap-2 rounded-t-3xl border-b border-amber-400/15 px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.13), rgba(217,119,6,0.06))' }}>
             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>🤖</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black leading-none text-amber-300">Agent Chantier Pro</p>
               <p className="mt-0.5 truncate text-xs text-slate-400">{currentEmployee ? `Bonjour ${currentEmployee.name ?? 'employé'}` : 'Espace administrateur'}</p>
             </div>
+            <button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🔊</button>
             <button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🗑️</button>
             <button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 text-sm font-black text-white hover:bg-white/10">✕</button>
           </div>
@@ -183,13 +193,14 @@ export default function AgentChat() {
           </div>
 
           <div className="flex flex-shrink-0 gap-2 rounded-b-3xl border-t border-white/[0.07] p-3">
+            <AgentVoiceControls disabled={loading} onText={text => setInput(text)} />
             <textarea
               ref={inputRef}
               rows={1}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Pose ta question…"
+              placeholder="Pose ta question ou utilise le micro…"
               disabled={loading}
               className="flex-1 resize-none rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
               style={{ background: 'rgba(255,255,255,0.065)', border: '1px solid rgba(255,255,255,0.11)', maxHeight: '100px' }}
