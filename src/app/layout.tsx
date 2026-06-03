@@ -5,8 +5,6 @@ import BottomNav from '@/components/layout/BottomNav'
 import OnboardingGuard from '@/components/OnboardingGuard'
 import LegalConsentGate from '@/components/LegalConsentGate'
 import StartupConsentGate from '@/components/StartupConsentGate'
-import PayrollComplianceFloatingLink from '@/components/PayrollComplianceFloatingLink'
-import PayrollManifestWatcher from '@/components/PayrollManifestWatcher'
 import PWARegister from '@/components/PWARegister'
 import ThemeInjector from '@/components/ThemeInjector'
 import HailiteGlassThemeControl from '@/components/HailiteGlassThemeControl'
@@ -61,8 +59,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SyncManager />
         <Navbar />
         <main className="pt-16" style={{ paddingBottom: 80 }}>{children}</main>
-        <PayrollManifestWatcher />
-        <PayrollComplianceFloatingLink />
         <BottomNav />
         <AgentChat />
         <DevTools />
