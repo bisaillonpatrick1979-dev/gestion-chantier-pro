@@ -31,6 +31,7 @@ export type InventoryMovement = {
   itemName: string
   type: InventoryMovementType
   quantity: number
+  requestedQuantity?: number
   unitCost?: number
   totalCost?: number
   jobName?: string
@@ -68,28 +69,59 @@ export const useInventoryStore = create<InventoryStore>()(
       deleteItem: id => set({ items: get().items.filter(i => i.id !== id), movements: get().movements.filter(m => m.itemId !== id) }),
       moveStock: data => {
         const item = get().items.find(i => i.id === data.itemId)
-        if (!item || !data.quantity || data.quantity <= 0) return
+        const requestedQuantity = Number(data.quantity) || 0
+        if (!item || requestedQuantity <= 0) return
+
         let quantity = item.quantity
         let reserved = item.reserved
-        if (data.type === 'in' || data.type === 'returned') quantity += data.quantity
-        if (data.type === 'out') quantity = Math.max(0, quantity - data.quantity)
-        if (data.type === 'reserved') reserved += data.quantity
-        if (data.type === 'adjust') quantity = data.quantity
+        let effectiveQuantity = requestedQuantity
+        let movementNote = data.note || ''
+
+        if (data.type === 'in' || data.type === 'returned') {
+          quantity += requestedQuantity
+        }
+
+        if (data.type === 'out') {
+          effectiveQuantity = Math.min(requestedQuantity, quantity)
+          quantity = Math.max(0, quantity - effectiveQuantity)
+          reserved = Math.max(0, reserved - effectiveQuantity)
+          if (effectiveQuantity < requestedQuantity) {
+            movementNote = `${movementNote ? `${movementNote} · ` : ''}Quantité ajustée automatiquement: stock disponible insuffisant.`
+          }
+        }
+
+        if (data.type === 'reserved') {
+          const available = Math.max(0, quantity - reserved)
+          effectiveQuantity = Math.min(requestedQuantity, available)
+          reserved += effectiveQuantity
+          if (effectiveQuantity < requestedQuantity) {
+            movementNote = `${movementNote ? `${movementNote} · ` : ''}Réservation limitée par le stock disponible.`
+          }
+        }
+
+        if (data.type === 'adjust') {
+          effectiveQuantity = Math.max(0, requestedQuantity)
+          quantity = effectiveQuantity
+          reserved = Math.min(reserved, quantity)
+        }
+
+        if (effectiveQuantity <= 0 && data.type !== 'adjust') return
 
         const unitCost = item.unitCost || 0
-        const totalCost = Math.round(data.quantity * unitCost * 100) / 100
+        const totalCost = Math.round(effectiveQuantity * unitCost * 100) / 100
         const movementId = uid()
         const movement: InventoryMovement = {
           id: movementId,
           itemId: item.id,
           itemName: item.name,
           type: data.type,
-          quantity: data.quantity,
+          quantity: effectiveQuantity,
+          requestedQuantity,
           unitCost,
           totalCost,
           jobName: data.jobName,
           employeeName: data.employeeName,
-          note: data.note,
+          note: movementNote,
           createdAt: now(),
         }
 
@@ -107,7 +139,7 @@ export const useInventoryStore = create<InventoryStore>()(
             taxAmount: 0,
             date: today(),
             status: 'paid',
-            note: `Sortie inventaire: ${data.quantity} ${item.unit} × ${item.name}. Mouvement ${movementId}.${data.note ? ` Note: ${data.note}` : ''}`,
+            note: `Sortie inventaire: ${effectiveQuantity} ${item.unit} × ${item.name}. Mouvement ${movementId}.${movementNote ? ` Note: ${movementNote}` : ''}`,
           })
         }
       },
