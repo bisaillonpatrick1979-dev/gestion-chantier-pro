@@ -16,6 +16,7 @@ import StatsWorkerGroupPanel from '@/components/StatsWorkerGroupPanel'
 import PayrollAdminControlPanel from '@/components/PayrollAdminControlPanel'
 import ProjectProfitabilityPanel from '@/components/ProjectProfitabilityPanel'
 import CommandSupplierPanel from '@/components/CommandSupplierPanel'
+import AppErrorBoundary from '@/components/AppErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'Gestion Chantier Pro',
@@ -63,10 +64,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PWARegister />
         <SyncManager />
         <Navbar />
-        <main className="pt-16" style={{ paddingBottom: 80 }}>{children}<StatsMoneyPanelMount /><StatsWorkerGroupPanel /><PayrollAdminControlPanel /><ProjectProfitabilityPanel /><CommandSupplierPanel /></main>
-        <BottomNav />
-        <AgentChat />
-        <DevTools />
+        <AppErrorBoundary label="Page principale"><main className="pt-16" style={{ paddingBottom: 80 }}>{children}</main></AppErrorBoundary>
+        <AppErrorBoundary label="Panneaux statistiques"><StatsMoneyPanelMount /><StatsWorkerGroupPanel /></AppErrorBoundary>
+        <AppErrorBoundary label="Panneau paies"><PayrollAdminControlPanel /></AppErrorBoundary>
+        <AppErrorBoundary label="Panneau rentabilité"><ProjectProfitabilityPanel /></AppErrorBoundary>
+        <AppErrorBoundary label="Panneau commandes fournisseurs"><CommandSupplierPanel /></AppErrorBoundary>
+        <AppErrorBoundary label="Navigation"><BottomNav /></AppErrorBoundary>
+        <AppErrorBoundary label="Agent IA"><AgentChat /></AppErrorBoundary>
+        <AppErrorBoundary label="DevTools"><DevTools /></AppErrorBoundary>
       </body>
     </html>
   )
