@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import AgentVoiceControls, { speakText, stopSpeech } from './AgentVoiceControls'
+import AgentImagePicker, { type AgentImage } from './AgentImagePicker'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 
 type ChatMessage = {
   id: string
   role: 'user' | 'agent'
   content: string
+  imageUrl?: string
 }
 
-const WELCOME = 'Bonjour ! Je suis l’agent IA de Gestion Chantier Pro. Pose-moi une question sur le chantier, les matériaux, le punch, la paie ou la facturation.'
+const WELCOME = 'Bonjour ! Je suis l’agent IA de Gestion Chantier Pro. Tu peux écrire, parler, ou joindre une photo de chantier pour demander conseil.'
 
 function parseSSEChunk(chunk: string): string {
   let result = ''
@@ -39,6 +41,7 @@ export default function AgentChat() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([{ id: 'welcome', role: 'agent', content: WELCOME }])
   const [input, setInput] = useState('')
+  const [image, setImage] = useState<AgentImage | null>(null)
   const [loading, setLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -51,7 +54,7 @@ export default function AgentChat() {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [open, messages])
+  }, [open, messages, image])
 
   function closeChat() {
     stopSpeech()
@@ -62,6 +65,7 @@ export default function AgentChat() {
     stopSpeech()
     setMessages([{ id: 'welcome', role: 'agent', content: WELCOME }])
     setSessionId(null)
+    setImage(null)
   }
 
   function speakLastAnswer() {
@@ -71,11 +75,14 @@ export default function AgentChat() {
 
   async function sendMessage() {
     const text = input.trim()
-    if (!text || loading) return
+    if ((!text && !image) || loading) return
+    const safeText = text || 'Analyse cette photo de chantier et conseille-moi.'
     const userId = `u-${Date.now()}`
     const agentId = `a-${Date.now()}`
-    setMessages(prev => [...prev, { id: userId, role: 'user', content: text }, { id: agentId, role: 'agent', content: '' }])
+    const attachedImage = image
+    setMessages(prev => [...prev, { id: userId, role: 'user', content: safeText, imageUrl: attachedImage?.previewUrl }, { id: agentId, role: 'agent', content: '' }])
     setInput('')
+    setImage(null)
     setLoading(true)
 
     try {
@@ -84,7 +91,8 @@ export default function AgentChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
+          message: safeText,
+          image: attachedImage ? { mediaType: attachedImage.mediaType, data: attachedImage.data, name: attachedImage.name } : undefined,
           sessionId,
           history,
           userContext: {
@@ -140,77 +148,13 @@ export default function AgentChat() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(o => !o)}
-        aria-label={open ? "Fermer l'agent IA" : "Ouvrir l'agent IA"}
-        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 focus:outline-none"
-        style={{
-          background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%)',
-          boxShadow: open ? '0 0 0 3px rgba(251,191,36,0.4), 0 8px 24px rgba(251,191,36,0.35)' : '0 4px 20px rgba(251,191,36,0.4)',
-        }}
-      >
-        <span className="select-none text-2xl">{open ? '✕' : '✨'}</span>
-        {unreadDot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-black" />}
-      </button>
-
-      {open && (
-        <div
-          className="fixed z-50 flex flex-col rounded-3xl border border-amber-400/20 backdrop-blur-xl"
-          style={{
-            bottom: '6rem',
-            right: '1rem',
-            width: 'min(380px, calc(100vw - 2rem))',
-            height: 'min(560px, calc(100vh - 12rem))',
-            background: 'rgba(12, 12, 22, 0.97)',
-            boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)',
-          }}
-        >
-          <div className="flex flex-shrink-0 items-center gap-2 rounded-t-3xl border-b border-amber-400/15 px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.13), rgba(217,119,6,0.06))' }}>
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>🤖</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-black leading-none text-amber-300">Agent Chantier Pro</p>
-              <p className="mt-0.5 truncate text-xs text-slate-400">{currentEmployee ? `Bonjour ${currentEmployee.name ?? 'employé'}` : 'Espace administrateur'}</p>
-            </div>
-            <button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🔊</button>
-            <button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🗑️</button>
-            <button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 text-sm font-black text-white hover:bg-white/10">✕</button>
-          </div>
-
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-            {messages.map(m => (
-              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className="max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-relaxed"
-                  style={m.role === 'user'
-                    ? { background: 'linear-gradient(135deg, rgba(251,191,36,0.22), rgba(217,119,6,0.15))', border: '1px solid rgba(251,191,36,0.28)', color: '#fef3c7' }
-                    : { background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)', color: '#e2e8f0' }}
-                >
-                  {m.content ? renderText(m.content) : loading ? <span className="text-amber-300">Analyse...</span> : null}
-                </div>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="flex flex-shrink-0 gap-2 rounded-b-3xl border-t border-white/[0.07] p-3">
-            <AgentVoiceControls disabled={loading} onText={text => setInput(text)} />
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Pose ta question ou utilise le micro…"
-              disabled={loading}
-              className="flex-1 resize-none rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.065)', border: '1px solid rgba(255,255,255,0.11)', maxHeight: '100px' }}
-            />
-            <button onClick={sendMessage} disabled={loading || !input.trim()} className="flex-shrink-0 rounded-xl px-4 text-sm font-black text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>
-              {loading ? '⏳' : '➤'}
-            </button>
-          </div>
-        </div>
-      )}
+      <button onClick={() => setOpen(o => !o)} aria-label={open ? "Fermer l'agent IA" : "Ouvrir l'agent IA"} className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 focus:outline-none" style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%)', boxShadow: open ? '0 0 0 3px rgba(251,191,36,0.4), 0 8px 24px rgba(251,191,36,0.35)' : '0 4px 20px rgba(251,191,36,0.4)' }}><span className="select-none text-2xl">{open ? '✕' : '✨'}</span>{unreadDot && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-black" />}</button>
+      {open && <div className="fixed z-50 flex flex-col rounded-3xl border border-amber-400/20 backdrop-blur-xl" style={{ bottom: '6rem', right: '1rem', width: 'min(380px, calc(100vw - 2rem))', height: 'min(560px, calc(100vh - 12rem))', background: 'rgba(12, 12, 22, 0.97)', boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)' }}>
+        <div className="flex flex-shrink-0 items-center gap-2 rounded-t-3xl border-b border-amber-400/15 px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.13), rgba(217,119,6,0.06))' }}><div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-lg" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>🤖</div><div className="min-w-0 flex-1"><p className="text-sm font-black leading-none text-amber-300">Agent Chantier Pro</p><p className="mt-0.5 truncate text-xs text-slate-400">{currentEmployee ? `Bonjour ${currentEmployee.name ?? 'employé'}` : 'Espace administrateur'}</p></div><button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🔊</button><button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-white/10">🗑️</button><button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 text-sm font-black text-white hover:bg-white/10">✕</button></div>
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">{messages.map(m => <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className="max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-relaxed" style={m.role === 'user' ? { background: 'linear-gradient(135deg, rgba(251,191,36,0.22), rgba(217,119,6,0.15))', border: '1px solid rgba(251,191,36,0.28)', color: '#fef3c7' } : { background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)', color: '#e2e8f0' }}>{m.imageUrl && <img src={m.imageUrl} alt="Photo envoyée à l’agent" className="mb-2 max-h-44 rounded-xl object-cover" />}{m.content ? renderText(m.content) : loading ? <span className="text-amber-300">Analyse...</span> : null}</div></div>)}<div ref={bottomRef} /></div>
+        {image && <div className="mx-3 mb-2 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-white/[0.05] p-2"><img src={image.previewUrl} alt="Aperçu" className="h-12 w-12 rounded-lg object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-amber-200">{image.name}</p><p className="text-[11px] text-slate-400">Photo prête à envoyer</p></div><button onClick={() => setImage(null)} className="rounded-lg px-2 text-slate-300 hover:bg-white/10">✕</button></div>}
+        <div className="flex flex-shrink-0 gap-2 rounded-b-3xl border-t border-white/[0.07] p-3"><AgentImagePicker disabled={loading} onImage={img => { setOpen(true); setImage(img); if (!input.trim()) setInput('Analyse cette photo de chantier et donne-moi les causes possibles, les risques, et les solutions.') }} /><AgentVoiceControls disabled={loading} onText={text => setInput(text)} /><textarea ref={inputRef} rows={1} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Pose ta question, parle, ou ajoute une photo…" disabled={loading} className="flex-1 resize-none rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50" style={{ background: 'rgba(255,255,255,0.065)', border: '1px solid rgba(255,255,255,0.11)', maxHeight: '100px' }} /><button onClick={sendMessage} disabled={loading || (!input.trim() && !image)} className="flex-shrink-0 rounded-xl px-4 text-sm font-black text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-40" style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)' }}>{loading ? '⏳' : '➤'}</button></div>
+      </div>}
     </>
   )
 }
