@@ -30,10 +30,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Settings tabs visual order.
-   Keeps the existing activeTab ids intact while showing the requested order:
-   Compagnie, Clients, Employés, Comptabilité, Catalogue, Paiement,
-   Rappels, Conditions, Thèmes, Langue, Géofenc., RH. */
+/* Settings tabs visual order. */
 main .scrollbar-hide > button:nth-child(1) { order: 1; }
 main .scrollbar-hide > button:nth-child(8) { order: 2; }
 main .scrollbar-hide > button:nth-child(2) { order: 3; }
@@ -47,8 +44,7 @@ main .scrollbar-hide > button:nth-child(4) { order: 10; }
 main .scrollbar-hide > button:nth-child(11) { order: 11; }
 main .scrollbar-hide > button:nth-child(12) { order: 12; }
 
-/* Worker/payroll list readability on mobile/tablet.
-   Syntax-safe selectors for Turbopack/PostCSS. */
+/* Worker/payroll list readability on mobile/tablet. */
 main [class*="rounded-full"] {
   min-width: 52px;
   min-height: 52px;
@@ -73,10 +69,67 @@ main [class*="rounded-full"] + div [class*="text-"] {
   font-size: 13px !important;
 }
 
+/* Bigger admin stats/accounting readability. */
+.stats-money-panel-mount {
+  max-width: 1180px;
+  margin: 14px auto 96px;
+  padding: 0 16px;
+}
+
+.accounting-panel h2,
+main h1,
+main h2 {
+  letter-spacing: -0.02em;
+}
+
+.accounting-panel p,
+.accounting-panel b,
+.accounting-panel span,
+.accounting-panel small,
+.accounting-panel label {
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+}
+
+.accounting-panel input,
+.accounting-panel select,
+.accounting-panel textarea {
+  min-height: 52px !important;
+  font-size: 17px !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+}
+
+.accounting-panel button {
+  min-height: 52px !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  border-radius: 14px !important;
+  padding: 12px 16px !important;
+}
+
+.accounting-panel .quick-line {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+@media (max-width: 900px) {
+  .accounting-panel .quick-line {
+    grid-template-columns: 1fr;
+  }
+  .accounting-panel button {
+    width: 100%;
+  }
+}
+
 /* ============================================================
    THEME INFERNAL
-   ID technique: inferno
-   But visuel: cartes full transparentes + background feu visible partout
    ============================================================ */
 
 body[data-theme="inferno"] {
@@ -179,16 +232,12 @@ body[data-theme="inferno"] :where(div, section, article, aside, header, footer, 
 body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[class*="card"],
 body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="var(--card)"],
 body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="var(--surface)"],
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="rgba(17,7,40"],
-body[data-theme="inferno"] :where(div, section, article, aside, header, footer, main, nav)[style*="rgba(168,85,247"],
 body[data-theme="inferno"] .bg-white\/5,
 body[data-theme="inferno"] .bg-white\/10,
 body[data-theme="inferno"] .bg-white\/20,
 body[data-theme="inferno"] .bg-black\/20,
 body[data-theme="inferno"] .bg-black\/30,
-body[data-theme="inferno"] .bg-black\/40,
-body[data-theme="inferno"] .bg-\[\#0d0a00\]\/80,
-body[data-theme="inferno"] .bg-\[\#0a0015\]\/80 {
+body[data-theme="inferno"] .bg-black\/40 {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
