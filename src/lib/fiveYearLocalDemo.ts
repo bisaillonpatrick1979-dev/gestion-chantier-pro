@@ -22,6 +22,29 @@ const workers: Employee[] = [
 const clientNames = ['Martin Côté', 'Jennifer Walsh', 'Robert Chen', 'Sarah Nguyen', 'Michael Brown', 'Airdrie Condo Board', 'Okotoks Family Homes', 'Calgary Hail Claim Group']
 const projects = ['Siding grêle', 'Toiture complète', 'Soffit fascia', 'Hardie Board', 'Réparation urgence', 'Cladding façade']
 
+function buildDemoInventory(now: Date) {
+  const updatedAt = iso(now)
+  const items = [
+    { id: 'demo-invitem-001', name: 'Vinyl siding blanc D4', category: 'siding', unit: 'box', location: 'Entrepôt A-01', supplier: 'Gentek / Kaycan', quantity: 18, reserved: 4, minQuantity: 12, reorderQuantity: 40, unitCost: 92, notes: 'Matériaux siding démo', updatedAt },
+    { id: 'demo-invitem-002', name: 'Hardie Board 8.25 Arctic White', category: 'siding', unit: 'pcs', location: 'Entrepôt A-02', supplier: 'James Hardie', quantity: 46, reserved: 18, minQuantity: 30, reorderQuantity: 120, unitCost: 17.5, notes: 'Matériaux Hardie démo', updatedAt },
+    { id: 'demo-invitem-003', name: 'Soffit ventilé blanc', category: 'soffit', unit: 'box', location: 'Entrepôt B-01', supplier: 'Gentek', quantity: 7, reserved: 1, minQuantity: 10, reorderQuantity: 25, unitCost: 74, notes: 'Bas stock volontaire', updatedAt },
+    { id: 'demo-invitem-004', name: 'Fascia aluminium noir', category: 'fascia', unit: 'pcs', location: 'Rack B-04', supplier: 'Kaycan', quantity: 32, reserved: 6, minQuantity: 20, reorderQuantity: 60, unitCost: 14.25, notes: '', updatedAt },
+    { id: 'demo-invitem-005', name: 'Bardeaux architectural gris', category: 'roofing', unit: 'bundle', location: 'Cour extérieure', supplier: 'Roofmart', quantity: 21, reserved: 0, minQuantity: 24, reorderQuantity: 80, unitCost: 43, notes: 'Bas stock volontaire', updatedAt },
+    { id: 'demo-invitem-006', name: 'Clous coil siding 2 po', category: 'fasteners', unit: 'box', location: 'Étagère C-01', supplier: 'Home Depot Pro', quantity: 11, reserved: 2, minQuantity: 8, reorderQuantity: 20, unitCost: 52, notes: 'Consommable', updatedAt },
+    { id: 'demo-invitem-007', name: 'Scellant extérieur OSI Quad', category: 'sealants', unit: 'tube', location: 'Étagère C-02', supplier: 'Home Depot Pro', quantity: 24, reserved: 8, minQuantity: 18, reorderQuantity: 60, unitCost: 9.25, notes: 'Consommable', updatedAt },
+    { id: 'demo-invitem-008', name: 'Plieuse brake aluminium 10 pi', category: 'tools', unit: 'pcs', location: 'Camion 1', supplier: 'Tapco', quantity: 1, reserved: 0, minQuantity: 1, reorderQuantity: 1, unitCost: 1850, notes: 'Outil durable', updatedAt },
+    { id: 'demo-invitem-009', name: 'Scie circulaire cordless', category: 'tools', unit: 'pcs', location: 'Camion 2', supplier: 'Milwaukee', quantity: 3, reserved: 1, minQuantity: 2, reorderQuantity: 2, unitCost: 249, notes: 'Outil', updatedAt },
+    { id: 'demo-invitem-010', name: 'Harnais sécurité complet', category: 'safety', unit: 'pcs', location: 'Sécurité S-01', supplier: 'Safety Express', quantity: 5, reserved: 2, minQuantity: 4, reorderQuantity: 6, unitCost: 139, notes: 'PPE', updatedAt },
+    { id: 'demo-invitem-011', name: 'Lunettes sécurité anti-buée', category: 'safety', unit: 'pcs', location: 'Sécurité S-02', supplier: 'Acklands', quantity: 3, reserved: 0, minQuantity: 10, reorderQuantity: 30, unitCost: 7.5, notes: 'Bas stock volontaire', updatedAt },
+  ] as any[]
+  const movements = items.slice(0, 8).map((item, i) => {
+    const quantity = 1 + (i % 5)
+    const totalCost = Math.round(quantity * item.unitCost * 100) / 100
+    return { id: `demo-move-${i + 1}`, itemId: item.id, itemName: item.name, type: i % 3 === 0 ? 'out' : i % 3 === 1 ? 'in' : 'reserved', quantity, requestedQuantity: quantity, unitCost: item.unitCost, totalCost, jobName: projects[i % projects.length], employeeName: workers[(i % 5) + 1].name, note: 'Mouvement inventaire démo local', createdAt: iso(new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - i))) }
+  })
+  return { items, movements }
+}
+
 export function buildFiveYearLocalDemo() {
   const now = new Date()
   const startYear = now.getFullYear() - 4
@@ -80,12 +103,15 @@ export function buildFiveYearLocalDemo() {
     }
   }
 
+  const inventory = buildDemoInventory(now)
+
   return {
     company: { name: 'Hailite Xteriors DEMO LOCAL', ownerName: 'Patrick Bisaillon', address: '12 Abalone Crescent NE', city: 'Calgary', province: 'AB', postalCode: 'T2A 6W7', phone: '403-555-0100', email: 'demo@hailite.local', gstNumber: 'DEMO-LOCAL-ONLY', wcbNumber: 'DEMO-WCB', logoUrl: '', defaultNotes: 'Données de démonstration locales seulement.', defaultPaymentTerms: 'Net 30' },
     employees: workers,
     clients,
     documents: docs,
     dayDetails,
+    inventory,
     accounting: { clientInvoices: invoices, payrollPayments: payroll, expenses },
   }
 }
