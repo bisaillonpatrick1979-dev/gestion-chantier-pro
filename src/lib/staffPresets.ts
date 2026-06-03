@@ -1,4 +1,15 @@
-export const STAFF_PRESETS = {
+import type { EmployeePermission, EmployeeRole, EmployeeWorkerType, EmployeeWorkMode } from '@/types/employee'
+
+type StaffPreset = {
+  labelFr: string
+  role: EmployeeRole
+  workerType: EmployeeWorkerType
+  accessProfile: 'owner' | 'field_worker' | 'subcontractor' | 'self_employed' | 'accounting' | 'office_secretary'
+  permissions: EmployeePermission[]
+  workMode: EmployeeWorkMode
+}
+
+export const STAFF_PRESETS: Record<string, StaffPreset> = {
   salaried: {
     labelFr: 'Employé salarié',
     role: 'employee',
@@ -18,7 +29,7 @@ export const STAFF_PRESETS = {
   self_employed: {
     labelFr: 'Travailleur autonome',
     role: 'employee',
-    workerType: 'self_employed',
+    workerType: 'contractor',
     accessProfile: 'self_employed',
     permissions: ['punch', 'own_assignments', 'own_invoices'],
     workMode: 'forfait',
@@ -26,7 +37,7 @@ export const STAFF_PRESETS = {
   accountant: {
     labelFr: 'Comptable',
     role: 'accountant',
-    workerType: 'office',
+    workerType: 'salaried',
     accessProfile: 'accounting',
     permissions: ['accounting', 'payroll', 'contracts', 'clients', 'projects', 'documents'],
     workMode: 'heure',
@@ -34,11 +45,11 @@ export const STAFF_PRESETS = {
   secretary: {
     labelFr: 'Secrétaire / administration',
     role: 'secretary',
-    workerType: 'office',
+    workerType: 'salaried',
     accessProfile: 'office_secretary',
     permissions: ['appointments', 'inventory', 'contracts', 'clients', 'projects', 'documents', 'no_money'],
     workMode: 'heure',
   },
-} as const
+}
 
 export type StaffPresetKey = keyof typeof STAFF_PRESETS
