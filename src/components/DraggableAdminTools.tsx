@@ -53,6 +53,7 @@ export default function DraggableAdminTools() {
     <button onPointerDown={down} onPointerMove={move} onPointerUp={up} onClick={e => e.preventDefault()} style={{ width: 58, height: 58, borderRadius: 999, border: '1px solid rgba(250,204,21,.6)', background: 'linear-gradient(135deg,#b45309,#7c3aed)', color: 'white', fontSize: 24, fontWeight: 950, boxShadow: '0 0 22px rgba(250,204,21,.45),0 12px 28px rgba(0,0,0,.55)', touchAction: 'none' }}>⚡</button>
     {open && <div style={{ position: 'absolute', left: 0, top: 66, width: 240, maxHeight: 'min(70vh,520px)', overflowY: 'auto', borderRadius: 18, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(15,23,42,.97)', padding: 10, boxShadow: '0 18px 45px rgba(0,0,0,.7)' }}>
       <b style={{ color: 'white', fontSize: 15 }}>Outils admin</b>
+      <Tool href="/ai-settings" label="🤖 Réglages IA" />
       <Tool href="/motivation" label="🏆 Motivation" />
       <Tool href="/suppliers" label="🏬 Fournisseurs" />
       <Tool href="/commandes" label="📦 Commandes / PO" />
