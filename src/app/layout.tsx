@@ -12,6 +12,7 @@ import DevTools from '@/components/DevTools'
 import SyncManager from '@/components/SyncManager'
 import AgentChat from '@/components/AgentChat'
 import StatsMoneyPanelMount from '@/components/StatsMoneyPanelMount'
+import StatsWorkerGroupPanel from '@/components/StatsWorkerGroupPanel'
 
 export const metadata: Metadata = {
   title: 'Gestion Chantier Pro',
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PWARegister />
         <SyncManager />
         <Navbar />
-        <main className="pt-16" style={{ paddingBottom: 80 }}>{children}<StatsMoneyPanelMount /></main>
+        <main className="pt-16" style={{ paddingBottom: 80 }}>{children}<StatsMoneyPanelMount /><StatsWorkerGroupPanel /></main>
         <BottomNav />
         <AgentChat />
         <DevTools />
