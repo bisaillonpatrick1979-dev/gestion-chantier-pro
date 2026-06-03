@@ -47,6 +47,48 @@ main .scrollbar-hide > button:nth-child(4) { order: 10; }
 main .scrollbar-hide > button:nth-child(11) { order: 11; }
 main .scrollbar-hide > button:nth-child(12) { order: 12; }
 
+/* Worker/payroll list readability on mobile/tablet. */
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"),
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]),
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) {
+  min-height: 76px !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) [class*="rounded-full"],
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) [class*="rounded-full"],
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) [class*="rounded-full"] {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+}
+
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) b,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) b,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) b {
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+}
+
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) span,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) span,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) span {
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+}
+
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) small,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) small,
+main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) small {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
 /* ============================================================
    THEME INFERNAL
    ID technique: inferno
