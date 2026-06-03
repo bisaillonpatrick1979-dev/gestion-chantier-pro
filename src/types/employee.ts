@@ -1,10 +1,25 @@
-export type EmployeeRole           = 'admin' | 'employee'
+export type EmployeeRole           = 'admin' | 'employee' | 'accountant' | 'secretary'
 export type EmployeeWorkMode       = 'heure' | 'forfait' | 'surface'
-export type EmployeeWorkerType     = 'contractor' | 'salaried'
+export type EmployeeWorkerType     = 'contractor' | 'self_employed' | 'salaried' | 'office'
 export type EmployeeCountry        = 'CA' | 'US'
 export type EmployeePayFrequency   = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 export type EmployeePayPeriodStart =
   'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
+
+export type EmployeePermission =
+  | 'all'
+  | 'punch'
+  | 'own_assignments'
+  | 'own_invoices'
+  | 'accounting'
+  | 'payroll'
+  | 'appointments'
+  | 'inventory'
+  | 'contracts'
+  | 'clients'
+  | 'projects'
+  | 'documents'
+  | 'no_money'
 
 export interface Employee {
   id: string
@@ -38,8 +53,10 @@ export interface Employee {
   payFrequency?: EmployeePayFrequency
   payPeriodStart?: EmployeePayPeriodStart
   annualSalary?: number
+  accessProfile?: 'owner' | 'field_worker' | 'subcontractor' | 'self_employed' | 'accounting' | 'office_secretary'
+  permissions?: EmployeePermission[]
 
-  // ── Champs sous-traitant uniquement (légal CRA) ──────────────────────────
+  // ── Champs sous-traitant / travailleur autonome ──────────────────────────
   businessName?: string
   gstNumber?: string
   sin?: string
