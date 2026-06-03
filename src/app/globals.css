@@ -47,46 +47,30 @@ main .scrollbar-hide > button:nth-child(4) { order: 10; }
 main .scrollbar-hide > button:nth-child(11) { order: 11; }
 main .scrollbar-hide > button:nth-child(12) { order: 12; }
 
-/* Worker/payroll list readability on mobile/tablet. */
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"),
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]),
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) {
-  min-height: 76px !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+/* Worker/payroll list readability on mobile/tablet.
+   Syntax-safe selectors for Turbopack/PostCSS. */
+main [class*="rounded-full"] {
+  min-width: 52px;
+  min-height: 52px;
 }
 
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) [class*="rounded-full"],
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) [class*="rounded-full"],
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) [class*="rounded-full"] {
-  width: 56px !important;
-  height: 56px !important;
-  min-width: 56px !important;
-  min-height: 56px !important;
-  font-size: 22px !important;
-  font-weight: 900 !important;
-}
-
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) b,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) b,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) b {
+main [class*="rounded-full"] + div b,
+main [class*="rounded-full"] ~ div b {
   font-size: 18px !important;
   line-height: 1.15 !important;
   font-weight: 900 !important;
 }
 
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) span,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) span,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) span {
+main [class*="rounded-full"] + div span,
+main [class*="rounded-full"] ~ div span,
+main [class*="rounded-full"] + div small,
+main [class*="rounded-full"] ~ div small {
   font-size: 13px !important;
   line-height: 1.25 !important;
 }
 
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="/h"]) small,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="Salari"]) small,
-main [class*="rounded"]:has([class*="rounded-full"]):has([class*="traitant"]) small {
-  font-size: 12px !important;
-  line-height: 1.25 !important;
+main [class*="rounded-full"] + div [class*="text-"] {
+  font-size: 13px !important;
 }
 
 /* ============================================================
@@ -170,27 +154,14 @@ body[data-theme="inferno"]::after {
 }
 
 @keyframes infernalEmbersFloat {
-  0% {
-    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
-  }
-  100% {
-    background-position: 80px -260px, -110px -340px, 90px -420px, -70px -320px, 95px -390px, center;
-  }
+  0% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center; }
+  100% { background-position: 80px -260px, -110px -340px, 90px -420px, -70px -320px, 95px -390px, center; }
 }
 
 @keyframes infernalHeatWave {
-  0% {
-    transform: translate3d(-1.5%, 0, 0) scaleX(1.02) scaleY(1);
-    opacity: 0.70;
-  }
-  50% {
-    transform: translate3d(0, -1.7vh, 0) scaleX(1.07) scaleY(1.05);
-    opacity: 0.98;
-  }
-  100% {
-    transform: translate3d(1.5%, -0.6vh, 0) scaleX(1.03) scaleY(1.02);
-    opacity: 0.82;
-  }
+  0% { transform: translate3d(-1.5%, 0, 0) scaleX(1.02) scaleY(1); opacity: 0.70; }
+  50% { transform: translate3d(0, -1.7vh, 0) scaleX(1.07) scaleY(1.05); opacity: 0.98; }
+  100% { transform: translate3d(1.5%, -0.6vh, 0) scaleX(1.03) scaleY(1.02); opacity: 0.82; }
 }
 
 body[data-theme="inferno"] main,
