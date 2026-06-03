@@ -77,20 +77,7 @@ function IcoXP({ active }: { active: boolean }) {
 
 function HRAlertBadge({ count }: { count: number }) {
   if (count === 0) return null
-  return (
-    <div style={{
-      position: 'absolute', top: '-2px', right: '-2px',
-      minWidth: '16px', height: '16px', borderRadius: '8px',
-      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-      border: '2px solid #0a0a0a',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '9px', fontWeight: 900, color: 'white', padding: '0 3px',
-      boxShadow: '0 0 8px rgba(239,68,68,0.8), 0 0 16px rgba(239,68,68,0.4)',
-      zIndex: 10, animation: 'hrBadgePulse 2s ease-in-out infinite',
-    }}>
-      {count > 9 ? '9+' : count}
-    </div>
-  )
+  return <div style={{ position: 'absolute', top: '-2px', right: '-2px', minWidth: '16px', height: '16px', borderRadius: '8px', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: '2px solid #0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: 'white', padding: '0 3px', boxShadow: '0 0 8px rgba(239,68,68,0.8), 0 0 16px rgba(239,68,68,0.4)', zIndex: 10, animation: 'hrBadgePulse 2s ease-in-out infinite' }}>{count > 9 ? '9+' : count}</div>
 }
 
 export default function BottomNav() {
@@ -102,213 +89,88 @@ export default function BottomNav() {
   const { getActiveAlerts, getCriticalAlerts } = usePayrollRulesStore()
 
   const t = (fr: string, en: string) => lang === 'fr' ? fr : en
-
   const currentEmployee = employees.find(e => e.id === currentEmployeeId) ?? null
-  const isAdmin   = currentEmployee?.role === 'admin'
-  const isXP      = themeId === 'xp'
-  const isDeco    = themeId === 'deco'
+  const isAdmin = currentEmployee?.role === 'admin'
+  const isXP = themeId === 'xp'
+  const isDeco = themeId === 'deco'
   const isQuantum = themeId === 'quantum'
   const isInferno = themeId === 'inferno'
-  const isArctic  = themeId === 'arctic'
-  const isCarbon  = themeId === 'carbon'
-  const goal      = currentEmployeeId ? getGoal(currentEmployeeId) : null
+  const isArctic = themeId === 'arctic'
+  const isCarbon = themeId === 'carbon'
+  const goal = currentEmployeeId ? getGoal(currentEmployeeId) : null
 
   const criticalAlertCount = isAdmin ? getCriticalAlerts().length : 0
-  const activeAlertCount   = isAdmin ? getActiveAlerts().length   : 0
+  const activeAlertCount = isAdmin ? getActiveAlerts().length : 0
   const badgeCount = criticalAlertCount > 0 ? criticalAlertCount : activeAlertCount
 
   const adminItems = [
-    { href: '/',          label: isXP ? 'Base'                    : t('Accueil',    'Home'),     Icon: IcoAccueil   },
-    { href: '/invoice',   label:                                    t('Factures',   'Invoices'), Icon: IcoFacture   },
-    { href: '/projects',  label: isXP ? t('Quêtes', 'Quests')     : t('Projets',   'Projects'), Icon: IcoProjet    },
-    { href: '/documents', label:                                    t('Docs',       'Docs'),     Icon: IcoDocument  },
-    { href: '/commandes', label: isXP ? 'PO'                       : t('Commandes', 'Orders'),  Icon: IcoCommandes },
-    { href: '/stats',     label: isXP ? t('Stats XP', 'XP Stats') : 'Stats',                   Icon: IcoStats     },
-    { href: '/settings',  label: isXP ? t('Config', 'Config')     : t('Réglages',  'Settings'), Icon: IcoReglages, hasBadge: true },
+    { href: '/', label: isXP ? 'Base' : t('Accueil', 'Home'), Icon: IcoAccueil },
+    { href: '/invoice', label: t('Factures', 'Invoices'), Icon: IcoFacture },
+    { href: '/projects', label: isXP ? t('Quêtes', 'Quests') : t('Projets', 'Projects'), Icon: IcoProjet },
+    { href: '/documents', label: t('Docs', 'Docs'), Icon: IcoDocument },
+    { href: '/inventory', label: t('Inventaire', 'Inventory'), Icon: IcoCommandes },
+    { href: '/commandes', label: isXP ? 'PO' : t('Commandes', 'Orders'), Icon: IcoCommandes },
+    { href: '/stats', label: isXP ? t('Stats XP', 'XP Stats') : 'Stats', Icon: IcoStats },
+    { href: '/settings', label: isXP ? t('Config', 'Config') : t('Réglages', 'Settings'), Icon: IcoReglages, hasBadge: true },
   ]
 
   const employeeItems = [
-    { href: '/',         label: t('Accueil',  'Home'),     Icon: IcoAccueil  },
-    { href: '/invoice',  label: t('Factures', 'Invoices'), Icon: IcoFacture  },
-    { href: '/stats',    label: 'Stats',                   Icon: IcoStats    },
-    { href: '/paye',     label: t('Paye',     'Payroll'),  Icon: IcoPaye     },
+    { href: '/', label: t('Accueil', 'Home'), Icon: IcoAccueil },
+    { href: '/invoice', label: t('Factures', 'Invoices'), Icon: IcoFacture },
+    { href: '/stats', label: 'Stats', Icon: IcoStats },
+    { href: '/paye', label: t('Paye', 'Payroll'), Icon: IcoPaye },
     { href: '/settings', label: t('Réglages', 'Settings'), Icon: IcoReglages },
   ]
 
   const items = isAdmin ? adminItems : employeeItems
-
-  const xpAdminItems = [
-    adminItems[0], adminItems[1], adminItems[2],
-    { href: '/stats', label: 'XP', Icon: null as never, isXPCenter: true },
-    adminItems[3], adminItems[4], adminItems[5], adminItems[6],
-  ]
+  const xpAdminItems = [adminItems[0], adminItems[1], adminItems[2], { href: '/stats', label: 'XP', Icon: null as never, isXPCenter: true }, adminItems[3], adminItems[4], adminItems[5], adminItems[6], adminItems[7]]
   const displayItems = isXP && isAdmin ? xpAdminItems : items
 
-  // ── Couleurs nav par thème ────────────────────────────────────────────────
-  const activeColor = isXP      ? '#a855f7'
-    : isDeco    ? '#D6B25E'
-    : isQuantum ? '#2B7FFF'
-    : isInferno ? '#FF6014'
-    : isArctic  ? '#00D4FF'
-    : isCarbon  ? '#C0C0C0'
-    : theme.colors.navActive
+  const activeColor = isXP ? '#a855f7' : isDeco ? '#D6B25E' : isQuantum ? '#2B7FFF' : isInferno ? '#FF6014' : isArctic ? '#00D4FF' : isCarbon ? '#C0C0C0' : theme.colors.navActive
+  const inactiveColor = isXP ? '#7c3aed' : isDeco ? '#A67C2D' : isQuantum ? '#4A6080' : isInferno ? '#7A4A2A' : isArctic ? '#3A6070' : isCarbon ? '#505050' : theme.colors.navInactive
+  const inactiveGlowColor = isXP ? 'rgba(168,85,247,0.40)' : isDeco ? 'rgba(214,178,94,0.35)' : isQuantum ? 'rgba(43,127,255,0.35)' : isInferno ? 'rgba(255,96,20,0.40)' : isArctic ? 'rgba(0,212,255,0.35)' : isCarbon ? 'rgba(192,192,192,0.30)' : theme.colors.glow1
+  const navBg = isXP ? 'rgba(6,3,24,0.98)' : isDeco ? '#050505' : isQuantum ? 'rgba(2,8,24,0.98)' : isInferno ? 'rgba(10,5,0,0.98)' : isArctic ? 'rgba(1,8,16,0.98)' : isCarbon ? 'rgba(8,8,8,0.98)' : 'var(--nav-bg,#0a0a0a)'
+  const navBorderColor = isXP ? 'rgba(168,85,247,0.25)' : isDeco ? 'rgba(214,178,94,0.20)' : isQuantum ? 'rgba(43,127,255,0.18)' : isInferno ? 'rgba(255,96,20,0.25)' : isArctic ? 'rgba(0,212,255,0.18)' : isCarbon ? 'rgba(180,180,180,0.12)' : 'var(--nav-border,#222)'
+  const topLineGradient = isXP ? 'linear-gradient(90deg,transparent,#a855f7,#22d3ee,#a855f7,transparent)' : isDeco ? 'linear-gradient(90deg,transparent,#7A5A1A,#D6B25E,#FFE9A0,#D6B25E,#7A5A1A,transparent)' : isQuantum ? 'linear-gradient(90deg,transparent,#2B7FFF,#38D9FF,#2B7FFF,transparent)' : isInferno ? 'linear-gradient(90deg,transparent,#FF3000,#FF9040,#FFD060,#FF9040,#FF3000,transparent)' : isArctic ? 'linear-gradient(90deg,transparent,#0088CC,#00D4FF,#80EEFF,#00D4FF,#0088CC,transparent)' : isCarbon ? 'linear-gradient(90deg,transparent,#606060,#C0C0C0,#F0F0F0,#C0C0C0,#606060,transparent)' : `linear-gradient(90deg,transparent,${theme.colors.primary},transparent)`
+  const indicatorGradient = isXP ? 'linear-gradient(90deg,#a855f7,#22d3ee)' : isDeco ? 'linear-gradient(90deg,#A67C2D,#FFE9A0,#A67C2D)' : isQuantum ? 'linear-gradient(90deg,#2B7FFF,#38D9FF,#2B7FFF)' : isInferno ? 'linear-gradient(90deg,#FF3000,#FF9040,#FFD060,#FF9040,#FF3000)' : isArctic ? 'linear-gradient(90deg,#0088CC,#00D4FF,#80EEFF,#00D4FF,#0088CC)' : isCarbon ? 'linear-gradient(90deg,#404040,#C0C0C0,#F0F0F0,#C0C0C0,#404040)' : activeColor
 
-  const inactiveColor = isXP      ? '#7c3aed'
-    : isDeco    ? '#A67C2D'
-    : isQuantum ? '#4A6080'
-    : isInferno ? '#7A4A2A'
-    : isArctic  ? '#3A6070'
-    : isCarbon  ? '#505050'
-    : theme.colors.navInactive
-
-  const inactiveGlowColor = isXP      ? 'rgba(168,85,247,0.40)'
-    : isDeco    ? 'rgba(214,178,94,0.35)'
-    : isQuantum ? 'rgba(43,127,255,0.35)'
-    : isInferno ? 'rgba(255,96,20,0.40)'
-    : isArctic  ? 'rgba(0,212,255,0.35)'
-    : isCarbon  ? 'rgba(192,192,192,0.30)'
-    : theme.colors.glow1
-
-  const navBg = isXP      ? 'rgba(6,3,24,0.98)'
-    : isDeco    ? '#050505'
-    : isQuantum ? 'rgba(2,8,24,0.98)'
-    : isInferno ? 'rgba(10,5,0,0.98)'
-    : isArctic  ? 'rgba(1,8,16,0.98)'
-    : isCarbon  ? 'rgba(8,8,8,0.98)'
-    : 'var(--nav-bg,#0a0a0a)'
-
-  const navBorderColor = isXP      ? 'rgba(168,85,247,0.25)'
-    : isDeco    ? 'rgba(214,178,94,0.20)'
-    : isQuantum ? 'rgba(43,127,255,0.18)'
-    : isInferno ? 'rgba(255,96,20,0.25)'
-    : isArctic  ? 'rgba(0,212,255,0.18)'
-    : isCarbon  ? 'rgba(180,180,180,0.12)'
-    : 'var(--nav-border,#222)'
-
-  const topLineGradient = isXP      ? 'linear-gradient(90deg,transparent,#a855f7,#22d3ee,#a855f7,transparent)'
-    : isDeco    ? 'linear-gradient(90deg,transparent,#7A5A1A,#D6B25E,#FFE9A0,#D6B25E,#7A5A1A,transparent)'
-    : isQuantum ? 'linear-gradient(90deg,transparent,#2B7FFF,#38D9FF,#2B7FFF,transparent)'
-    : isInferno ? 'linear-gradient(90deg,transparent,#FF3000,#FF9040,#FFD060,#FF9040,#FF3000,transparent)'
-    : isArctic  ? 'linear-gradient(90deg,transparent,#0088CC,#00D4FF,#80EEFF,#00D4FF,#0088CC,transparent)'
-    : isCarbon  ? 'linear-gradient(90deg,transparent,#606060,#C0C0C0,#F0F0F0,#C0C0C0,#606060,transparent)'
-    : `linear-gradient(90deg,transparent,${theme.colors.primary},transparent)`
-
-  const indicatorGradient = isXP      ? 'linear-gradient(90deg,#a855f7,#22d3ee)'
-    : isDeco    ? 'linear-gradient(90deg,#A67C2D,#FFE9A0,#A67C2D)'
-    : isQuantum ? 'linear-gradient(90deg,#2B7FFF,#38D9FF,#2B7FFF)'
-    : isInferno ? 'linear-gradient(90deg,#FF3000,#FF9040,#FFD060,#FF9040,#FF3000)'
-    : isArctic  ? 'linear-gradient(90deg,#0088CC,#00D4FF,#80EEFF,#00D4FF,#0088CC)'
-    : isCarbon  ? 'linear-gradient(90deg,#404040,#C0C0C0,#F0F0F0,#C0C0C0,#404040)'
-    : activeColor
-
-  return (
-    <>
-      <style>{`
-        @keyframes xpNavPulse{0%,100%{box-shadow:0 0 12px rgba(168,85,247,0.6),0 0 24px rgba(168,85,247,0.3)}50%{box-shadow:0 0 20px rgba(168,85,247,0.9),0 0 40px rgba(168,85,247,0.5)}}
-        @keyframes xpIconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-        .xp-center-icon{animation:xpNavPulse 2s ease-in-out infinite,xpIconBounce 3s ease-in-out infinite}
-        @keyframes navActiveGlow{0%,100%{filter:drop-shadow(0 0 5px ${activeColor}) drop-shadow(0 0 2px ${activeColor})}50%{filter:drop-shadow(0 0 12px ${activeColor}) drop-shadow(0 0 5px ${activeColor})}}
-        .nav-active-glow{animation:navActiveGlow 2s ease-in-out infinite}
-        @keyframes navInactiveGlow{0%,100%{filter:drop-shadow(0 0 2px ${inactiveGlowColor})}50%{filter:drop-shadow(0 0 5px ${inactiveGlowColor})}}
-        .nav-inactive-glow{animation:navInactiveGlow 3.5s ease-in-out infinite}
-        @keyframes navLineSweep{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
-        .nav-line-sweep::after{content:'';position:absolute;top:0;left:0;width:25%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.90),transparent);animation:navLineSweep 3s ease-in-out infinite}
-        @keyframes indicatorPulse{0%,100%{opacity:0.7}50%{opacity:1.0}}
-        .nav-indicator{animation:indicatorPulse 2s ease-in-out infinite}
-        .nav-link:active{opacity:0.6 !important}
-        @keyframes hrBadgePulse{0%,100%{box-shadow:0 0 8px rgba(239,68,68,0.8),0 0 16px rgba(239,68,68,0.4)}50%{box-shadow:0 0 14px rgba(239,68,68,1),0 0 28px rgba(239,68,68,0.7)}}
-        @keyframes infernoNavFlicker{0%,100%{opacity:1}50%{opacity:0.85}}
-        ${isInferno ? '.nav-active-glow{animation:navActiveGlow 1.5s ease-in-out infinite,infernoNavFlicker 2s ease-in-out infinite}' : ''}
-      `}</style>
-
-      <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-        background: navBg,
-        borderTop: `1px solid ${navBorderColor}`,
-        paddingBottom: 'env(safe-area-inset-bottom,0px)',
-      }}>
-        {/* Ligne animée en haut */}
-        <div className="nav-line-sweep" style={{
-          height: '1px',
-          background: topLineGradient,
-          opacity: isDeco ? 0.7 : isInferno ? 0.8 : 0.5,
-          position: 'relative', overflow: 'hidden',
-        }} />
-
-        <div style={{
-          display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end',
-          height: isXP ? '68px' : '60px', padding: '0 2px',
-        }}>
-          {displayItems.map((item: typeof displayItems[0]) => {
-
-            if (isXP && (item as { isXPCenter?: boolean }).isXPCenter) {
-              const isActive = pathname === '/stats'
-              return (
-                <Link key="xp-center" href="/stats" className="nav-link" style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'flex-end', flex: 1, padding: '0 2px 8px',
-                  textDecoration: 'none', position: 'relative',
-                }}>
-                  <div className="xp-center-icon" style={{
-                    width: '52px', height: '52px', borderRadius: '14px',
-                    background: 'linear-gradient(135deg,#7c3aed,#a855f7)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'absolute', bottom: '8px',
-                    border: '2px solid rgba(196,181,253,0.4)',
-                  }}>
-                    <IcoXP active={isActive} />
-                  </div>
-                </Link>
-              )
-            }
-
-            const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-            const color = isActive ? activeColor : inactiveColor
-            const showBadge = isAdmin && (item as { hasBadge?: boolean }).hasBadge && badgeCount > 0
-
-            return (
-              <Link key={item.href} href={item.href} className="nav-link" style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', gap: '2px', flex: 1,
-                padding: '5px 1px', textDecoration: 'none',
-                opacity: isActive ? 1 : 0.85, position: 'relative', transition: 'opacity 0.2s',
-              }}>
-                {/* Indicateur actif en haut */}
-                {isActive && (
-                  <div className="nav-indicator" style={{
-                    position: 'absolute', top: 0, left: '20%', right: '20%', height: '2px',
-                    background: indicatorGradient,
-                    borderRadius: '0 0 2px 2px', margin: '0 auto',
-                  }} />
-                )}
-
-                {/* Icône */}
-                <div style={{ position: 'relative', display: 'inline-flex' }}
-                  className={isActive ? (isXP ? '' : 'nav-active-glow') : 'nav-inactive-glow'}>
-                  <item.Icon c={color} glow={isActive} />
-                  {showBadge && <HRAlertBadge count={badgeCount} />}
-                </div>
-
-                {/* Label */}
-                <span style={{
-                  fontSize: '7px', fontWeight: isActive ? 800 : 600, color,
-                  whiteSpace: 'nowrap', letterSpacing: isXP ? '0.5px' : '0.04em',
-                  textTransform: 'uppercase',
-                  textShadow: isActive ? `0 0 8px ${activeColor}` : `0 0 4px ${inactiveGlowColor}`,
-                }}>
-                  {item.label}
-                </span>
-
-                {isXP && isActive && goal && (
-                  <span style={{ fontSize: '6px', color: '#22d3ee', fontWeight: 700 }}>
-                    Nv.{goal.level}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
-    </>
-  )
+  return <>
+    <style>{`
+      @keyframes xpNavPulse{0%,100%{box-shadow:0 0 12px rgba(168,85,247,0.6),0 0 24px rgba(168,85,247,0.3)}50%{box-shadow:0 0 20px rgba(168,85,247,0.9),0 0 40px rgba(168,85,247,0.5)}}
+      @keyframes xpIconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+      .xp-center-icon{animation:xpNavPulse 2s ease-in-out infinite,xpIconBounce 3s ease-in-out infinite}
+      @keyframes navActiveGlow{0%,100%{filter:drop-shadow(0 0 5px ${activeColor}) drop-shadow(0 0 2px ${activeColor})}50%{filter:drop-shadow(0 0 12px ${activeColor}) drop-shadow(0 0 5px ${activeColor})}}
+      .nav-active-glow{animation:navActiveGlow 2s ease-in-out infinite}
+      @keyframes navInactiveGlow{0%,100%{filter:drop-shadow(0 0 2px ${inactiveGlowColor})}50%{filter:drop-shadow(0 0 5px ${inactiveGlowColor})}}
+      .nav-inactive-glow{animation:navInactiveGlow 3.5s ease-in-out infinite}
+      @keyframes navLineSweep{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+      .nav-line-sweep::after{content:'';position:absolute;top:0;left:0;width:25%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.90),transparent);animation:navLineSweep 3s ease-in-out infinite}
+      @keyframes indicatorPulse{0%,100%{opacity:0.7}50%{opacity:1.0}}
+      .nav-indicator{animation:indicatorPulse 2s ease-in-out infinite}
+      .nav-link:active{opacity:0.6 !important}
+      @keyframes hrBadgePulse{0%,100%{box-shadow:0 0 8px rgba(239,68,68,0.8),0 0 16px rgba(239,68,68,0.4)}50%{box-shadow:0 0 14px rgba(239,68,68,1),0 0 28px rgba(239,68,68,0.7)}}
+      @keyframes infernoNavFlicker{0%,100%{opacity:1}50%{opacity:0.85}}
+      ${isInferno ? '.nav-active-glow{animation:navActiveGlow 1.5s ease-in-out infinite,infernoNavFlicker 2s ease-in-out infinite}' : ''}
+    `}</style>
+    <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, background: navBg, borderTop: `1px solid ${navBorderColor}`, paddingBottom: 'env(safe-area-inset-bottom,0px)' }}>
+      <div className="nav-line-sweep" style={{ height: '1px', background: topLineGradient, opacity: isDeco ? 0.7 : isInferno ? 0.8 : 0.5, position: 'relative', overflow: 'hidden' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: isXP ? '68px' : '60px', padding: '0 2px' }}>
+        {displayItems.map((item: typeof displayItems[0]) => {
+          if (isXP && (item as { isXPCenter?: boolean }).isXPCenter) {
+            const isActive = pathname === '/stats'
+            return <Link key="xp-center" href="/stats" className="nav-link" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', flex: 1, padding: '0 2px 8px', textDecoration: 'none', position: 'relative' }}><div className="xp-center-icon" style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg,#7c3aed,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', bottom: '8px', border: '2px solid rgba(196,181,253,0.4)' }}><IcoXP active={isActive} /></div></Link>
+          }
+          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+          const color = isActive ? activeColor : inactiveColor
+          const showBadge = isAdmin && (item as { hasBadge?: boolean }).hasBadge && badgeCount > 0
+          return <Link key={item.href} href={item.href} className="nav-link" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1, padding: '5px 1px', textDecoration: 'none', opacity: isActive ? 1 : 0.85, position: 'relative', transition: 'opacity 0.2s' }}>
+            {isActive && <div className="nav-indicator" style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '2px', background: indicatorGradient, borderRadius: '0 0 2px 2px', margin: '0 auto' }} />}
+            <div style={{ position: 'relative', display: 'inline-flex' }} className={isActive ? (isXP ? '' : 'nav-active-glow') : 'nav-inactive-glow'}><item.Icon c={color} glow={isActive} />{showBadge && <HRAlertBadge count={badgeCount} />}</div>
+            <span style={{ fontSize: '7px', fontWeight: isActive ? 800 : 600, color, whiteSpace: 'nowrap', letterSpacing: isXP ? '0.5px' : '0.04em', textTransform: 'uppercase', textShadow: isActive ? `0 0 8px ${activeColor}` : `0 0 4px ${inactiveGlowColor}` }}>{item.label}</span>
+            {isXP && isActive && goal && <span style={{ fontSize: '6px', color: '#22d3ee', fontWeight: 700 }}>Nv.{goal.level}</span>}
+          </Link>
+        })}
+      </div>
+    </nav>
+  </>
 }
