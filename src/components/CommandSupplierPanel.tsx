@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSupplierStore } from '@/store/useSupplierStore'
@@ -46,8 +47,18 @@ export default function CommandSupplierPanel() {
 
   return <section style={{ maxWidth: 1180, margin: '14px auto 110px', padding: '0 16px' }}>
     <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 18 }}>
-      <h2 style={{ color: 'var(--text)', fontSize: 26, fontWeight: 950 }}>🏬 Nouvelle commande fournisseur</h2>
-      <p style={{ color: 'var(--text-muted)', fontSize: 15, marginTop: 4 }}>Choisis un fournisseur sauvegardé. Le nom, téléphone, email et numéro de compte sont repris automatiquement dans la commande.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ color: 'var(--text)', fontSize: 26, fontWeight: 950 }}>🏬 Nouvelle commande fournisseur</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, marginTop: 4 }}>Choisis un fournisseur sauvegardé. Le nom, téléphone, email et numéro de compte sont repris automatiquement dans la commande.</p>
+        </div>
+        <Link href="/suppliers" style={{ minHeight: 48, borderRadius: 14, border: '1px solid var(--border)', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', color: 'white', fontWeight: 950, fontSize: 15, padding: '13px 16px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>+ Ajouter fournisseur</Link>
+      </div>
+
+      <div style={{ marginTop: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 12 }}>
+        <b style={{ color: 'var(--text)', fontSize: 16 }}>Fournisseurs en mémoire: {suppliers.length}</b>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>Ajoute les fournisseurs dans la page Fournisseurs, puis reviens ici pour les choisir dans le menu déroulant.</p>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10, marginTop: 14 }}>
         <select className="big-field" value={supplierId} onChange={e => setSupplierId(e.target.value)}>
@@ -69,7 +80,7 @@ export default function CommandSupplierPanel() {
 
       <button onClick={createPO} disabled={!selected} style={{ marginTop: 12, width: '100%', minHeight: 56, borderRadius: 16, border: '1px solid var(--border)', background: selected ? 'linear-gradient(135deg,var(--primary),var(--secondary))' : 'var(--surface)', color: selected ? 'white' : 'var(--text-muted)', fontSize: 17, fontWeight: 950 }}>Créer PO avec ce fournisseur</button>
       {created && <p style={{ color: 'var(--success)', fontSize: 15, marginTop: 10, fontWeight: 900 }}>Commande créée: {created}. Ouvre-la dans la liste pour ajouter les articles.</p>}
-      {suppliers.length === 0 && <p style={{ color: 'var(--warning)', fontSize: 15, marginTop: 10 }}>Aucun fournisseur sauvegardé. Va dans /suppliers pour en ajouter.</p>}
+      {suppliers.length === 0 && <p style={{ color: 'var(--warning)', fontSize: 15, marginTop: 10 }}>Aucun fournisseur sauvegardé. Clique sur “Ajouter fournisseur”.</p>}
     </div>
   </section>
 }
