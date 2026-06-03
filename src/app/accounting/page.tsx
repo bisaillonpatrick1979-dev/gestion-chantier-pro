@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAccountingStore } from '@/store/useAccountingStore'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { formatCurrency } from '@/lib/formatters'
@@ -79,6 +79,6 @@ function Metric({ title, value, sub }: { title: string; value: string; sub: stri
   return <div className="rounded-3xl border border-white/10 bg-white/5 p-4"><p className="text-base font-black text-white/65">{title}</p><p className="mt-2 text-3xl font-black text-cyan-300">{value}</p><p className="mt-1 text-base text-white/65">{sub}</p></div>
 }
 
-function Ledger({ title, rows }: { title: string; rows: Array<{ id: string; name: string; meta: string; amount: number; sub: string; actions: React.ReactNode }> }) {
+function Ledger({ title, rows }: { title: string; rows: Array<{ id: string; name: string; meta: string; amount: number; sub: string; actions: ReactNode }> }) {
   return <div className="rounded-3xl border border-white/10 bg-white/5 p-4"><h2 className="text-2xl font-black">{title}</h2><div className="mt-3 space-y-3">{rows.length === 0 ? <p className="text-base text-white/55">Aucune donnée.</p> : rows.map(r => <div key={r.id} className="rounded-2xl border border-white/10 bg-black/20 p-3"><div className="flex items-start justify-between gap-2"><div><b className="text-lg">{r.name}</b><p className="text-sm text-white/60">{r.meta}</p><p className="text-sm text-white/55">{r.sub}</p></div><strong className="text-xl text-cyan-300">{formatCurrency(r.amount)}</strong></div><div className="mt-3 flex flex-wrap gap-2">{r.actions}</div></div>)}</div></div>
 }
