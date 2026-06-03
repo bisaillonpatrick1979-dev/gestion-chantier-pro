@@ -9,6 +9,7 @@ import { useDocumentStore } from '@/store/useDocumentStore'
 import { useEmployeeInvoiceStore } from '@/store/useEmployeeInvoiceStore'
 import { useCommandeStore } from '@/store/useCommandeStore'
 import { useAccountingStore } from '@/store/useAccountingStore'
+import { useInventoryStore } from '@/store/useInventoryStore'
 import type { EmployeeInvoice } from '@/store/useEmployeeInvoiceStore'
 import type { Commande } from '@/store/useCommandeStore'
 import { buildFiveYearLocalDemo } from '@/lib/fiveYearLocalDemo'
@@ -56,7 +57,6 @@ function DevToolsPanel() {
   const toggleAll = (val: boolean) =>
     setSel({ company: val, employees: val, clients: val, documents: val, punch: val, invoices: val, commandes: val })
 
-  const allSelected  = Object.values(sel).every(Boolean)
   const noneSelected = Object.values(sel).every(v => !v)
 
   const handleLoad = () => {
@@ -84,7 +84,7 @@ function DevToolsPanel() {
   }
 
   const handleFiveYearLocalDemo = () => {
-    const ok = window.confirm('Injecter 5 ans de données de démonstration LOCALES SEULEMENT?\n\nAucun appel Supabase ne sera fait par ce bouton. Les données restent dans le navigateur/localStorage pour tester les statistiques, paies, dépenses et factures.')
+    const ok = window.confirm('Injecter 5 ans de données de démonstration LOCALES SEULEMENT?\n\nAucun appel Supabase ne sera fait par ce bouton. Les données restent dans le navigateur/localStorage pour tester les statistiques, paies, dépenses, factures et inventaire.')
     if (!ok) return
     setStatus('loading')
     const demo = buildFiveYearLocalDemo()
@@ -93,6 +93,7 @@ function DevToolsPanel() {
     useClientStore.setState(state => ({ ...state, clients: demo.clients as any }))
     useDocumentStore.setState(state => ({ ...state, documents: demo.documents as any }))
     useAccountingStore.setState(state => ({ ...state, clientInvoices: demo.accounting.clientInvoices as any, payrollPayments: demo.accounting.payrollPayments as any, expenses: demo.accounting.expenses as any }))
+    useInventoryStore.setState(state => ({ ...state, items: demo.inventory.items as any, movements: demo.inventory.movements as any }))
     setStatus('loaded')
     setTimeout(() => { setOpen(false); setStatus('idle'); window.location.reload() }, 1200)
   }
@@ -102,6 +103,7 @@ function DevToolsPanel() {
     if (!ok) return
     ALL_STORE_KEYS.forEach(key => localStorage.removeItem(key))
     localStorage.removeItem('gestion-chantier-accounting-v1')
+    localStorage.removeItem('inventory-store-v1')
     sessionStorage.clear()
     setStatus('reset')
     setTimeout(() => window.location.reload(), 400)
