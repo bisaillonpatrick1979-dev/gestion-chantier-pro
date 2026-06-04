@@ -59,6 +59,12 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [companySaved, setCompanySaved] = useState(false)
 
+  // ── Validation errors ─────────────────────────────────────────────────────
+  const [empFormError, setEmpFormError] = useState('')
+  const [clientFormError, setClientFormError] = useState('')
+  const [confirmDeleteClientId, setConfirmDeleteClientId] = useState<string | null>(null)
+  const [confirmDeleteEmpId, setConfirmDeleteEmpId] = useState<string | null>(null)
+
   // ── Géofencing UI state ───────────────────────────────────────────────────
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [geoErrorMsg, setGeoErrorMsg] = useState('')
@@ -116,7 +122,9 @@ export default function SettingsPage() {
   }
 
   const handleAddEmployee = () => {
-    if (!newName.trim() || newPin.length < 4) return
+    if (!newName.trim()) { setEmpFormError(t('Le nom est obligatoire.', 'Name is required.')); return }
+    if (newPin.length < 4) { setEmpFormError(t('Le PIN doit contenir 4 chiffres.', 'PIN must be 4 digits.')); return }
+    setEmpFormError('')
     addEmployee({
       name: newName.trim(),
       pin: newPin,
@@ -146,15 +154,21 @@ export default function SettingsPage() {
     resetNewForm()
   }
 
-  const handleDeleteEmployee = (id: string, name: string) => {
-    if (confirm(t(`Supprimer ${name} ? Cette action est irréversible.`, `Delete ${name}? This cannot be undone.`))) {
+  const handleDeleteEmployee = (id: string) => {
+    if (confirmDeleteEmpId === id) {
       deleteEmployee(id)
+      setConfirmDeleteEmpId(null)
+    } else {
+      setConfirmDeleteEmpId(id)
     }
   }
 
-  const handleDeleteClient = (id: string, name: string) => {
-    if (confirm(t(`Supprimer le client "${name}" ? Cette action est irréversible.`, `Delete client "${name}"? This cannot be undone.`))) {
+  const handleDeleteClient = (id: string) => {
+    if (confirmDeleteClientId === id) {
       deleteClient(id)
+      setConfirmDeleteClientId(null)
+    } else {
+      setConfirmDeleteClientId(id)
     }
   }
 
@@ -180,7 +194,8 @@ export default function SettingsPage() {
   }
 
   const handleAddClient = () => {
-    if (!newClientName.trim()) return
+    if (!newClientName.trim()) { setClientFormError(t('Le nom du client est obligatoire.', 'Client name is required.')); return }
+    setClientFormError('')
     addClient({ name: newClientName.trim(), phone: newClientPhone, email: newClientEmail, city: newClientCity, address: '', province: 'AB', postalCode: '', notes: '' })
     setNewClientName(''); setNewClientPhone(''); setNewClientEmail(''); setNewClientCity('')
   }
@@ -532,26 +547,34 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className={`font-bold flex flex-wrap items-center gap-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
-                        {emp.name}
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${emp.role === 'admin' ? isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 text-white/60'}`}>{emp.role === 'admin' ? '👑 Admin' : '👷'}</span>
-                        {emp.workerType && (<span className={`text-xs px-2 py-0.5 rounded-full ${emp.workerType === 'salaried' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'}`}>{emp.workerType === 'salaried' ? '💼 Salarié' : '🔧 S-traitant'}</span>)}
-                        {emp.hireDate && (<span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400">🗓 {new Date(emp.hireDate).getFullYear()}</span>)}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-bold flex flex-wrap items-center gap-1 ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>
+                          {emp.name}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${emp.role === 'admin' ? isDeco ? 'bg-[#D6B25E]/20 text-[#D6B25E]' : 'bg-yellow-500/20 text-yellow-300' : 'bg-white/10 text-white/60'}`}>{emp.role === 'admin' ? '👑 Admin' : '👷'}</span>
+                          {emp.workerType && (<span className={`text-xs px-2 py-0.5 rounded-full ${emp.workerType === 'salaried' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'}`}>{emp.workerType === 'salaried' ? '💼 Salarié' : '🔧 S-traitant'}</span>)}
+                          {emp.hireDate && (<span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400">🗓 {new Date(emp.hireDate).getFullYear()}</span>)}
+                        </div>
+                        <div className="text-white/40 text-xs mt-1 flex flex-wrap gap-2">
+                          {emp.hourlyRate ? <span>${emp.hourlyRate}/{emp.workMode === 'surface' ? 'pi²' : emp.workMode === 'forfait' ? 'job' : 'h'}</span> : null}
+                          {emp.phone && <span>📞 {emp.phone}</span>}
+                          {emp.city && <span>📍 {emp.city}</span>}
+                        </div>
                       </div>
-                      <div className="text-white/40 text-xs mt-1 flex flex-wrap gap-2">
-                        {emp.hourlyRate ? <span>${emp.hourlyRate}/{emp.workMode === 'surface' ? 'pi²' : emp.workMode === 'forfait' ? 'job' : 'h'}</span> : null}
-                        {emp.phone && <span>📞 {emp.phone}</span>}
-                        {emp.city && <span>📍 {emp.city}</span>}
+                      <div className="flex gap-2 ml-2 flex-shrink-0">
+                        <button onClick={() => { setEditingId(emp.id); setEditName(emp.name); setEditRate(String(emp.hourlyRate || '')); setConfirmDeleteEmpId(null) }} className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">✏️</button>
+                        {emp.role !== 'admin' && (
+                          <button onClick={() => handleDeleteEmployee(emp.id)} className={`w-8 h-8 rounded-xl text-sm flex items-center justify-center ${confirmDeleteEmpId === emp.id ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400'}`}>🗑️</button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-2 flex-shrink-0">
-                      <button onClick={() => { setEditingId(emp.id); setEditName(emp.name); setEditRate(String(emp.hourlyRate || '')) }} className="w-8 h-8 rounded-xl bg-white/10 text-white text-sm flex items-center justify-center">✏️</button>
-                      {emp.role !== 'admin' && (
-                        <button onClick={() => handleDeleteEmployee(emp.id, emp.name)} className="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 text-sm flex items-center justify-center">🗑️</button>
-                      )}
-                    </div>
+                    {confirmDeleteEmpId === emp.id && (
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => handleDeleteEmployee(emp.id)} className="flex-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold">{t('Supprimer définitivement', 'Delete permanently')}</button>
+                        <button onClick={() => setConfirmDeleteEmpId(null)} className="flex-1 py-1.5 rounded-lg bg-white/10 text-white/60 text-xs font-bold">{t('Annuler', 'Cancel')}</button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -587,6 +610,7 @@ export default function SettingsPage() {
                   </>
                 )}
                 <button onClick={handleAddEmployee} className={`w-full py-3 rounded-xl font-bold text-sm mt-2 ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>✅ {t('Ajouter', 'Add')}</button>
+                {empFormError && <p className="text-red-400 text-sm font-semibold text-center mt-1">⚠️ {empFormError}</p>}
               </div>
             </div>
 
@@ -724,6 +748,7 @@ export default function SettingsPage() {
                 <input className={inputClass} value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} placeholder="Email" />
                 <input className={inputClass} value={newClientCity} onChange={e => setNewClientCity(e.target.value)} placeholder={t('Ville', 'City')} />
                 <button onClick={handleAddClient} className={`w-full py-3 rounded-xl font-bold text-sm ${isDeco ? 'bg-gradient-to-r from-[#D6B25E] to-[#c9a84c] text-[#0d0a00]' : isQuantum ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white' : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'}`}>✅ {t('Ajouter client', 'Add Client')}</button>
+                {clientFormError && <p className="text-red-400 text-sm font-semibold text-center mt-1">⚠️ {clientFormError}</p>}
               </div>
             </div>
             <div className={cardStyle}>
@@ -734,15 +759,25 @@ export default function SettingsPage() {
               ) : (
                 <div className="space-y-2">
                   {clients.map(c => (
-                    <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                      <div>
-                        <p className={`font-bold text-sm ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{c.name}</p>
-                        <p className="text-white/40 text-xs">{c.phone || c.email || c.city}</p>
+                    <div key={c.id} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+                      <div className="flex items-center justify-between p-3">
+                        <div>
+                          <p className={`font-bold text-sm ${isDeco ? 'text-[#D6B25E]' : 'text-white'}`}>{c.name}</p>
+                          <p className="text-white/40 text-xs">{c.phone || c.email || c.city}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => router.push('/clients')} className="px-3 py-1 rounded-lg bg-white/10 text-white/60 text-xs">→</button>
+                          <button onClick={() => handleDeleteClient(c.id)} className={`px-3 py-1 rounded-lg text-xs font-bold ${confirmDeleteClientId === c.id ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400'}`}>
+                            {confirmDeleteClientId === c.id ? t('⚠️ Confirmer', '⚠️ Confirm') : '🗑️'}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => router.push('/clients')} className="px-3 py-1 rounded-lg bg-white/10 text-white/60 text-xs">→</button>
-                        <button onClick={() => handleDeleteClient(c.id, c.name)} className="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs">🗑️</button>
-                      </div>
+                      {confirmDeleteClientId === c.id && (
+                        <div className="px-3 pb-3 flex gap-2">
+                          <button onClick={() => handleDeleteClient(c.id)} className="flex-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold">{t('Supprimer définitivement', 'Delete permanently')}</button>
+                          <button onClick={() => setConfirmDeleteClientId(null)} className="flex-1 py-1.5 rounded-lg bg-white/10 text-white/60 text-xs font-bold">{t('Annuler', 'Cancel')}</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
