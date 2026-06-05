@@ -53,11 +53,11 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
 function TrendLine({ now, before, label }: { now: number; before: number; label: string }) {
   const pct = pctChange(now, before)
   if (pct === null) {
-    return <span style={{ color: '#6B7280', fontSize: 11, fontFamily: 'monospace' }}>→ 0% (S/O {label})</span>
+    return <span style={{ color: '#6B7280', fontSize: 14, fontFamily: 'monospace' }}>→ 0% (S/O {label})</span>
   }
   const up = pct >= 0
   return (
-    <span style={{ color: up ? '#22C55E' : '#EF4444', fontSize: 11, fontFamily: 'monospace', fontWeight: 700 }}>
+    <span style={{ color: up ? '#22C55E' : '#EF4444', fontSize: 14, fontFamily: 'monospace', fontWeight: 700 }}>
       {up ? '↗ +' : '↘ '}{pct.toFixed(1)}%{' '}
       <span style={{ color: '#6B7280', fontWeight: 400 }}>vs {label}</span>
     </span>
@@ -77,7 +77,7 @@ function SparkCard({
       borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', gap: 0,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, fontFamily: 'monospace', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, fontFamily: 'monospace', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
           {label}
         </span>
         <span style={{ color: iconColor, fontSize: 15 }}>{icon}</span>
@@ -99,9 +99,9 @@ function SparkCard({
 function AcctCard({ title, value, sub, color }: { title: string; value: string; sub: string; color: string }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
-      <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{title}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{title}</div>
       <div style={{ color, fontSize: 20, fontWeight: 950, marginTop: 6, fontFamily: 'monospace' }}>{value}</div>
-      <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4, whiteSpace: 'pre-line' }}>{sub}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4, whiteSpace: 'pre-line' }}>{sub}</div>
     </div>
   )
 }
@@ -109,7 +109,7 @@ function AcctCard({ title, value, sub, color }: { title: string; value: string; 
 function SectionHeader({ badge, badgeColor, title }: { badge: string; badgeColor: string; title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ color: badgeColor, fontSize: 10, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>{badge}</span>
+      <span style={{ color: badgeColor, fontSize: 13, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>{badge}</span>
       <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
     </div>
   )
@@ -263,7 +263,7 @@ export default function StatsPage() {
           <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', flexShrink: 0 }}>
             {(['analytics', 'payroll'] as const).map(t => (
               <button key={t} onClick={() => setSubTab(t)} style={{
-                padding: '8px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900,
+                padding: '8px 14px', borderRadius: 8, fontSize: 14, fontWeight: 900,
                 textTransform: 'uppercase', letterSpacing: '0.07em', cursor: 'pointer',
                 border: subTab === t ? '1px solid var(--primary)' : '1px solid transparent',
                 background: subTab === t ? 'rgba(249,115,22,0.12)' : 'transparent',
@@ -285,7 +285,7 @@ export default function StatsPage() {
             <div style={{ padding: '6px 8px', background: 'rgba(249,115,22,0.10)', color: 'var(--primary)', borderRadius: 8, fontSize: 16 }}>📅</div>
             <div>
               <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sélecteur de Période</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Filtrage des statistiques courantes</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Filtrage des statistiques courantes</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -354,7 +354,7 @@ export default function StatsPage() {
                         <Avatar name={emp.name} avatarUrl={emp.avatarUrl} color={emp.color} size={36} />
                         <div>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900 }}>{emp.name}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
                             {emp.accessProfile ? emp.accessProfile.replace(/_/g, ' ') : emp.role} — NIP : {emp.pin || '••••'}
                           </div>
                         </div>
@@ -405,7 +405,7 @@ export default function StatsPage() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     {["Chantier / Projet", "Main-d'Oeuvre Cumulée", "Équipe (Punchs)", "Présence Effective", "Tendance Budget H"].map(h => (
-                      <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -416,25 +416,25 @@ export default function StatsPage() {
                       <tr key={proj.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900 }}>{proj.name}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{proj.clientName}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{proj.clientName}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>{totalHours.toFixed(1)} h</div>
-                          <div style={{ color: '#22C55E', fontSize: 11, fontFamily: 'monospace' }}>{formatCurrency(totalLaborCost)}</div>
+                          <div style={{ color: '#22C55E', fontSize: 14, fontFamily: 'monospace' }}>{formatCurrency(totalLaborCost)}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: 'var(--text)', fontSize: 13 }}>{memberCount} personne{memberCount !== 1 ? 's' : ''}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{sessions} punch session{sessions !== 1 ? 's' : ''}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{sessions} punch session{sessions !== 1 ? 's' : ''}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: 'var(--text)', fontSize: 13 }}>{workDays} jour{workDays !== 1 ? 's' : ''} actif{workDays !== 1 ? 's' : ''}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           {trendPct !== null
-                            ? <span style={{ color: trendPct >= 0 ? '#22C55E' : '#EF4444', fontSize: 11, fontFamily: 'monospace', fontWeight: 700 }}>
+                            ? <span style={{ color: trendPct >= 0 ? '#22C55E' : '#EF4444', fontSize: 14, fontFamily: 'monospace', fontWeight: 700 }}>
                                 {trendPct >= 0 ? '↗ +' : '↘ '}{trendPct.toFixed(1)}% vs mois préc.
                               </span>
-                            : <span style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'monospace' }}>→ 0% (S/O h pr.)</span>
+                            : <span style={{ color: 'var(--text-muted)', fontSize: 14, fontFamily: 'monospace' }}>→ 0% (S/O h pr.)</span>
                           }
                         </td>
                       </tr>
@@ -456,7 +456,7 @@ export default function StatsPage() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     {['Projet', 'Facturation Client ($)', 'Dépenses Fournisseurs ($)', "Coût Main-d'Oeuvre ($)", 'Marge Brute ($)', 'Performance Indicator'].map(h => (
-                      <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -471,14 +471,14 @@ export default function StatsPage() {
                       <tr key={proj.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900 }}>{proj.name}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{proj.clientName}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{proj.clientName}</div>
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'monospace' }}>{formatCurrency(invoiced)}</td>
                         <td style={{ padding: '10px 12px', color: '#F59E0B', fontSize: 13, fontFamily: 'monospace' }}>{formatCurrency(projExpenses)}</td>
                         <td style={{ padding: '10px 12px', color: '#EF4444', fontSize: 13, fontFamily: 'monospace' }}>{formatCurrency(-laborCost)}</td>
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ color: margin >= 0 ? '#22C55E' : '#EF4444', fontSize: 13, fontFamily: 'monospace', fontWeight: 900 }}>{formatCurrency(margin)}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>({marginPct.toFixed(1)}%)</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>({marginPct.toFixed(1)}%)</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <span style={{ color: perf.color, fontSize: 12, fontWeight: 700 }}>{perf.label}</span>
@@ -497,7 +497,7 @@ export default function StatsPage() {
           {/* COMPTABILITÉ GLOBALE */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <span style={{ color: '#06B6D4', fontSize: 10, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>COMPTABILITÉ GLOBALE</span>
+              <span style={{ color: '#06B6D4', fontSize: 13, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>COMPTABILITÉ GLOBALE</span>
               <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Bilan Comptable Simplifié de la Période ({fmtMonth(statsMonth)})
               </span>
