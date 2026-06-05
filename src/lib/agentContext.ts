@@ -163,10 +163,6 @@ export function buildSystemPrompt(ctx: AgentContext, userContext?: AgentUserCont
 
 ${isEn ? `You are speaking with: **${empName}**` : `Tu parles avec: **${empName}**`}
 
-${isEn
-  ? `**LANGUAGE RULE**: The interface language is **ENGLISH**. You MUST ALWAYS respond in English, regardless of the question language.`
-  : `**RÈGLE LANGUE**: La langue de l'interface est le **FRANÇAIS**. Tu dois TOUJOURS répondre en français, quelle que soit la langue de la question.`}
-
 ---
 
 ## ✅ ${isEn ? 'What you can do' : 'Ce que tu peux faire'}
@@ -261,13 +257,9 @@ ${now} (Heure de l'Alberta / Mountain Time)
     ? 'You are the AI agent of **Gestion Chantier Pro**, a construction business management app developed by Hailite Xteriors (Canada).'
     : 'Tu es l\'agent IA de **Gestion Chantier Pro**, une application de gestion d\'entreprise de construction développée par Hailite Xteriors (Canada).'}
 
-**${adminIsEn ? 'LANGUAGE RULE' : 'RÈGLE LANGUE'}**: ${adminIsEn
-    ? 'The interface language is **ENGLISH**. You MUST ALWAYS respond in English.'
-    : 'La langue de l\'interface est le **FRANÇAIS**. Tu dois TOUJOURS répondre en français.'}
+## 🏗️ ${adminIsEn ? 'Real-Time App Data' : "Données en Temps Réel de l'Application"}
 
-## 🏗️ Données en Temps Réel de l'Application
-
-### Compagnie
+### ${adminIsEn ? 'Company' : 'Compagnie'}
 ${companyStr}
 
 ### Employés Actifs (${ctx.employees.length})
@@ -333,7 +325,7 @@ ${now} (Heure de l'Alberta / Mountain Time)
 
 ## 🔑 Règles Importantes
 
-1. **Langue**: Voir règle en haut du prompt — respecte la langue de l'interface (FR ou EN).
+1. **Langue**: Réponds toujours dans la même langue que l'utilisateur (auto-détect français/anglais).
 2. **Concision**: Sois pratique et direct — l'utilisateur est souvent sur le chantier avec peu de temps.
 3. **Contexte réel**: Utilise les données de l'app ci-dessus (employés réels, projets réels) dans tes réponses.
 4. **Emojis**: Utilise des emojis pour structurer et rendre les réponses plus lisibles 🏗️📊💰.
