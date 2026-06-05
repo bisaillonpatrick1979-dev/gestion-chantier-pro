@@ -1120,6 +1120,71 @@ const moonTide: Theme = {
   `,
 }
 
+// ─── 8. HAILITE ORANGE ────────────────────────────────────────────────────────
+const hailiteOrange: Theme = {
+  id: 'hailite-orange',
+  name: 'Hailite Orange',
+  nameFr: 'Hailite Orange',
+  emoji: '🔶',
+  colors: {
+    background:    '#0F1115',
+    surface:       '#16191F',
+    card:          '#16191F',
+    cardAlt:       '#121620',
+    border:        'rgba(31,41,55,0.85)',
+    borderStrong:  'rgba(55,65,81,1)',
+    text:          '#E0E2E6',
+    textMuted:     '#9CA3AF',
+    textWeak:      '#6B7280',
+    primary:       '#F97316',
+    primaryLight:  '#FB923C',
+    secondary:     '#06B6D4',
+    secondaryLight:'#22D3EE',
+    glow1:         'rgba(249,115,22,0.30)',
+    glow2:         'rgba(249,115,22,0.15)',
+    success:       '#22C55E',
+    warning:       '#F59E0B',
+    danger:        '#EF4444',
+    info:          '#06B6D4',
+    navBackground: '#16191F',
+    navBorder:     'rgba(31,41,55,0.85)',
+    navActive:     '#F97316',
+    navInactive:   '#6B7280',
+  },
+  globalCSS: `
+    body[data-theme='hailite-orange'] {
+      background: #0F1115 !important;
+    }
+
+    body[data-theme='hailite-orange'] input,
+    body[data-theme='hailite-orange'] textarea,
+    body[data-theme='hailite-orange'] select {
+      background: #16191F !important;
+      border: 1px solid rgba(31,41,55,0.85) !important;
+      color: #E0E2E6 !important;
+      border-radius: 10px !important;
+    }
+
+    body[data-theme='hailite-orange'] input:focus,
+    body[data-theme='hailite-orange'] textarea:focus,
+    body[data-theme='hailite-orange'] select:focus {
+      border-color: rgba(249,115,22,0.60) !important;
+      box-shadow: 0 0 0 2px rgba(249,115,22,0.14) !important;
+      outline: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body[data-theme='hailite-orange'] *,
+      body[data-theme='hailite-orange'] *::before,
+      body[data-theme='hailite-orange'] *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  `,
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 const THEMES: Record<string, Theme> = {
   quantum:  quantumGlass,
@@ -1129,6 +1194,7 @@ const THEMES: Record<string, Theme> = {
   arctic:   arctic,
   carbon:   carbon,
   'moon-tide': moonTide,
+  'hailite-orange': hailiteOrange,
 }
 
 export function getTheme(id: string): Theme {

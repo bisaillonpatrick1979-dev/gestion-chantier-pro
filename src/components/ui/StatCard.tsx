@@ -9,13 +9,49 @@ type StatCardProps = {
   icon: ReactNode
   color: string
   trend: string
+  variant?: 'vertical' | 'horizontal'
+  sub?: string
 }
 
 const chartBars = [36, 58, 44, 72, 54, 86, 68]
 
-export default function StatCard({ label, value, icon, color, trend }: StatCardProps) {
+export default function StatCard({ label, value, icon, color, trend, variant = 'vertical', sub }: StatCardProps) {
   const [isHovered, setIsHovered] = useState(false)
 
+  if (variant === 'horizontal') {
+    return (
+      <article
+        className="rounded-2xl border border-[rgba(31,41,55,0.85)] bg-[#16191F] p-5 flex items-center gap-5 shadow-lg transition duration-200 hover:border-[rgba(55,65,81,1)]"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ boxShadow: isHovered ? `0 8px 32px ${color}20` : undefined }}
+      >
+        {/* Icon container */}
+        <div
+          className="p-4 rounded-xl flex-shrink-0"
+          style={{ background: `${color}18`, color }}
+          aria-hidden="true"
+        >
+          <span className="text-2xl flex items-center justify-center w-7 h-7">{icon}</span>
+        </div>
+
+        {/* Text */}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs uppercase font-black text-[#9CA3AF] tracking-wider">{label}</p>
+          <p className="text-3xl font-black text-white mt-1 leading-none" style={{ color: isHovered ? color : 'white' }}>
+            {value}
+          </p>
+          {(trend || sub) && (
+            <span className="text-xs font-black uppercase mt-1.5 block" style={{ color }}>
+              {trend || sub}
+            </span>
+          )}
+        </div>
+      </article>
+    )
+  }
+
+  // Default vertical layout
   return (
     <article
       className="rounded-2xl border border-white/10 bg-[#1A1A1A] p-5 text-white shadow-lg transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:shadow-xl"
