@@ -451,6 +451,18 @@ export default function HomePage() {
     return days
   }
 
+  const getDayCategory = (hours: number) => {
+    if (hours <= 0)    return { emoji: '🐢', color: '#64748b', animClass: 'cal-turtle'  }
+    if (hours < 2)     return { emoji: '🐢', color: '#64748b', animClass: 'cal-turtle'  }
+    if (hours < 4)     return { emoji: '☕', color: '#6366f1', animClass: 'cal-steam'   }
+    if (hours < 5.5)   return { emoji: '🌤️', color: '#3b82f6', animClass: 'cal-float'   }
+    if (hours < 7)     return { emoji: '🏗️', color: '#22c55e', animClass: 'cal-work'    }
+    if (hours < 8)     return { emoji: '💪', color: '#84cc16', animClass: 'cal-flex'    }
+    if (hours < 10)    return { emoji: '🔥', color: '#f97316', animClass: 'cal-fire'    }
+    if (hours < 12)    return { emoji: '⚡', color: '#ef4444', animClass: 'cal-zap'     }
+    return               { emoji: '💥', color: '#7c3aed', animClass: 'cal-explode' }
+  }
+
   const monthLabel = new Date(currentMonth + '-01').toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { month: 'long', year: 'numeric' })
   const revenue          = activeSession?.revenue || 0
   const formattedRevenue = new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(revenue)
@@ -900,16 +912,40 @@ export default function HomePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', marginBottom: '6px', position: 'relative', zIndex: 1 }}>
           {(lang === 'fr' ? ['DI','LU','MA','ME','JE','VE','SA'] : ['SU','MO','TU','WE','TH','FR','SA']).map(d => (<div key={d} style={{ textAlign: 'center' as const, fontSize: '9px', color: isXP ? '#4c1d95' : 'var(--primary)', fontWeight: 800, padding: '3px 0' }}>{d}</div>))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', position: 'relative', zIndex: 1 }}>
           {getDaysInMonth().map((day, i) => {
-            if (!day) return <div key={`e-${i}`}/>
+            if (!day) return <div key={`e-${i}`} style={{ aspectRatio: '1' }}/>
             const dateKey = day.toISOString().split('T')[0]
             const detail  = currentEmployeeId ? dayDetails[`${currentEmployeeId}-${dateKey}`] : null
             const isToday = dateKey === today
+            const cat     = detail ? getDayCategory(detail.totalHours) : null
             return (
-              <button key={dateKey} onClick={() => setSelectedDay(dateKey)} style={{ minHeight: '38px', borderRadius: '6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', border: isToday ? `2px solid ${isXP ? '#a855f7' : 'var(--primary)'}` : `1px solid ${isXP ? 'rgba(168,85,247,0.15)' : 'var(--border)'}`, background: isToday ? (isXP ? 'rgba(168,85,247,0.2)' : 'var(--primary)18') : detail ? (isXP ? 'rgba(34,211,238,0.08)' : 'var(--success)12') : (isXP ? 'rgba(168,85,247,0.05)' : 'var(--surface)'), boxShadow: isToday && isXP ? '0 0 12px rgba(168,85,247,0.4)' : 'none' }}>
-                <span style={{ fontSize: '10px', color: isToday ? (isXP ? '#a855f7' : 'var(--primary)') : (isXP ? '#4c1d95' : 'var(--text-muted)'), fontWeight: isToday ? 900 : 400 }}>{day.getDate()}</span>
-                {detail && <span style={{ fontSize: '7px', color: isXP ? '#22d3ee' : 'var(--success)', fontWeight: 700 }}>✓</span>}
+              <button key={dateKey} onClick={() => setSelectedDay(dateKey)} style={{
+                aspectRatio: '1',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                padding: '2px',
+                border: isToday
+                  ? `2px solid ${isXP ? '#a855f7' : 'var(--primary)'}`
+                  : cat ? `1px solid ${cat.color}55` : `1px solid ${isXP ? 'rgba(168,85,247,0.15)' : 'var(--border)'}`,
+                background: isToday
+                  ? (isXP ? 'rgba(168,85,247,0.22)' : 'var(--primary)22')
+                  : cat ? `${cat.color}18` : (isXP ? 'rgba(168,85,247,0.05)' : 'var(--surface)'),
+                boxShadow: isToday && isXP ? '0 0 12px rgba(168,85,247,0.4)' : 'none',
+              }}>
+                <span style={{ fontSize: '11px', color: isToday ? (isXP ? '#a855f7' : 'var(--primary)') : (isXP ? '#4c1d95' : 'var(--text-muted)'), fontWeight: isToday ? 900 : 600, lineHeight: 1 }}>
+                  {day.getDate()}
+                </span>
+                {cat && (
+                  <span className={`cal-emoji ${cat.animClass}`} style={{ fontSize: '16px', lineHeight: 1 }}>
+                    {cat.emoji}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -923,18 +959,21 @@ export default function HomePage() {
           <div style={{ height: '6px' }}/>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
             {[
-              { emoji: '⛱️', fr: 'Congé',      en: 'Day off', color: '#06b6d4', xp: '+0 XP'   },
-              { emoji: '🌙', fr: 'Petite j.',   en: 'Short',   color: '#64748b', xp: '+50 XP'  },
-              { emoji: '📋', fr: 'Moyenne',     en: 'Average', color: '#3b82f6', xp: '+100 XP' },
-              { emoji: '✅', fr: 'Normale',     en: 'Normal',  color: '#22c55e', xp: '+150 XP' },
-              { emoji: '⭐', fr: 'Bonne j.',    en: 'Good',    color: '#eab308', xp: '+200 XP' },
-              { emoji: '🔥', fr: 'Grosse j.',   en: 'Big',     color: '#f97316', xp: '+300 XP' },
-              { emoji: '💎', fr: 'Très grosse', en: 'Huge',    color: '#a855f7', xp: '+500 XP' },
+              { emoji: '🏖️', fr: 'Congé',           en: 'Day off',    color: '#06b6d4', xp: '+0 XP',   animClass: 'cal-sway',    hint: '0 h' },
+              { emoji: '🐢', fr: 'Très petite j.',  en: 'Tiny day',   color: '#64748b', xp: '+25 XP',  animClass: 'cal-turtle',  hint: '< 2 h' },
+              { emoji: '☕', fr: 'Petite j.',        en: 'Short day',  color: '#6366f1', xp: '+75 XP',  animClass: 'cal-steam',   hint: '2–4 h' },
+              { emoji: '🌤️', fr: 'Moyenne',          en: 'Average',    color: '#3b82f6', xp: '+125 XP', animClass: 'cal-float',   hint: '4–5.5 h' },
+              { emoji: '🏗️', fr: 'Normale',          en: 'Normal',     color: '#22c55e', xp: '+175 XP', animClass: 'cal-work',    hint: '5.5–7 h' },
+              { emoji: '💪', fr: 'Un peu plus',      en: 'Above avg',  color: '#84cc16', xp: '+225 XP', animClass: 'cal-flex',    hint: '7–8 h' },
+              { emoji: '🔥', fr: 'Grosse j.',        en: 'Big day',    color: '#f97316', xp: '+300 XP', animClass: 'cal-fire',    hint: '8–10 h' },
+              { emoji: '⚡', fr: 'Très grosse',      en: 'Huge day',   color: '#ef4444', xp: '+400 XP', animClass: 'cal-zap',     hint: '10–12 h' },
+              { emoji: '💥', fr: 'Extrêm. grosse',  en: 'Explosive',  color: '#7c3aed', xp: '+500 XP', animClass: 'cal-explode', hint: '> 12 h' },
             ].map(item => (
-              <div key={item.emoji} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', background: `${item.color}14`, border: `1px solid ${item.color}28` }}>
-                <span style={{ fontSize: '14px' }}>{item.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: item.color, fontSize: '10px', fontWeight: 700 }}>{t(item.fr, item.en)}</p>
+              <div key={item.emoji} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 11px', borderRadius: '10px', background: `${item.color}16`, border: `1px solid ${item.color}30` }}>
+                <span className={`cal-emoji ${item.animClass}`} style={{ fontSize: '20px', flexShrink: 0 }}>{item.emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: item.color, fontSize: '12px', fontWeight: 800 }}>{t(item.fr, item.en)}</p>
+                  <p style={{ color: 'var(--text-weak, #6B7280)', fontSize: '10px', fontWeight: 600, marginTop: '1px' }}>{item.hint}</p>
                   {isXP && <p style={{ color: '#4c1d95', fontSize: '9px', fontWeight: 700 }}>{item.xp}</p>}
                 </div>
               </div>
