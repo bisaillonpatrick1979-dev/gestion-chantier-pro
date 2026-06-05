@@ -57,9 +57,10 @@ export default function AgentChat() {
   const [pos, setPos]           = useState<Pos>({ x: 0, y: 0 })
   const [ready, setReady]       = useState(false)
 
-  const dragRef  = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
+  const dragRef    = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
+  const bottomRef  = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<HTMLTextAreaElement>(null)
+  const wasLoading = useRef(false)
 
   // Position restore
   useEffect(() => {
@@ -88,6 +89,32 @@ export default function AgentChat() {
       return prev
     })
   }, [lang])
+
+  // Speak welcome when panel opens; stop speech when it closes
+  useEffect(() => {
+    if (!open) { stopSpeech(); return }
+    if (!aiSettings.allowVoice) return
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        speakText(prev[0].content)
+      }
+      return prev
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  // Auto-speak agent response when streaming ends
+  useEffect(() => {
+    if (wasLoading.current && !loading && aiSettings.allowVoice) {
+      setMessages(prev => {
+        const last = [...prev].reverse().find(m => m.role === 'agent' && m.content.trim())
+        if (last) speakText(last.content)
+        return prev
+      })
+    }
+    wasLoading.current = loading
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
 
   if (!aiEnabled) return null
 
@@ -238,7 +265,7 @@ export default function AgentChat() {
     height: 'min(580px, calc(100vh - 12rem))',
     background: 'rgba(12, 12, 22, 0.97)',
     boxShadow: '0 0 0 1px rgba(251,191,36,0.15), 0 24px 60px rgba(0,0,0,0.65), 0 0 40px rgba(251,191,36,0.08)',
-    fontSize: '16px',
+    fontSize: '19px',
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -270,12 +297,12 @@ export default function AgentChat() {
               🤖
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-black leading-none text-amber-300" style={{ fontSize: '15px' }}>Agent Chantier Pro</p>
-              <p className="mt-0.5 truncate text-slate-400" style={{ fontSize: '12px' }}>{aiSettings.provider} · {aiSettings.model}</p>
+              <p className="font-black leading-none text-amber-300" style={{ fontSize: '18px' }}>Agent Chantier Pro</p>
+              <p className="mt-0.5 truncate text-slate-400" style={{ fontSize: '14px' }}>{aiSettings.provider} · {aiSettings.model}</p>
             </div>
-            <button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/10" style={{ fontSize: '14px' }}>🔊</button>
-            <button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/10" style={{ fontSize: '14px' }}>🗑️</button>
-            <button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 font-black text-white hover:bg-white/10" style={{ fontSize: '15px' }}>✕</button>
+            <button onClick={speakLastAnswer} title="Lire la dernière réponse" className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/10" style={{ fontSize: '17px' }}>🔊</button>
+            <button onClick={clearConversation} title="Nouvelle conversation" className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/10" style={{ fontSize: '17px' }}>🗑️</button>
+            <button onClick={closeChat} title="Fermer" className="rounded-lg px-3 py-1 font-black text-white hover:bg-white/10" style={{ fontSize: '18px' }}>✕</button>
           </div>
 
           {/* Messages */}
@@ -285,8 +312,8 @@ export default function AgentChat() {
                 <div
                   className="max-w-[88%] rounded-2xl px-3 py-2 leading-relaxed"
                   style={m.role === 'user'
-                    ? { background: 'linear-gradient(135deg, rgba(251,191,36,0.22), rgba(217,119,6,0.15))', border: '1px solid rgba(251,191,36,0.28)', color: '#fef3c7', fontSize: '15px' }
-                    : { background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)', color: '#e2e8f0', fontSize: '15px' }
+                    ? { background: 'linear-gradient(135deg, rgba(251,191,36,0.22), rgba(217,119,6,0.15))', border: '1px solid rgba(251,191,36,0.28)', color: '#fef3c7', fontSize: '18px' }
+                    : { background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(255,255,255,0.09)', color: '#e2e8f0', fontSize: '18px' }
                   }
                 >
                   {m.imageUrl && (
@@ -309,8 +336,8 @@ export default function AgentChat() {
             <div className="mx-3 mb-2 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-white/[0.05] p-2">
               <img src={image.previewUrl} alt="Aperçu" className="h-12 w-12 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold text-amber-200" style={{ fontSize: '13px' }}>{image.name}</p>
-                <p className="text-slate-400" style={{ fontSize: '12px' }}>Photo prête à envoyer</p>
+                <p className="truncate font-bold text-amber-200" style={{ fontSize: '16px' }}>{image.name}</p>
+                <p className="text-slate-400" style={{ fontSize: '14px' }}>Photo prête à envoyer</p>
               </div>
               <button onClick={() => setImage(null)} className="rounded-lg px-2 text-slate-300 hover:bg-white/10">✕</button>
             </div>
@@ -340,13 +367,13 @@ export default function AgentChat() {
               placeholder={lang === 'fr' ? "Pose ta question, parle, ou ajoute une photo…" : "Ask a question, speak, or attach a photo…"}
               disabled={loading}
               className="flex-1 resize-none rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.065)', border: '1px solid rgba(255,255,255,0.11)', maxHeight: '100px', fontSize: '15px' }}
+              style={{ background: 'rgba(255,255,255,0.065)', border: '1px solid rgba(255,255,255,0.11)', maxHeight: '100px', fontSize: '18px' }}
             />
             <button
               onClick={() => sendMessage()}
               disabled={loading || (!input.trim() && !image)}
               className="flex-shrink-0 rounded-xl px-4 font-black text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)', fontSize: '16px' }}
+              style={{ background: 'linear-gradient(135deg, #fbbf24, #d97706)', fontSize: '19px' }}
             >
               {loading ? '⏳' : '➤'}
             </button>
