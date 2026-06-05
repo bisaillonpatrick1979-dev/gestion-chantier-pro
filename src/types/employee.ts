@@ -69,6 +69,9 @@ export interface Employee {
   contractRenewalDate?: string       // Rappel renouvellement contrat
   alertsAcknowledged?: string[]      // IDs des alertes RH déjà vues/fermées
   vacationRateOverride?: number      // % custom si admin veut forcer (ex: 8.5)
+
+  // ── Photo de profil ──────────────────────────────────────────────────────
+  avatarUrl?: string                 // URL photo employé/sous-traitant
 }
 
 export interface EmployeeSession {
