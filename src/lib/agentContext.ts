@@ -41,6 +41,7 @@ export type AgentUserContext = {
   role: 'employee' | 'admin'
   name?: string
   employeeId?: string
+  lang?: 'fr' | 'en'
 }
 
 /**
@@ -129,7 +130,8 @@ export function buildSystemPrompt(ctx: AgentContext, userContext?: AgentUserCont
 
   // ── EMPLOYEE MODE — restricted context ──────────────────────────────────────
   if (userContext?.role === 'employee') {
-    const empName = userContext.name ?? 'Employé'
+    const lang    = userContext.lang ?? 'fr'
+    const empName = userContext.name ?? (lang === 'en' ? 'Employee' : 'Employé')
     const empId   = userContext.employeeId
 
     const self = ctx.employees.find(e =>
@@ -151,15 +153,23 @@ export function buildSystemPrompt(ctx: AgentContext, userContext?: AgentUserCont
         ).join('\n')
       : '  Aucun objectif partagé avec les employés pour l\'instant.'
 
-    return `Tu es l'agent IA de **Gestion Chantier Pro** — **Mode Portail Employé**.
+    const isEn = lang === 'en'
 
-## 🔒 ACCÈS RESTREINT — MODE EMPLOYÉ
+    return `${isEn
+      ? `You are the AI agent of **Gestion Chantier Pro** — **Employee Portal Mode**.`
+      : `Tu es l'agent IA de **Gestion Chantier Pro** — **Mode Portail Employé**.`}
 
-Tu parles avec: **${empName}**
+## 🔒 ${isEn ? 'RESTRICTED ACCESS — EMPLOYEE MODE' : 'ACCÈS RESTREINT — MODE EMPLOYÉ'}
+
+${isEn ? `You are speaking with: **${empName}**` : `Tu parles avec: **${empName}**`}
+
+${isEn
+  ? `**LANGUAGE RULE**: The interface language is **ENGLISH**. You MUST ALWAYS respond in English, regardless of the question language.`
+  : `**RÈGLE LANGUE**: La langue de l'interface est le **FRANÇAIS**. Tu dois TOUJOURS répondre en français, quelle que soit la langue de la question.`}
 
 ---
 
-## ✅ Ce que tu peux faire
+## ✅ ${isEn ? 'What you can do' : 'Ce que tu peux faire'}
 
 1. **Paye personnelle** — calculs CPP (5.95%), EI (1.66%), impôt fédéral et provincial (Alberta/Québec) pour **${empName}** uniquement. Montre les étapes.
 2. **Ses heures et statistiques** — sessions de travail, performance personnelle.
@@ -211,6 +221,8 @@ ${now} (Heure de l'Alberta / Mountain Time)
   }
 
   // ── ADMIN MODE — full context ────────────────────────────────────────────────
+  const adminLang = userContext?.lang ?? 'fr'
+  const adminIsEn = adminLang === 'en'
   const companyStr = ctx.company
     ? `**${ctx.company.name}** | Propriétaire: ${ctx.company.owner_name} | ${ctx.company.city}, ${ctx.company.province} | GST: ${ctx.company.gst_number || 'N/A'} | WCB: ${ctx.company.wcb_number || 'N/A'}`
     : 'Compagnie non encore configurée dans l\'app'
@@ -245,7 +257,13 @@ ${now} (Heure de l'Alberta / Mountain Time)
           .join('\n')
       : '  Aucun objectif actif'
 
-  return `Tu es l'agent IA de **Gestion Chantier Pro**, une application de gestion d'entreprise de construction développée par Hailite Xteriors (Canada).
+  return `${adminIsEn
+    ? 'You are the AI agent of **Gestion Chantier Pro**, a construction business management app developed by Hailite Xteriors (Canada).'
+    : 'Tu es l\'agent IA de **Gestion Chantier Pro**, une application de gestion d\'entreprise de construction développée par Hailite Xteriors (Canada).'}
+
+**${adminIsEn ? 'LANGUAGE RULE' : 'RÈGLE LANGUE'}**: ${adminIsEn
+    ? 'The interface language is **ENGLISH**. You MUST ALWAYS respond in English.'
+    : 'La langue de l\'interface est le **FRANÇAIS**. Tu dois TOUJOURS répondre en français.'}
 
 ## 🏗️ Données en Temps Réel de l'Application
 
@@ -315,7 +333,7 @@ ${now} (Heure de l'Alberta / Mountain Time)
 
 ## 🔑 Règles Importantes
 
-1. **Langue**: Réponds TOUJOURS dans la même langue que l'utilisateur. Si la question est en français → français. Si en anglais → anglais. Détecte automatiquement.
+1. **Langue**: Voir règle en haut du prompt — respecte la langue de l'interface (FR ou EN).
 2. **Concision**: Sois pratique et direct — l'utilisateur est souvent sur le chantier avec peu de temps.
 3. **Contexte réel**: Utilise les données de l'app ci-dessus (employés réels, projets réels) dans tes réponses.
 4. **Emojis**: Utilise des emojis pour structurer et rendre les réponses plus lisibles 🏗️📊💰.

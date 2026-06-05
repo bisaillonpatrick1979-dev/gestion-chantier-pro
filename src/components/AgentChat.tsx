@@ -5,6 +5,7 @@ import AgentVoiceControls, { speakText, stopSpeech } from './AgentVoiceControls'
 import AgentImagePicker, { type AgentImage } from './AgentImagePicker'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useAISettingsStore } from '@/store/useAISettingsStore'
+import { useLangStore } from '@/store/useLangStore'
 
 type ChatMessage = { id: string; role: 'user' | 'agent'; content: string; imageUrl?: string }
 type Pos = { x: number; y: number }
@@ -50,6 +51,7 @@ export default function AgentChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { employees, currentEmployeeId } = useEmployeeStore()
   const currentEmployee = employees.find(e => e.id === currentEmployeeId)
+  const { lang } = useLangStore()
 
   useEffect(() => {
     try {
@@ -83,7 +85,7 @@ export default function AgentChat() {
     setInput(''); setImage(null); setLoading(true)
     try {
       const history = messages.filter(m => m.id !== 'welcome' && m.content.trim()).slice(-20).map(m => ({ role: m.role, content: m.content }))
-      const res = await fetch('/api/agent/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: safeText, image: attachedImage ? { mediaType: attachedImage.mediaType, data: attachedImage.data, name: attachedImage.name } : undefined, sessionId, history, aiSettings: { mode: aiSettings.mode, provider: aiSettings.provider, model: aiSettings.model, allowPhotoAnalysis: aiSettings.allowPhotoAnalysis }, userContext: { role: currentEmployee ? 'employee' : 'admin', name: currentEmployee?.name ?? 'Administrateur', employeeId: currentEmployee?.id ?? undefined, page: typeof window !== 'undefined' ? window.location.pathname : undefined } }) })
+      const res = await fetch('/api/agent/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: safeText, image: attachedImage ? { mediaType: attachedImage.mediaType, data: attachedImage.data, name: attachedImage.name } : undefined, sessionId, history, aiSettings: { mode: aiSettings.mode, provider: aiSettings.provider, model: aiSettings.model, allowPhotoAnalysis: aiSettings.allowPhotoAnalysis }, userContext: { role: currentEmployee ? 'employee' : 'admin', name: currentEmployee?.name ?? (lang === 'en' ? 'Administrator' : 'Administrateur'), employeeId: currentEmployee?.id ?? undefined, lang, page: typeof window !== 'undefined' ? window.location.pathname : undefined } }) })
       const newSid = res.headers.get('X-Session-Id'); if (newSid) setSessionId(newSid)
       if (!res.ok || !res.body) { const detail = await res.text().catch(() => 'Erreur inconnue'); setMessages(prev => prev.map(m => m.id === agentId ? { ...m, content: `Erreur IA: ${detail}` } : m)); return }
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let buffer = ''

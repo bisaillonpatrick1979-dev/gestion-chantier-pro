@@ -4,16 +4,15 @@ import { useState, useMemo } from 'react'
 import { useEmployeeStore } from '@/store/useEmployeeStore'
 import { useProjectStore, calcProjectStats } from '@/store/useProjectStore'
 import { useAccountingStore } from '@/store/useAccountingStore'
+import { useLangStore } from '@/store/useLangStore'
 import { formatCurrency } from '@/lib/formatters'
 import type { DayDetail } from '@/types/employee'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-
-function fmtMonth(ym: string) {
+function fmtMonth(ym: string, lang: 'fr' | 'en' = 'fr') {
   const [y, m] = ym.split('-').map(Number)
-  return `${MONTHS_FR[m - 1]} ${y}`
+  return new Date(y, m - 1, 1).toLocaleDateString(lang === 'en' ? 'en-CA' : 'fr-CA', { month: 'long', year: 'numeric' })
 }
 
 function addMonths(ym: string, offset: number): string {
@@ -53,7 +52,7 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
 function TrendLine({ now, before, label }: { now: number; before: number; label: string }) {
   const pct = pctChange(now, before)
   if (pct === null) {
-    return <span style={{ color: '#6B7280', fontSize: 14, fontFamily: 'monospace' }}>→ 0% (S/O {label})</span>
+    return <span style={{ color: '#6B7280', fontSize: 14, fontFamily: 'monospace' }}>→ 0% (N/A {label})</span>
   }
   const up = pct >= 0
   return (
@@ -66,9 +65,11 @@ function TrendLine({ now, before, label }: { now: number; before: number; label:
 
 function SparkCard({
   label, value, icon, iconColor, sparkValues, sparkColor, prev, prevYear,
+  prevLabel = 'mois préc.', prevYearLabel = 'an passé',
 }: {
   label: string; value: string; icon: string; iconColor: string
   sparkValues: number[]; sparkColor: string; prev: number; prevYear: number
+  prevLabel?: string; prevYearLabel?: string
 }) {
   const current = sparkValues[sparkValues.length - 1] ?? 0
   return (
@@ -89,8 +90,8 @@ function SparkCard({
         <Sparkline values={sparkValues} color={sparkColor} />
       </div>
       <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <TrendLine now={current} before={prev} label="mois préc." />
-        <TrendLine now={current} before={prevYear} label="an passé" />
+        <TrendLine now={current} before={prev} label={prevLabel} />
+        <TrendLine now={current} before={prevYear} label={prevYearLabel} />
       </div>
     </div>
   )
@@ -134,6 +135,9 @@ function Avatar({ name, avatarUrl, color, size = 34 }: { name: string; avatarUrl
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function StatsPage() {
+  const { lang } = useLangStore()
+  const t = (fr: string, en: string) => lang === 'fr' ? fr : en
+
   const [subTab, setSubTab] = useState<'analytics' | 'payroll'>('analytics')
   const [statsMonth, setStatsMonth] = useState(nowYM)
   const [expandedEmpId, setExpandedEmpId] = useState<string | null>(null)
@@ -245,6 +249,10 @@ export default function StatsPage() {
   // ── Month nav options (last 24 months) ───────────────────────────────────
   const monthOptions = Array.from({ length: 24 }, (_, i) => addMonths(nowYM(), -i))
 
+  // Translated labels used in multiple places
+  const prevLabel     = t('mois préc.', 'prev. month')
+  const prevYearLabel = t('an passé',   'last year')
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 24 }}>
@@ -253,23 +261,30 @@ export default function StatsPage() {
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '18px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ color: 'var(--text)', fontSize: 22, fontWeight: 950, margin: 0 }}>Performance &amp; Rentabilité</h2>
+            <h2 style={{ color: 'var(--text)', fontSize: 22, fontWeight: 950, margin: 0 }}>
+              {t('Performance & Rentabilité', 'Performance & Profitability')}
+            </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0 0', lineHeight: 1.4 }}>
-              Analyse dynamique des heures accumulées, performances d&apos;équipe et rentabilité de Hailite Xteriors.
+              {t(
+                'Analyse dynamique des heures accumulées, performances d\'équipe et rentabilité de Hailite Xteriors.',
+                'Dynamic analysis of accumulated hours, team performance and profitability for Hailite Xteriors.'
+              )}
             </p>
           </div>
 
           {/* Sub-tab toggle */}
           <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', flexShrink: 0 }}>
-            {(['analytics', 'payroll'] as const).map(t => (
-              <button key={t} onClick={() => setSubTab(t)} style={{
+            {(['analytics', 'payroll'] as const).map(tab => (
+              <button key={tab} onClick={() => setSubTab(tab)} style={{
                 padding: '8px 14px', borderRadius: 8, fontSize: 14, fontWeight: 900,
                 textTransform: 'uppercase', letterSpacing: '0.07em', cursor: 'pointer',
-                border: subTab === t ? '1px solid var(--primary)' : '1px solid transparent',
-                background: subTab === t ? 'rgba(249,115,22,0.12)' : 'transparent',
-                color: subTab === t ? 'var(--primary)' : 'var(--text-muted)',
+                border: subTab === tab ? '1px solid var(--primary)' : '1px solid transparent',
+                background: subTab === tab ? 'rgba(249,115,22,0.12)' : 'transparent',
+                color: subTab === tab ? 'var(--primary)' : 'var(--text-muted)',
               }}>
-                {t === 'analytics' ? '📈 Rendement & XP' : '🧾 Calcul Paie Québec'}
+                {tab === 'analytics'
+                  ? t('📈 Rendement & XP', '📈 Performance & XP')
+                  : t('🧾 Calcul Paie Québec', '🧾 Quebec Payroll Calc')}
               </button>
             ))}
           </div>
@@ -284,14 +299,18 @@ export default function StatsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ padding: '6px 8px', background: 'rgba(249,115,22,0.10)', color: 'var(--primary)', borderRadius: 8, fontSize: 16 }}>📅</div>
             <div>
-              <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sélecteur de Période</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Filtrage des statistiques courantes</div>
+              <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {t('Sélecteur de Période', 'Period Selector')}
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                {t('Filtrage des statistiques courantes', 'Filter current statistics')}
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={() => setStatsMonth(m => addMonths(m, -1))} style={{ padding: '6px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>‹</button>
             <select value={statsMonth} onChange={e => setStatsMonth(e.target.value)} style={{ background: 'var(--surface)', color: 'var(--text)', fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', outline: 'none' }}>
-              {monthOptions.map(ym => <option key={ym} value={ym}>{fmtMonth(ym)}</option>)}
+              {monthOptions.map(ym => <option key={ym} value={ym}>{fmtMonth(ym, lang)}</option>)}
             </select>
             <button onClick={() => setStatsMonth(m => addMonths(m, 1))} style={{ padding: '6px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>›</button>
           </div>
@@ -299,10 +318,34 @@ export default function StatsPage() {
 
         {/* 4 KPI Sparkline cards — 2×2 grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-          <SparkCard label="Gains de l'Équipe"  value={`${curM.revenue.toFixed(2)} $`}             icon="🪙" iconColor="#F97316" sparkValues={revSpark} sparkColor="#F97316" prev={prevM.revenue}  prevYear={prevY.revenue} />
-          <SparkCard label="Heures de Terrain"  value={`${curM.hours.toFixed(1)} h`}                icon="⏱" iconColor="#06B6D4" sparkValues={hrsSpark} sparkColor="#06B6D4" prev={prevM.hours}    prevYear={prevY.hours} />
-          <SparkCard label="Volume de Punchs"   value={`${curM.sessions} session${curM.sessions !== 1 ? 's' : ''}`} icon="⚡" iconColor="#10B981" sparkValues={sesSpark} sparkColor="#10B981" prev={prevM.sessions} prevYear={prevY.sessions} />
-          <SparkCard label="Jours de Chantier"  value={`${curM.days} jour${curM.days !== 1 ? 's' : ''}`}       icon="🏗" iconColor="#F59E0B" sparkValues={daySpark} sparkColor="#F59E0B" prev={prevM.days}     prevYear={prevY.days} />
+          <SparkCard
+            label={t("Gains de l'Équipe", 'Team Earnings')}
+            value={`${curM.revenue.toFixed(2)} $`}
+            icon="🪙" iconColor="#F97316" sparkValues={revSpark} sparkColor="#F97316"
+            prev={prevM.revenue} prevYear={prevY.revenue}
+            prevLabel={prevLabel} prevYearLabel={prevYearLabel}
+          />
+          <SparkCard
+            label={t('Heures de Terrain', 'Field Hours')}
+            value={`${curM.hours.toFixed(1)} h`}
+            icon="⏱" iconColor="#06B6D4" sparkValues={hrsSpark} sparkColor="#06B6D4"
+            prev={prevM.hours} prevYear={prevY.hours}
+            prevLabel={prevLabel} prevYearLabel={prevYearLabel}
+          />
+          <SparkCard
+            label={t('Volume de Punchs', 'Punch Volume')}
+            value={`${curM.sessions} session${curM.sessions !== 1 ? 's' : ''}`}
+            icon="⚡" iconColor="#10B981" sparkValues={sesSpark} sparkColor="#10B981"
+            prev={prevM.sessions} prevYear={prevY.sessions}
+            prevLabel={prevLabel} prevYearLabel={prevYearLabel}
+          />
+          <SparkCard
+            label={t('Jours de Chantier', 'Work Days')}
+            value={`${curM.days} ${t('jour', 'day')}${curM.days !== 1 ? (lang === 'fr' ? 's' : 's') : ''}`}
+            icon="🏗" iconColor="#F59E0B" sparkValues={daySpark} sparkColor="#F59E0B"
+            prev={prevM.days} prevYear={prevY.days}
+            prevLabel={prevLabel} prevYearLabel={prevYearLabel}
+          />
         </div>
 
         {/* Live indicator */}
@@ -311,7 +354,7 @@ export default function StatsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
               <span style={{ color: '#22C55E', fontSize: 12, fontWeight: 900, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {liveIds.length} Punch{liveIds.length > 1 ? 's' : ''} Actif{liveIds.length > 1 ? 's' : ''} — Temps Réel
+                {liveIds.length} {t(`Punch${liveIds.length > 1 ? 's' : ''} Actif${liveIds.length > 1 ? 's' : ''} — Temps Réel`, `Active Punch${liveIds.length > 1 ? 'es' : ''} — Live`)}
               </span>
             </div>
             <span style={{ color: '#22C55E', fontSize: 14, fontWeight: 900, fontFamily: 'monospace' }}>{formatCurrency(liveRevenue)}</span>
@@ -326,7 +369,7 @@ export default function StatsPage() {
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ background: 'rgba(249,115,22,0.10)', color: 'var(--primary)', fontSize: 9, fontFamily: 'monospace', fontWeight: 900, padding: '3px 6px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>ADMIN PANEL</span>
               <h4 style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                Statistiques Individuelles de l&apos;Équipe ({employees.length})
+                {t(`Statistiques Individuelles de l'Équipe (${employees.length})`, `Individual Team Statistics (${employees.length})`)}
               </h4>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -355,7 +398,7 @@ export default function StatsPage() {
                         <div>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900 }}>{emp.name}</div>
                           <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                            {emp.accessProfile ? emp.accessProfile.replace(/_/g, ' ') : emp.role} — NIP : {emp.pin || '••••'}
+                            {emp.accessProfile ? emp.accessProfile.replace(/_/g, ' ') : emp.role} — {t('NIP', 'PIN')} : {emp.pin || '••••'}
                           </div>
                         </div>
                       </div>
@@ -371,18 +414,18 @@ export default function StatsPage() {
                     {isExp && (
                       <div style={{ padding: '12px 14px 14px', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                         {[
-                          { label: 'Jours Actifs',  value: String(empDays) },
-                          { label: 'Taux Horaire',  value: `${formatCurrency(emp.hourlyRate)}/h` },
-                          { label: 'Vs mois préc.', value: hrsPct !== null ? `${hrsPct >= 0 ? '+' : ''}${hrsPct.toFixed(0)}%` : 'S/O', color: hrsPct === null ? undefined : hrsPct >= 0 ? '#22C55E' : '#EF4444' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} style={{ background: 'var(--card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                            <div style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+                          { label: t('Jours Actifs',  'Active Days'),   value: String(empDays) },
+                          { label: t('Taux Horaire',  'Hourly Rate'),   value: `${formatCurrency(emp.hourlyRate)}/h` },
+                          { label: t('Vs mois préc.', 'Vs prev. month'), value: hrsPct !== null ? `${hrsPct >= 0 ? '+' : ''}${hrsPct.toFixed(0)}%` : t('S/O', 'N/A'), color: hrsPct === null ? undefined : hrsPct >= 0 ? '#22C55E' : '#EF4444' },
+                        ].map(({ label: lbl, value, color }) => (
+                          <div key={lbl} style={{ background: 'var(--card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                            <div style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{lbl}</div>
                             <div style={{ color: color || 'var(--text)', fontSize: 15, fontWeight: 900, marginTop: 2, fontFamily: 'monospace' }}>{value}</div>
                           </div>
                         ))}
                         {topProj && (
                           <div style={{ background: 'var(--card)', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', gridColumn: '1/-1' }}>
-                            <div style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Projet Principal</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('Projet Principal', 'Main Project')}</div>
                             <div style={{ color: 'var(--primary)', fontSize: 13, fontWeight: 900, marginTop: 2 }}>{topProj[0]} — {formatCurrency(topProj[1])}</div>
                           </div>
                         )}
@@ -392,19 +435,27 @@ export default function StatsPage() {
                 )
               })}
               {employees.length === 0 && (
-                <div style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center', fontSize: 14 }}>Aucun employé enregistré.</div>
+                <div style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center', fontSize: 14 }}>
+                  {t('Aucun employé enregistré.', 'No employees registered.')}
+                </div>
               )}
             </div>
           </div>
 
           {/* FIELD STATISTICS */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
-            <SectionHeader badge="FIELD STATISTICS" badgeColor="var(--primary)" title="Statistiques Globales des Projets Chantiers" />
+            <SectionHeader badge="FIELD STATISTICS" badgeColor="var(--primary)" title={t('Statistiques Globales des Projets Chantiers', 'Global Project Statistics')} />
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 540 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {["Chantier / Projet", "Main-d'Oeuvre Cumulée", "Équipe (Punchs)", "Présence Effective", "Tendance Budget H"].map(h => (
+                    {[
+                      t('Chantier / Projet', 'Project / Site'),
+                      t("Main-d'Oeuvre Cumulée", 'Accumulated Labor'),
+                      t('Équipe (Punchs)', 'Team (Punches)'),
+                      t('Présence Effective', 'Effective Presence'),
+                      t('Tendance Budget H', 'Budget Hours Trend'),
+                    ].map(h => (
                       <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -423,25 +474,25 @@ export default function StatsPage() {
                           <div style={{ color: '#22C55E', fontSize: 14, fontFamily: 'monospace' }}>{formatCurrency(totalLaborCost)}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
-                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{memberCount} personne{memberCount !== 1 ? 's' : ''}</div>
+                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{memberCount} {t(`personne${memberCount !== 1 ? 's' : ''}`, `person${memberCount !== 1 ? 's' : ''}`)}</div>
                           <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{sessions} punch session{sessions !== 1 ? 's' : ''}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
-                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{workDays} jour{workDays !== 1 ? 's' : ''} actif{workDays !== 1 ? 's' : ''}</div>
+                          <div style={{ color: 'var(--text)', fontSize: 13 }}>{workDays} {t(`jour${workDays !== 1 ? 's' : ''} actif${workDays !== 1 ? 's' : ''}`, `active day${workDays !== 1 ? 's' : ''}`)}</div>
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           {trendPct !== null
                             ? <span style={{ color: trendPct >= 0 ? '#22C55E' : '#EF4444', fontSize: 14, fontFamily: 'monospace', fontWeight: 700 }}>
-                                {trendPct >= 0 ? '↗ +' : '↘ '}{trendPct.toFixed(1)}% vs mois préc.
+                                {trendPct >= 0 ? '↗ +' : '↘ '}{trendPct.toFixed(1)}% {t('vs mois préc.', 'vs prev. month')}
                               </span>
-                            : <span style={{ color: 'var(--text-muted)', fontSize: 14, fontFamily: 'monospace' }}>→ 0% (S/O h pr.)</span>
+                            : <span style={{ color: 'var(--text-muted)', fontSize: 14, fontFamily: 'monospace' }}>→ 0% ({t('S/O h pr.', 'N/A prev.')})</span>
                           }
                         </td>
                       </tr>
                     )
                   })}
                   {fieldStats.length === 0 && (
-                    <tr><td colSpan={5} style={{ padding: '20px 12px', color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>Aucun projet trouvé.</td></tr>
+                    <tr><td colSpan={5} style={{ padding: '20px 12px', color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>{t('Aucun projet trouvé.', 'No projects found.')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -450,12 +501,19 @@ export default function StatsPage() {
 
           {/* MARGIN ANALYTICS */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
-            <SectionHeader badge="MARGIN ANALYTICS" badgeColor="#22C55E" title="Analyse Financière de Rentabilité par Chantier (Marge Brute)" />
+            <SectionHeader badge="MARGIN ANALYTICS" badgeColor="#22C55E" title={t('Analyse Financière de Rentabilité par Chantier (Marge Brute)', 'Financial Profitability Analysis by Project (Gross Margin)')} />
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Projet', 'Facturation Client ($)', 'Dépenses Fournisseurs ($)', "Coût Main-d'Oeuvre ($)", 'Marge Brute ($)', 'Performance Indicator'].map(h => (
+                    {[
+                      t('Projet', 'Project'),
+                      t('Facturation Client ($)', 'Client Billing ($)'),
+                      t('Dépenses Fournisseurs ($)', 'Supplier Expenses ($)'),
+                      t("Coût Main-d'Oeuvre ($)", 'Labor Cost ($)'),
+                      t('Marge Brute ($)', 'Gross Margin ($)'),
+                      'Performance Indicator',
+                    ].map(h => (
                       <th key={h} style={{ padding: '9px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -463,10 +521,10 @@ export default function StatsPage() {
                 <tbody>
                   {marginStats.map(({ proj, invoiced, projExpenses, laborCost, margin, marginPct }) => {
                     const perf = marginPct >= 30
-                      ? { label: '✓ Haute Performance (>=30%)', color: '#22C55E' }
+                      ? { label: t('✓ Haute Performance (>=30%)', '✓ High Performance (>=30%)'), color: '#22C55E' }
                       : marginPct >= 0
-                      ? { label: '⚠ Performance Acceptable', color: '#F59E0B' }
-                      : { label: '⚠ Déficitaire / Faible',    color: '#EF4444' }
+                      ? { label: t('⚠ Performance Acceptable', '⚠ Acceptable Performance'), color: '#F59E0B' }
+                      : { label: t('⚠ Déficitaire / Faible',   '⚠ Loss / Low Margin'),       color: '#EF4444' }
                     return (
                       <tr key={proj.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 12px' }}>
@@ -487,7 +545,7 @@ export default function StatsPage() {
                     )
                   })}
                   {marginStats.length === 0 && (
-                    <tr><td colSpan={6} style={{ padding: '20px 12px', color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>Aucun projet trouvé.</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '20px 12px', color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>{t('Aucun projet trouvé.', 'No projects found.')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -497,34 +555,36 @@ export default function StatsPage() {
           {/* COMPTABILITÉ GLOBALE */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <span style={{ color: '#06B6D4', fontSize: 13, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>COMPTABILITÉ GLOBALE</span>
+              <span style={{ color: '#06B6D4', fontSize: 13, fontFamily: 'monospace', fontWeight: 900, letterSpacing: '0.12em' }}>
+                {t('COMPTABILITÉ GLOBALE', 'GLOBAL ACCOUNTING')}
+              </span>
               <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Bilan Comptable Simplifié de la Période ({fmtMonth(statsMonth)})
+                {t('Bilan Comptable Simplifié de la Période', 'Simplified Accounting Summary for Period')} ({fmtMonth(statsMonth, lang)})
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               <AcctCard
-                title="Factures Client"
+                title={t('Factures Client', 'Client Invoices')}
                 value={`${formatCurrency(curInvoiced)} TTC`}
-                sub={`Recouvré : ${formatCurrency(curCollected)}\nDû : ${formatCurrency(Math.max(0, curInvoiced - curCollected))}`}
+                sub={`${t('Recouvré', 'Collected')} : ${formatCurrency(curCollected)}\n${t('Dû', 'Due')} : ${formatCurrency(Math.max(0, curInvoiced - curCollected))}`}
                 color="#22C55E"
               />
               <AcctCard
-                title="Dépenses Fournisseurs"
+                title={t('Dépenses Fournisseurs', 'Supplier Expenses')}
                 value={formatCurrency(curExpenses)}
-                sub={`${expenses.filter(e => e.date?.startsWith(statsMonth)).length} pièce(s) enregistrée(s)`}
+                sub={`${expenses.filter(e => e.date?.startsWith(statsMonth)).length} ${t('pièce(s) enregistrée(s)', 'receipt(s) recorded')}`}
                 color="#F59E0B"
               />
               <AcctCard
-                title="Masse Salariale"
+                title={t('Masse Salariale', 'Payroll')}
                 value={formatCurrency(curPayroll)}
-                sub="Paies versées et en attente"
+                sub={t('Paies versées et en attente', 'Payroll paid and pending')}
                 color="#A855F7"
               />
               <AcctCard
-                title="Bénéfice Net Provisoire"
+                title={t('Bénéfice Net Provisoire', 'Provisional Net Profit')}
                 value={formatCurrency(netBenef)}
-                sub="Indice de performance trimestrielle"
+                sub={t('Indice de performance trimestrielle', 'Quarterly performance index')}
                 color={netBenef >= 0 ? '#22C55E' : '#EF4444'}
               />
             </div>
@@ -534,7 +594,7 @@ export default function StatsPage() {
 
         {/* Recent history */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
-          <SectionHeader badge="HISTORIQUE" badgeColor="var(--text-muted)" title={`Sessions Récentes (${scoped.length} total)`} />
+          <SectionHeader badge={t('HISTORIQUE', 'HISTORY')} badgeColor="var(--text-muted)" title={`${t('Sessions Récentes', 'Recent Sessions')} (${scoped.length} total)`} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {scoped.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 10).map((d, idx) => (
               <div key={`${d.employeeId}-${d.date}-${idx}`} style={{
@@ -543,9 +603,9 @@ export default function StatsPage() {
                 borderBottom: idx < Math.min(scoped.length, 10) - 1 ? '1px solid var(--border)' : 'none',
               }}>
                 <div>
-                  <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>{d.date || 'Date inconnue'}</div>
+                  <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>{d.date || t('Date inconnue', 'Unknown date')}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                    {(d.totalHours || 0).toFixed(1)} h · {d.projectName || 'sans projet'}
+                    {(d.totalHours || 0).toFixed(1)} h · {d.projectName || t('sans projet', 'no project')}
                   </div>
                 </div>
                 <strong style={{ color: '#F59E0B', fontSize: 15, fontFamily: 'monospace' }}>{formatCurrency(d.totalRevenue || 0)}</strong>
@@ -553,7 +613,7 @@ export default function StatsPage() {
             ))}
             {scoped.length === 0 && (
               <div style={{ padding: '20px 14px', color: 'var(--text-muted)', textAlign: 'center', fontSize: 13 }}>
-                Aucune donnée pour le moment.
+                {t('Aucune donnée pour le moment.', 'No data yet.')}
               </div>
             )}
           </div>
@@ -568,10 +628,13 @@ export default function StatsPage() {
             <div style={{ padding: '10px 12px', background: 'rgba(249,115,22,0.10)', color: 'var(--primary)', borderRadius: 10, fontSize: 22, flexShrink: 0 }}>%</div>
             <div>
               <h3 style={{ color: 'var(--text)', fontSize: 17, fontWeight: 950, margin: '0 0 4px 0' }}>
-                Simulateur de Fiche de Paie (Québec — Déductions)
+                {t('Simulateur de Fiche de Paie (Québec — Déductions)', 'Payslip Simulator (Quebec — Deductions)')}
               </h3>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
-                Visualisez les déductions provinciales du Québec (RRQ) et de l&apos;assurance-emploi.
+                {t(
+                  'Visualisez les déductions provinciales du Québec (RRQ) et de l\'assurance-emploi.',
+                  'View Quebec provincial deductions (QPP/RRQ) and employment insurance.'
+                )}
               </p>
             </div>
           </div>
@@ -580,7 +643,7 @@ export default function StatsPage() {
             {/* Input side */}
             <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
               <label style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 10 }}>
-                Salaire Brut à Tester ($)
+                {t('Salaire Brut à Tester ($)', 'Gross Salary to Test ($)')}
               </label>
               <input
                 type="number"
@@ -591,18 +654,21 @@ export default function StatsPage() {
                 step="100"
               />
               <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 12, lineHeight: 1.5 }}>
-                Ce simulateur correspond aux barèmes de déductions à la source moyennes pour un travailleur du bâtiment (sous-traitant ou salarié) enregistré au Québec.
+                {t(
+                  'Ce simulateur correspond aux barèmes de déductions à la source moyennes pour un travailleur du bâtiment (sous-traitant ou salarié) enregistré au Québec.',
+                  'This simulator reflects average source deduction rates for a construction worker (subcontractor or salaried) registered in Quebec.'
+                )}
               </p>
             </div>
 
             {/* Results side */}
             <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { label: 'Gains brut',                          value: `${gross.toFixed(2)}$`,    color: 'var(--text)' },
-                { label: 'Impôt Fédéral estimé (15%)',          value: `${fedTax.toFixed(2)}$`,   color: '#EF4444' },
-                { label: 'Impôt Provincial (Qc) estimé (15%)',  value: `${provTax.toFixed(2)}$`,  color: '#EF4444' },
-                { label: 'RRQ / RPC estimé (6.4%)',             value: `${rrq.toFixed(2)}$`,      color: '#EF4444' },
-                { label: "Assurance-Emploi (AE) (1.27%)",       value: `${ae.toFixed(2)}$`,       color: '#EF4444' },
+                { label: t('Gains brut', 'Gross earnings'),                              value: `${gross.toFixed(2)}$`,    color: 'var(--text)' },
+                { label: t('Impôt Fédéral estimé (15%)', 'Est. Federal Tax (15%)'),      value: `${fedTax.toFixed(2)}$`,   color: '#EF4444' },
+                { label: t('Impôt Provincial (Qc) estimé (15%)', 'Est. Provincial Tax (QC) (15%)'), value: `${provTax.toFixed(2)}$`, color: '#EF4444' },
+                { label: t('RRQ / RPC estimé (6.4%)', 'QPP / CPP est. (6.4%)'),          value: `${rrq.toFixed(2)}$`,      color: '#EF4444' },
+                { label: t('Assurance-Emploi (AE) (1.27%)', 'Employment Insurance (EI) (1.27%)'), value: `${ae.toFixed(2)}$`, color: '#EF4444' },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{row.label}</span>
@@ -610,7 +676,9 @@ export default function StatsPage() {
                 </div>
               ))}
               <div style={{ borderTop: '2px solid var(--border-strong, var(--border))', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gains Net de Poche</span>
+                <span style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {t('Gains Net de Poche', 'Take-Home Net Pay')}
+                </span>
                 <span style={{ color: '#22C55E', fontSize: 20, fontWeight: 950, fontFamily: 'monospace' }}>{netPay.toFixed(2)}$</span>
               </div>
             </div>
