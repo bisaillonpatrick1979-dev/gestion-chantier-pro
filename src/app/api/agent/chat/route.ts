@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import { fetchAgentContext, buildSystemPrompt } from '@/lib/agentContext'
+import { fetchAgentContext, buildSystemPrompt, type AgentUserContext } from '@/lib/agentContext'
 import { callExternalProvider, defaultExternalModel, getExternalProviderKey, providerDisplayName, textEventStream, type ExternalAIProvider } from '@/lib/agentProviderClients'
 
 const ANTHROPIC_API = 'https://api.anthropic.com'
@@ -7,7 +7,7 @@ const ANTHROPIC_API = 'https://api.anthropic.com'
 type AIProvider = 'anthropic' | ExternalAIProvider
 type AIMode = 'disabled' | 'app_limited' | 'bring_your_own_key'
 type AISettings = { mode?: AIMode; provider?: AIProvider; model?: string; allowPhotoAnalysis?: boolean }
-type UserContext = { role: 'employee' | 'admin'; name?: string; page?: string }
+type UserContext = AgentUserContext & { page?: string }
 type ChatMessage = { role: 'user' | 'agent'; content: string }
 type AgentImage = { mediaType: string; data: string; name?: string }
 type ClaudeContentBlock = { type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -42,7 +42,11 @@ export async function POST(request: NextRequest) {
   const prefix = userContext ? `[${userContext.role === 'admin' ? 'Admin' : 'Employé'}${userContext.name ? ` — ${userContext.name}` : ''}${userContext.page ? ` — ${userContext.page}` : ''}]\n` : ''
   const fullMessage = prefix + (message?.trim() || 'Analyse cette photo de chantier.')
   const ctx = await fetchAgentContext()
-  const systemPrompt = `${buildSystemPrompt(ctx)}\n\nRéponds en français. Tu aides une compagnie de construction extérieure en Alberta. Donne des conseils pratiques, sécuritaires et vérifiables.`
+  const uiLang = userContext?.lang ?? 'fr'
+  const contextNote = uiLang === 'en'
+    ? 'You assist an exterior construction company in Alberta, Canada. Give practical, safe, and verifiable advice. Always use CAD prices.'
+    : 'Tu aides une compagnie de construction extérieure en Alberta. Donne des conseils pratiques, sécuritaires et vérifiables. Prix toujours en CAD.'
+  const systemPrompt = `${buildSystemPrompt(ctx, userContext ?? undefined)}\n\n${contextNote}`
 
   if (isExternal(provider)) {
     const token = getExternalProviderKey(provider)

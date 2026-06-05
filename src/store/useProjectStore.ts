@@ -10,6 +10,18 @@ import {
 
 export type PayMode = 'hourly' | 'job' | 'sqft';
 
+export interface ProjectTask {
+  id: string
+  label: string
+  catalogItemId?: string
+  qty?: number
+  unit?: string
+  done: boolean
+  doneBy?: string
+  doneAt?: string
+  sortOrder: number
+}
+
 export interface MaterialEntry {
   id: string;
   material: string;
@@ -60,6 +72,9 @@ export interface Project {
   notes?: string;
   jobsiteLatLng?: string;
   isVirtual?: boolean;
+  tasks?: ProjectTask[];
+  workerCompletedAt?: string;
+  adminVerifiedAt?: string;
 }
 
 // ─── Calculs ──────────────────────────────────────────────────────────────────
@@ -143,6 +158,11 @@ interface ProjectStore {
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   closeProject: (id: string) => void;
+  addTask: (projectId: string, task: Omit<ProjectTask, 'id' | 'sortOrder'>) => void;
+  toggleTask: (projectId: string, taskId: string, workerName?: string) => void;
+  removeTask: (projectId: string, taskId: string) => void;
+  workerCompleteProject: (projectId: string) => void;
+  adminVerifyAndClose: (projectId: string) => void;
   punchIn: (projectId: string, log: Omit<EmployeeWorkLog, 'punchOut' | 'hoursWorked'>) => void;
   punchOut: (projectId: string, employeeId: string, data: { materials?: MaterialEntry[]; jobPay?: number }) => void;
   addExpense: (projectId: string, expense: Omit<ProjectExpense, 'id'>) => void;
@@ -191,6 +211,62 @@ export const useProjectStore = create<ProjectStore>()(
       closeProject: (id) => {
         const newProjects = get().projects.map((p) =>
           p.id === id ? { ...p, status: 'closed' as const, closedAt: new Date().toISOString() } : p
+        );
+        set({ projects: newProjects });
+        syncProjectsToSupabase(newProjects);
+      },
+
+      addTask: (projectId, task) => {
+        const proj = get().projects.find(p => p.id === projectId);
+        const sortOrder = proj?.tasks?.length ?? 0;
+        const newProjects = get().projects.map(p =>
+          p.id === projectId
+            ? { ...p, tasks: [...(p.tasks ?? []), { ...task, id: uid(), sortOrder }] }
+            : p
+        );
+        set({ projects: newProjects });
+        syncProjectsToSupabase(newProjects);
+      },
+
+      toggleTask: (projectId, taskId, workerName) => {
+        const newProjects = get().projects.map(p => {
+          if (p.id !== projectId) return p;
+          return {
+            ...p,
+            tasks: (p.tasks ?? []).map(task => {
+              if (task.id !== taskId) return task;
+              const nowDone = !task.done;
+              return { ...task, done: nowDone, doneBy: nowDone ? workerName : undefined, doneAt: nowDone ? new Date().toISOString() : undefined };
+            }),
+          };
+        });
+        set({ projects: newProjects });
+        syncProjectsToSupabase(newProjects);
+      },
+
+      removeTask: (projectId, taskId) => {
+        const newProjects = get().projects.map(p =>
+          p.id === projectId
+            ? { ...p, tasks: (p.tasks ?? []).filter(t => t.id !== taskId) }
+            : p
+        );
+        set({ projects: newProjects });
+        syncProjectsToSupabase(newProjects);
+      },
+
+      workerCompleteProject: (projectId) => {
+        const newProjects = get().projects.map(p =>
+          p.id === projectId ? { ...p, workerCompletedAt: new Date().toISOString() } : p
+        );
+        set({ projects: newProjects });
+        syncProjectsToSupabase(newProjects);
+      },
+
+      adminVerifyAndClose: (projectId) => {
+        const newProjects = get().projects.map(p =>
+          p.id === projectId
+            ? { ...p, status: 'closed' as const, closedAt: new Date().toISOString(), adminVerifiedAt: new Date().toISOString() }
+            : p
         );
         set({ projects: newProjects });
         syncProjectsToSupabase(newProjects);

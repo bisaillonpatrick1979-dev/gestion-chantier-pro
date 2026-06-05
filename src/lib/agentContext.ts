@@ -32,8 +32,16 @@ export interface AgentContext {
     current_value: number
     end_date: string | null
     status: string
+    visible_to_employees: boolean
   }>
   fetchedAt: string
+}
+
+export type AgentUserContext = {
+  role: 'employee' | 'admin'
+  name?: string
+  employeeId?: string
+  lang?: 'fr' | 'en'
 }
 
 /**
@@ -86,7 +94,7 @@ export async function fetchAgentContext(): Promise<AgentContext> {
         .limit(20),
       supabase
         .from('goals')
-        .select('title, metric, target_value, current_value, end_date, status')
+        .select('title, metric, target_value, current_value, end_date, status, visible_to_employees')
         .eq('status', 'active')
         .limit(10),
     ])
@@ -105,9 +113,11 @@ export async function fetchAgentContext(): Promise<AgentContext> {
 }
 
 /**
- * Builds the system prompt for the AI agent, injecting live Supabase context.
+ * Builds the system prompt for the AI agent.
+ * When userContext.role === 'employee', only that employee's own data is injected
+ * and the prompt explicitly forbids sharing other employees' or company financial data.
  */
-export function buildSystemPrompt(ctx: AgentContext): string {
+export function buildSystemPrompt(ctx: AgentContext, userContext?: AgentUserContext): string {
   const now = new Date().toLocaleString('fr-CA', {
     timeZone: 'America/Edmonton',
     weekday: 'long',
@@ -118,6 +128,97 @@ export function buildSystemPrompt(ctx: AgentContext): string {
     minute: '2-digit',
   })
 
+  // ── EMPLOYEE MODE — restricted context ──────────────────────────────────────
+  if (userContext?.role === 'employee') {
+    const lang    = userContext.lang ?? 'fr'
+    const empName = userContext.name ?? (lang === 'en' ? 'Employee' : 'Employé')
+    const empId   = userContext.employeeId
+
+    const self = ctx.employees.find(e =>
+      (empId && e.id === empId) || e.name.toLowerCase() === empName.toLowerCase()
+    )
+
+    const selfStr = self
+      ? `Mode de travail: **${self.work_mode}** | Taux: **${self.hourly_rate}$/h** | Type: ${self.worker_type}`
+      : 'Informations non disponibles (consulte l\'administration).'
+
+    const projectsStr = ctx.projects.length > 0
+      ? ctx.projects.map(p => `  - ${p.name}${p.city ? ` (${p.city})` : ''}`).join('\n')
+      : '  Aucun projet actif en ce moment.'
+
+    const visibleGoals = ctx.goals.filter(g => g.visible_to_employees)
+    const goalsStr = visibleGoals.length > 0
+      ? visibleGoals.map(g =>
+          `  - ${g.title} (${g.metric}): ${g.current_value}/${g.target_value}${g.end_date ? ' | Fin: ' + g.end_date : ''}`
+        ).join('\n')
+      : '  Aucun objectif partagé avec les employés pour l\'instant.'
+
+    const isEn = lang === 'en'
+
+    return `${isEn
+      ? `You are the AI agent of **Gestion Chantier Pro** — **Employee Portal Mode**.`
+      : `Tu es l'agent IA de **Gestion Chantier Pro** — **Mode Portail Employé**.`}
+
+## 🔒 ${isEn ? 'RESTRICTED ACCESS — EMPLOYEE MODE' : 'ACCÈS RESTREINT — MODE EMPLOYÉ'}
+
+${isEn ? `You are speaking with: **${empName}**` : `Tu parles avec: **${empName}**`}
+
+---
+
+## ✅ ${isEn ? 'What you can do' : 'Ce que tu peux faire'}
+
+1. **Paye personnelle** — calculs CPP (5.95%), EI (1.66%), impôt fédéral et provincial (Alberta/Québec) pour **${empName}** uniquement. Montre les étapes.
+2. **Ses heures et statistiques** — sessions de travail, performance personnelle.
+3. **Punch in/out** — aide sur comment pointer, choisir un projet, corriger une session.
+4. **Projets disponibles** (noms seulement, pour le punch) — voir liste ci-dessous.
+5. **Objectifs d'équipe** visibles aux employés — voir liste ci-dessous.
+6. **Ingénieur virtuel** — toutes les questions techniques de chantier (matériaux, codes, méthodes, sécurité, calculs) sans restriction.
+7. **Aide générale** sur l'utilisation de l'application.
+
+---
+
+## ⛔ INTERDIT — Tu ne dois JAMAIS révéler
+
+- La paye, le taux horaire ou toute donnée personnelle d'un **autre** employé
+- Le bilan financier, les revenus ou les marges de la compagnie
+- Les numéros légaux de la compagnie (GST, WCB, BN)
+- Les informations sur les clients, les devis ou les factures
+- Les données de paie globales ou les résumés comptables
+
+**Si quelqu'un demande ces informations**, réponds systématiquement:
+> "🔒 Cette information est réservée à l'administration. Je peux t'aider avec ta propre paye, tes heures, ou des questions techniques de chantier — qu'est-ce que tu veux savoir ?"
+
+---
+
+## 📋 Informations de ${empName}
+
+${selfStr}
+
+### Projets actifs (pour punch in/out)
+${projectsStr}
+
+### Objectifs d'équipe partagés avec les employés
+${goalsStr}
+
+### Date/Heure Actuelle
+${now} (Heure de l'Alberta / Mountain Time)
+
+---
+
+## 🔑 Règles Générales
+
+1. **Langue**: Réponds dans la même langue que l'utilisateur (français ou anglais, auto-détect).
+2. **Concision**: Pratique et direct — l'utilisateur est souvent sur le chantier.
+3. **Emojis**: Utilise des emojis pour structurer 🏗️📊💰.
+4. **Prix**: Toujours en **CAD** sauf demande contraire.
+5. **Questions techniques**: Donne 2-3 options avec avantages/inconvénients et coûts approximatifs.
+6. **Listes matériaux**: Inclus une estimation de prix réaliste au Canada avec unités.
+`
+  }
+
+  // ── ADMIN MODE — full context ────────────────────────────────────────────────
+  const adminLang = userContext?.lang ?? 'fr'
+  const adminIsEn = adminLang === 'en'
   const companyStr = ctx.company
     ? `**${ctx.company.name}** | Propriétaire: ${ctx.company.owner_name} | ${ctx.company.city}, ${ctx.company.province} | GST: ${ctx.company.gst_number || 'N/A'} | WCB: ${ctx.company.wcb_number || 'N/A'}`
     : 'Compagnie non encore configurée dans l\'app'
@@ -152,11 +253,13 @@ export function buildSystemPrompt(ctx: AgentContext): string {
           .join('\n')
       : '  Aucun objectif actif'
 
-  return `Tu es l'agent IA de **Gestion Chantier Pro**, une application de gestion d'entreprise de construction développée par Hailite Xteriors (Canada).
+  return `${adminIsEn
+    ? 'You are the AI agent of **Gestion Chantier Pro**, a construction business management app developed by Hailite Xteriors (Canada).'
+    : 'Tu es l\'agent IA de **Gestion Chantier Pro**, une application de gestion d\'entreprise de construction développée par Hailite Xteriors (Canada).'}
 
-## 🏗️ Données en Temps Réel de l'Application
+## 🏗️ ${adminIsEn ? 'Real-Time App Data' : "Données en Temps Réel de l'Application"}
 
-### Compagnie
+### ${adminIsEn ? 'Company' : 'Compagnie'}
 ${companyStr}
 
 ### Employés Actifs (${ctx.employees.length})
@@ -222,15 +325,14 @@ ${now} (Heure de l'Alberta / Mountain Time)
 
 ## 🔑 Règles Importantes
 
-1. **Langue**: Réponds TOUJOURS dans la même langue que l'utilisateur. Si la question est en français → français. Si en anglais → anglais. Détecte automatiquement.
+1. **Langue**: Réponds toujours dans la même langue que l'utilisateur (auto-détect français/anglais).
 2. **Concision**: Sois pratique et direct — l'utilisateur est souvent sur le chantier avec peu de temps.
 3. **Contexte réel**: Utilise les données de l'app ci-dessus (employés réels, projets réels) dans tes réponses.
 4. **Emojis**: Utilise des emojis pour structurer et rendre les réponses plus lisibles 🏗️📊💰.
 5. **Prix**: Toujours en **CAD** sauf si l'utilisateur demande autrement.
 6. **Paie**: CPP: 5.95%, EI: 1.66%, impôt provincial selon la province (Alberta/Québec).
-7. **Rôle utilisateur**: Adapte ta réponse — employé = punch/paye/stats; admin = tout inclus.
-8. **Questions techniques**: Donne toujours 2-3 options avec avantages/inconvénients et coûts approximatifs.
-9. **Listes matériaux**: Inclus une estimation de prix réaliste au Canada avec unités (pi², m², lb, sac, feuille, etc.).
-10. **Formules de paie**: Montre les calculs étape par étape quand demandé.
+7. **Questions techniques**: Donne toujours 2-3 options avec avantages/inconvénients et coûts approximatifs.
+8. **Listes matériaux**: Inclus une estimation de prix réaliste au Canada avec unités (pi², m², lb, sac, feuille, etc.).
+9. **Formules de paie**: Montre les calculs étape par étape quand demandé.
 `
 }

@@ -6,6 +6,7 @@ import { useClientStore } from '@/store/useClientStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { useThemeStore } from '@/store/useThemeStore';
 import { useLangStore } from '@/store/useLangStore';
+import { useCatalogueStore } from '@/store/useCatalogueStore';
 
 function DecoGravure({ style }: { style?: React.CSSProperties }) {
   return (
@@ -47,16 +48,21 @@ const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--surf
 
 // ── Modal Carte Projet ────────────────────────────────────────────────────────
 function JobCardModal({ project, onClose }: { project: Project; onClose: () => void }) {
-  const { addExpense, removeExpense, closeProject, updateProject } = useProjectStore();
+  const { addExpense, removeExpense, closeProject, updateProject, addTask, toggleTask, removeTask, workerCompleteProject, adminVerifyAndClose } = useProjectStore();
   const { theme } = useThemeStore();
   const { lang } = useLangStore();
   const t = (fr: string, en: string) => lang === 'fr' ? fr : en;
   const employeeStore = useEmployeeStore();
   const allEmployees = (employeeStore as unknown as Record<string, unknown>).employees as Array<{ id: string; name: string; hourlyRate?: number; role?: string }> ?? [];
+  const currentEmpId = (employeeStore as unknown as Record<string, unknown>).currentEmployeeId as string | undefined;
+  const currentEmployee = allEmployees.find(e => e.id === currentEmpId);
+  const isAdmin = !currentEmpId || !currentEmployee || currentEmployee.role === 'admin';
+  const { materials: catMaterials } = useCatalogueStore();
 
   const [expDesc, setExpDesc] = useState('');
   const [expAmt, setExpAmt] = useState('');
-  const [tab, setTab] = useState<'overview' | 'employees' | 'expenses' | 'logs'>('overview');
+  const [taskLabel, setTaskLabel] = useState('');
+  const [tab, setTab] = useState<'overview' | 'employees' | 'expenses' | 'logs' | 'tasks'>('overview');
 
   // ── Géofencing dans la carte projet ──────────────────────────────────────
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -104,8 +110,11 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
     updateProject(project.id, { assignedEmployeeIds: current.includes(empId) ? current.filter(id => id !== empId) : [...current, empId] });
   };
 
+  const tasksDone  = (project.tasks ?? []).filter(t => t.done).length;
+  const tasksTotal = (project.tasks ?? []).length;
   const tabs = [
     { id: 'overview'  as const, label: `📊 ${t('Vue', 'Overview')}` },
+    { id: 'tasks'     as const, label: `📋 ${t('Tâches', 'Tasks')}${tasksTotal > 0 ? ` ${tasksDone}/${tasksTotal}` : ''}` },
     { id: 'employees' as const, label: `👷 ${t('Équipe', 'Team')}` },
     { id: 'expenses'  as const, label: `💸 ${t('Dépenses', 'Expenses')}` },
     { id: 'logs'      as const, label: `🕐 ${t('Logs', 'Logs')}` },
@@ -265,9 +274,26 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
               </div>
 
               <DecoGravure />
-              {project.status === 'open' && (
-                <button onClick={() => { closeProject(project.id); onClose(); }} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--info)', background: `${theme.colors.info}18`, color: 'var(--info)', fontWeight: 700, fontSize: '14px' }}>
-                  🔒 {t('Fermer le projet → Générer facture', 'Close project → Generate invoice')}
+              {project.status === 'open' && isAdmin && tasksTotal === 0 && (
+                <button onClick={() => { adminVerifyAndClose(project.id); onClose(); }} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid var(--info)', background: `${theme.colors.info}18`, color: 'var(--info)', fontWeight: 700, fontSize: '14px' }}>
+                  🔒 {t('Fermer le projet', 'Close project')}
+                </button>
+              )}
+              {project.status === 'open' && isAdmin && tasksTotal > 0 && project.workerCompletedAt && !project.adminVerifiedAt && (
+                <button onClick={() => { adminVerifyAndClose(project.id); onClose(); }} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.12)', color: 'var(--primary)', fontWeight: 800, fontSize: '14px' }}>
+                  🔐 {t('Vérifier et fermer le projet', 'Verify and close project')}
+                </button>
+              )}
+              {project.status === 'open' && isAdmin && tasksTotal > 0 && !project.workerCompletedAt && (
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card)', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    ⏳ {t('En attente de confirmation terrain — voir onglet Tâches', 'Waiting for field confirmation — see Tasks tab')}
+                  </p>
+                </div>
+              )}
+              {project.status === 'open' && !isAdmin && tasksTotal > 0 && !project.workerCompletedAt && (project.tasks ?? []).every(t => t.done) && (
+                <button onClick={() => { workerCompleteProject(project.id); }} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid rgba(34,197,94,0.5)', background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 800, fontSize: '14px' }}>
+                  ✅ {t('Confirmer les travaux terminés', 'Confirm work completed')}
                 </button>
               )}
               {project.status === 'closed' && (
@@ -372,6 +398,153 @@ function JobCardModal({ project, onClose }: { project: Project; onClose: () => v
                 <div style={{ ...cardStyle, border: '1px solid var(--danger)44', background: 'var(--danger)11', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--danger)' }}>{t('Total dépenses', 'Total expenses')}</span>
                   <span style={{ fontSize: '20px', fontWeight: 900, color: 'var(--danger)' }}>{fmt(stats.totalExpenses)}</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === 'tasks' && (
+            <>
+              {/* Progress bar */}
+              {tasksTotal > 0 && (
+                <div style={{ ...cardStyle, border: tasksDone === tasksTotal ? '1px solid rgba(34,197,94,0.4)' : '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text)' }}>
+                      {tasksDone === tasksTotal ? '✅' : '📋'} {tasksDone}/{tasksTotal} {t('tâches complétées', 'tasks completed')}
+                    </p>
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: tasksDone === tasksTotal ? '#22c55e' : 'var(--primary)' }}>{tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0}%</span>
+                  </div>
+                  <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: tasksDone === tasksTotal ? '#22c55e' : 'var(--primary)', borderRadius: '3px', width: `${tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0}%`, transition: 'width 0.3s ease' }} />
+                  </div>
+                  {project.workerCompletedAt && (
+                    <p style={{ fontSize: '11px', color: '#22c55e', marginTop: '8px', fontWeight: 700 }}>
+                      ✅ {t('Terrain confirmé', 'Field confirmed')} — {new Date(project.workerCompletedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                  {project.adminVerifiedAt && (
+                    <p style={{ fontSize: '11px', color: 'var(--primary)', marginTop: '4px', fontWeight: 700 }}>
+                      🔐 {t("Vérifié par l'admin", 'Admin verified')} — {new Date(project.adminVerifiedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Task list */}
+              {tasksTotal === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>📋 {t('Aucune tâche pour ce projet.', 'No tasks for this project.')}</p>
+                  {isAdmin && <p style={{ color: 'var(--text-weak)', fontSize: '12px', marginTop: '4px' }}>{t('Ajoutez des tâches ci-dessous.', 'Add tasks below.')}</p>}
+                </div>
+              )}
+
+              {(project.tasks ?? []).map(task => (
+                <div key={task.id} style={{ ...cardStyle, display: 'flex', alignItems: 'flex-start', gap: '12px', border: task.done ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)', background: task.done ? 'rgba(34,197,94,0.05)' : 'var(--card)', opacity: project.status === 'closed' ? 0.8 : 1 }}>
+                  <button
+                    onClick={() => toggleTask(project.id, task.id, currentEmployee?.name ?? 'Admin')}
+                    disabled={project.status === 'closed'}
+                    style={{ flexShrink: 0, marginTop: '2px', width: '22px', height: '22px', borderRadius: '6px', border: task.done ? '2px solid #22c55e' : '2px solid var(--border)', background: task.done ? '#22c55e' : 'transparent', cursor: project.status === 'closed' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#000', fontWeight: 900, transition: 'all 0.2s' }}
+                  >
+                    {task.done ? '✓' : ''}
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: task.done ? 400 : 700, color: task.done ? 'var(--text-muted)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</p>
+                    {(task.qty !== undefined || task.unit) && (
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{task.qty !== undefined && `${task.qty} `}{task.unit}</p>
+                    )}
+                    {task.done && task.doneBy && (
+                      <p style={{ fontSize: '10px', color: '#22c55e', marginTop: '2px' }}>✅ {task.doneBy} — {task.doneAt ? new Date(task.doneAt).toLocaleDateString() : ''}</p>
+                    )}
+                  </div>
+                  {isAdmin && project.status === 'open' && (
+                    <button onClick={() => removeTask(project.id, task.id)} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-weak)', cursor: 'pointer', fontSize: '16px', padding: '2px 4px', lineHeight: 1 }}>✕</button>
+                  )}
+                </div>
+              ))}
+
+              {/* Add task — admin only */}
+              {isAdmin && project.status === 'open' && (
+                <div style={cardStyle}>
+                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    ➕ {t('Ajouter une tâche', 'Add a task')}
+                  </p>
+
+                  {/* Catalogue quick-add */}
+                  {catMaterials.length > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700 }}>{t('Du catalogue :', 'From catalogue:')}</p>
+                      <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '2px' }}>
+                        {catMaterials.map(mat => (
+                          <button
+                            key={mat.id}
+                            onClick={() => addTask(project.id, { label: mat.name, catalogItemId: mat.id, unit: mat.unit, done: false })}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', transition: 'background 0.15s' }}
+                          >
+                            <span style={{ fontSize: '14px', flexShrink: 0 }}>{mat.emoji ?? '📦'}</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mat.name}</span>
+                            {mat.unit && <span style={{ fontSize: '10px', color: 'var(--text-muted)', flexShrink: 0 }}>{mat.unit}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual input */}
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 700 }}>{t('Ou instruction manuelle :', 'Or manual instruction:')}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={taskLabel}
+                      onChange={e => setTaskLabel(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && taskLabel.trim()) {
+                          addTask(project.id, { label: taskLabel.trim(), done: false });
+                          setTaskLabel('');
+                        }
+                      }}
+                      placeholder={t('Ex: Nettoyer le chantier', 'Ex: Clean up the site')}
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button
+                      onClick={() => { if (taskLabel.trim()) { addTask(project.id, { label: taskLabel.trim(), done: false }); setTaskLabel(''); } }}
+                      disabled={!taskLabel.trim()}
+                      style={{ background: taskLabel.trim() ? 'var(--primary)' : 'var(--border)', border: 'none', borderRadius: '10px', padding: '10px 16px', color: taskLabel.trim() ? '#000' : 'var(--text-muted)', fontWeight: 800, cursor: taskLabel.trim() ? 'pointer' : 'default', fontSize: '16px', transition: 'all 0.2s' }}
+                    >
+                      ➕
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <DecoGravure />
+
+              {/* Worker — confirm completion */}
+              {!isAdmin && project.status === 'open' && !project.workerCompletedAt && tasksTotal > 0 && tasksDone === tasksTotal && (
+                <button onClick={() => workerCompleteProject(project.id)} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid rgba(34,197,94,0.5)', background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 800, fontSize: '14px' }}>
+                  ✅ {t('Confirmer les travaux terminés', 'Confirm work completed')}
+                </button>
+              )}
+              {!isAdmin && project.status === 'open' && project.workerCompletedAt && (
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.08)', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: '#22c55e', fontWeight: 700 }}>✅ {t("Travaux confirmés — en attente de vérification admin", 'Work confirmed — pending admin verification')}</p>
+                </div>
+              )}
+              {!isAdmin && project.status === 'open' && tasksTotal > 0 && tasksDone < tasksTotal && (
+                <div style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--card)', textAlign: 'center' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>⏳ {t(`Coche toutes les tâches pour confirmer les travaux (${tasksDone}/${tasksTotal})`, `Check all tasks to confirm work (${tasksDone}/${tasksTotal})`)}</p>
+                </div>
+              )}
+
+              {/* Admin — verify and close */}
+              {isAdmin && project.status === 'open' && tasksTotal > 0 && project.workerCompletedAt && !project.adminVerifiedAt && (
+                <button onClick={() => { adminVerifyAndClose(project.id); onClose(); }} style={{ width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', border: '1px solid rgba(251,191,36,0.5)', background: 'rgba(251,191,36,0.12)', color: 'var(--primary)', fontWeight: 800, fontSize: '14px' }}>
+                  🔐 {t('Vérifier et fermer le projet', 'Verify and close project')}
+                </button>
+              )}
+              {isAdmin && project.status === 'open' && tasksTotal > 0 && !project.workerCompletedAt && (
+                <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card)', textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    ⏳ {t('En attente de confirmation terrain', 'Waiting for field crew confirmation')}
+                  </p>
                 </div>
               )}
             </>

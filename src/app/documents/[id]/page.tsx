@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useDocumentStore } from '@/store/useDocumentStore'
 import { useClientStore } from '@/store/useClientStore'
 import { useCompanyStore } from '@/store/useCompanyStore'
+import { useProjectStore } from '@/store/useProjectStore'
 import { useLangStore } from '@/store/useLangStore'
 import { useThemeStore } from '@/store/useThemeStore'
 import {
@@ -49,7 +50,11 @@ export default function DocumentDetailPage() {
   const { documents, updateDocument, addDocument } = useDocumentStore()
   const { clients }                                 = useClientStore()
   const { company }                                 = useCompanyStore()
+  const { projects }                                = useProjectStore()
   const existing = documents.find(d => d.id === docId)
+
+  // Will be refined after clientId state is declared — placeholder at declaration site
+  const _initClientId = existing?.clientId ?? ''
 
   // ── Type / Statut ──────────────────────────────────────────────────────────
   const [docType, setDocType]   = useState<'invoice' | 'quote' | 'contract'>((existing?.type as any) ?? 'invoice')
@@ -73,6 +78,14 @@ export default function DocumentDetailPage() {
   // ── Client ─────────────────────────────────────────────────────────────────
   const [clientId, setClientId]           = useState(existing?.clientId ?? '')
   const [clientName, setClientName]       = useState(existing?.clientName ?? '')
+
+  // Projets bloquants : ouverts, avec tâches non vérifiées par admin
+  const blockedProjects = projects.filter(p =>
+    p.clientId === (clientId || _initClientId) &&
+    p.status === 'open' &&
+    (p.tasks ?? []).length > 0 &&
+    !p.adminVerifiedAt
+  )
   const [clientAddress, setClientAddress] = useState(existing?.clientAddress ?? '')
   const [clientEmail, setClientEmail]     = useState(existing?.clientEmail ?? '')
   const [clientPhone, setClientPhone]     = useState(existing?.clientPhone ?? '')
@@ -242,6 +255,7 @@ export default function DocumentDetailPage() {
   const docTypeLabel = docType === 'invoice' ? t('Facture', 'Invoice') : docType === 'quote' ? t('Devis', 'Quote') : t('Contrat', 'Contract')
 
   const handleSendEmail = () => {
+    if (invoiceBlocked) { alert(invoiceBlockMsg); return }
     const subject = encodeURIComponent(`${docTypeLabel} ${docNumber} — ${compName}`)
     const body = encodeURIComponent([
       t(`Bonjour ${clientName},`, `Hello ${clientName},`), '',
@@ -257,6 +271,7 @@ export default function DocumentDetailPage() {
   }
 
   const handleSendSMS = () => {
+    if (invoiceBlocked) { alert(invoiceBlockMsg); return }
     const body = encodeURIComponent([
       `${compName}`, `${docTypeLabel} #${docNumber}`,
       `${t('Client', 'Client')}: ${clientName}`, `${t('Total', 'Total')}: ${fmt(total)}`,
@@ -312,6 +327,12 @@ export default function DocumentDetailPage() {
     { id: 'paid',    label: t('Payé', 'Paid') },
     { id: 'overdue', label: t('En retard', 'Overdue') },
   ] as const
+
+  const invoiceBlocked = docType === 'invoice' && blockedProjects.length > 0
+  const invoiceBlockMsg = t(
+    `🔒 Projet "${blockedProjects[0]?.name}" non vérifié par l'admin. L'employé doit confirmer les travaux et l'admin doit vérifier avant d'envoyer la facture.`,
+    `🔒 Project "${blockedProjects[0]?.name}" not verified by admin. The employee must confirm work and admin must verify before sending the invoice.`
+  )
 
   const LINES_SUBTABS: { id: LinesSubTab; icon: string; label: string }[] = [
     { id: 'materials',   icon: '🧱', label: t('Matériaux', 'Materials') },
@@ -404,9 +425,25 @@ export default function DocumentDetailPage() {
             <div><label className={labelClass}>{t('Date', 'Date')}</label><input className={inputClass} type="date" value={docDate} onChange={e => setDocDate(e.target.value)} /></div>
             <div><label className={labelClass}>{t('Échéance', 'Due Date')}</label><input className={inputClass} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
             <div><label className={labelClass}>{t('Statut', 'Status')}</label>
-              <select className={inputClass} value={status} onChange={e => setStatus(e.target.value as any)}>
+              <select
+                className={inputClass}
+                value={status}
+                onChange={e => {
+                  const next = e.target.value as typeof status
+                  if (next === 'sent' && invoiceBlocked) {
+                    alert(invoiceBlockMsg)
+                    return
+                  }
+                  setStatus(next)
+                }}
+              >
                 {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
+              {invoiceBlocked && status !== 'sent' && (
+                <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', fontWeight: 600 }}>
+                  ⚠️ {t('Projet non clôturé — envoi bloqué', 'Project not closed — sending blocked')}
+                </p>
+              )}
             </div>
           </div>
         </div>
