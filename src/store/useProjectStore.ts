@@ -387,7 +387,25 @@ export const useProjectStore = create<ProjectStore>()(
         set({ isSyncing: true });
         try {
           const remote = await fetchProjectsFromSupabase();
-          if (remote !== null) set({ projects: remote });
+          if (remote !== null) {
+            const local = get().projects;
+            const remoteIds = new Set(remote.map((p: any) => p.id));
+            // Merge: keep tasks/workerCompletedAt/adminVerifiedAt from localStorage
+            // since these columns don't yet exist in Supabase.
+            const merged = remote.map((rp: any) => {
+              const lp = local.find(p => p.id === rp.id);
+              return {
+                ...rp,
+                tasks: lp?.tasks ?? [],
+                workerCompletedAt: lp?.workerCompletedAt,
+                adminVerifiedAt: lp?.adminVerifiedAt,
+                isVirtual: lp?.isVirtual ?? rp.isVirtual,
+              };
+            });
+            // Keep virtual/local-only projects that Supabase doesn't know about
+            const localOnly = local.filter(p => p.isVirtual && !remoteIds.has(p.id));
+            set({ projects: [...merged, ...localOnly] });
+          }
           set({ lastSync: new Date().toISOString() });
         } catch (e) {
           console.error('fetchFromCloud projects error:', e);

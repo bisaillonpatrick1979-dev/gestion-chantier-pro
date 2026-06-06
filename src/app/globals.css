@@ -41,6 +41,14 @@ main {
   zoom: 1.38;
 }
 
+/* On phones, zoom causes horizontal overflow — disable it and rely on larger base font-size instead. */
+@media (max-width: 640px) {
+  main {
+    zoom: 1;
+    font-size: 17px;
+  }
+}
+
 main p,
 main span,
 main label,
