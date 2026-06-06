@@ -100,10 +100,18 @@ main :where(.rounded-2xl, .rounded-3xl) {
   animation-iteration-count: 1;
 }
 
-main :where(.shadow, .shadow-lg, .shadow-xl, .shadow-2xl),
-main :where([style*="box-shadow"]),
-nav :where([style*="box-shadow"]) {
+/* Oblitérer tous les box-shadow/text-shadow — inline, class, ou @keyframes. */
+*,
+*::before,
+*::after {
   box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* SVG drop-shadow filter glows (BottomNav icons, XP robot, avatars). */
+svg,
+svg * {
+  filter: none !important;
 }
 
 main :where([class*="backdrop-blur"]),
